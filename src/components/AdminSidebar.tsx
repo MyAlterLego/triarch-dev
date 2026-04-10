@@ -83,17 +83,17 @@ export function AdminSidebar() {
   }
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-zinc-950 border-r border-zinc-800">
+    <div className="flex flex-col h-full border-r" style={{ background: 'var(--color-admin-bg)', borderColor: 'var(--color-admin-border)' }}>
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-zinc-800">
+      <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--color-admin-border)' }}>
         {collapsed ? (
-          <span className="text-teal-400 font-bold text-lg">T</span>
+          <span className="font-bold text-lg" style={{ color: 'var(--color-admin-accent)' }}>T</span>
         ) : (
           <>
-            <span className="text-xl font-bold tracking-widest uppercase text-teal-400">
+            <span className="text-xl font-bold tracking-widest uppercase" style={{ color: 'var(--color-admin-accent)' }}>
               TRIARCH
             </span>
-            <span className="block text-xs tracking-widest mt-0.5 text-zinc-500">
+            <span className="block text-xs tracking-widest mt-0.5" style={{ color: 'var(--color-admin-text-muted)' }}>
               DEV CONSOLE
             </span>
           </>

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme inline {
+  /* Triarch brand colors — shared across marketing + admin */
   --color-background: #0c0a08;
   --color-foreground: #f0ebe5;
   --color-muted: #9a8e80;
@@ -9,6 +10,17 @@
   --color-accent-dim: #b5572a;
   --color-surface: #141210;
   --color-border: #2a2420;
+
+  /* Admin-specific semantic tokens */
+  --color-admin-bg: #0c0a08;
+  --color-admin-surface: #141210;
+  --color-admin-surface-hover: #1c1a16;
+  --color-admin-border: #2a2420;
+  --color-admin-text: #f0ebe5;
+  --color-admin-text-muted: #9a8e80;
+  --color-admin-accent: #c97b2a;
+  --color-admin-accent-hover: #e8b44a;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
