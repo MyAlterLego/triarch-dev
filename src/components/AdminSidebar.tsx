@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   ChevronRight,
+  Columns3,
   LayoutDashboard,
   Settings,
   Menu as MenuIcon,
@@ -19,6 +20,7 @@ import type { NavData, NavSection, NavPage } from '@/lib/navigation-types';
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
   'layout-dashboard': LayoutDashboard,
+  'columns-3': Columns3,
   settings: Settings,
   bug: Bug,
   'file-text': FileText,

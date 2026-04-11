@@ -86,11 +86,20 @@ async function seed() {
   await db.insert(menuPages).values([
     {
       sectionId: modulesSection.id,
+      key: 'tracker',
+      label: 'Work Tracker',
+      icon: 'columns-3',
+      path: '/admin/modules/tracker',
+      sortOrder: 0,
+      minRole: 'admin',
+    },
+    {
+      sectionId: modulesSection.id,
       key: 'release-logs',
       label: 'Release Logs',
       icon: 'file-text',
       path: '/admin/modules/release-logs',
-      sortOrder: 0,
+      sortOrder: 1,
       minRole: 'admin',
     },
     {
@@ -99,7 +108,7 @@ async function seed() {
       label: 'Bug Reports',
       icon: 'bug',
       path: '/admin/modules/bug-reports',
-      sortOrder: 1,
+      sortOrder: 2,
       minRole: 'admin',
     },
   ]);
