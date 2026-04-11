@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import { useProjectOptions } from '@/lib/use-projects';
 import {
   Wrench, GitBranch, Flame, Navigation, Copy, Check, ChevronDown, ChevronRight,
+  FolderGit2, FileCode,
 } from 'lucide-react';
 
 type Tool = 'cicd' | 'firebase-config' | 'nav-templates';
@@ -53,7 +54,49 @@ export default function ProjectToolsPage() {
     setTimeout(() => setCopiedFile(null), 2000);
   }, []);
 
-  const tools: Array<{ key: Tool; label: string; icon: React.ReactNode; description: string; needsProject: boolean }> = [
+  const generateScaffold = useCallback(async () => {
+    if (!selectedProject) return;
+    setLoading(true);
+    setActiveTool('scaffold' as Tool);
+    setFiles(null);
+    setTemplates(null);
+
+    const res = await fetch('/api/platform/projects/tools/scaffold', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectKey: selectedProject }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setFiles(data.files);
+    }
+    setLoading(false);
+  }, [selectedProject]);
+
+  const scaffoldRepo = useCallback(async () => {
+    if (!selectedProject) return;
+    setLoading(true);
+    setActiveTool('scaffold-repo' as Tool);
+    setFiles(null);
+    setTemplates(null);
+
+    const res = await fetch('/api/platform/projects/scaffold-repo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectKey: selectedProject }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setFiles({ 'result.txt': `Repository created: ${data.repo}\nURL: ${data.url}\nClone: ${data.cloneUrl}` });
+    } else {
+      setFiles({ 'error.txt': `Error: ${data.error}` });
+    }
+    setLoading(false);
+  }, [selectedProject]);
+
+  const tools: Array<{ key: Tool | string; label: string; icon: React.ReactNode; description: string; needsProject: boolean; onClick?: () => void }> = [
+    { key: 'scaffold', label: 'App Scaffold', icon: <FileCode size={16} />, description: 'Generate full Next.js starter with triarch conventions', needsProject: true, onClick: generateScaffold },
+    { key: 'scaffold-repo', label: 'Create GitHub Repo', icon: <FolderGit2 size={16} />, description: 'Create a GitHub repo in MyAlterLego org and link to project', needsProject: true, onClick: scaffoldRepo },
     { key: 'cicd', label: 'CI/CD Workflows', icon: <GitBranch size={16} />, description: 'Generate GitHub Actions workflow files using shared-workflows', needsProject: true },
     { key: 'firebase-config', label: 'Firebase Config', icon: <Flame size={16} />, description: 'Generate .firebaserc, apphosting.yaml, firebase.json', needsProject: true },
     { key: 'nav-templates', label: 'Nav Templates', icon: <Navigation size={16} />, description: 'Pre-built navigation seed configs for common project types', needsProject: false },
@@ -91,7 +134,7 @@ export default function ProjectToolsPage() {
           return (
             <button
               key={tool.key}
-              onClick={() => !disabled && generate(tool.key)}
+              onClick={() => !disabled && (tool.onClick ? tool.onClick() : generate(tool.key as Tool))}
               disabled={disabled || loading}
               className={`p-4 rounded-lg border text-left transition-colors ${
                 activeTool === tool.key
