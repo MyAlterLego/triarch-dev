@@ -14,6 +14,8 @@ import {
   Activity,
   Briefcase,
   PanelLeft,
+  Wrench,
+  Lightbulb,
 } from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
 import type { NavData, NavSection, NavPage } from '@/lib/navigation-types';
@@ -21,6 +23,8 @@ import type { NavData, NavSection, NavPage } from '@/lib/navigation-types';
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
   'layout-dashboard': LayoutDashboard,
   'columns-3': Columns3,
+  wrench: Wrench,
+  lightbulb: Lightbulb,
   settings: Settings,
   bug: Bug,
   'file-text': FileText,
