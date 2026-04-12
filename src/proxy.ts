@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 const PASSTHROUGH_PREFIXES = ['/api/', '/login', '/_next/', '/favicon.ico'];
 
-export function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const hostname = request.headers.get('host') ?? '';
   const { pathname } = request.nextUrl;
 
