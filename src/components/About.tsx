@@ -4,7 +4,7 @@ export function About() {
       <div className="mx-auto max-w-5xl">
         <div className="mb-20 flex flex-col items-center text-center">
           <img
-            src="/logo.png"
+            src="/triarch-logo.png"
             alt="Triarch Development"
             className="mb-8 h-48 w-48 object-contain md:h-64 md:w-64"
           />

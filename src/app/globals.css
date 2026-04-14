@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* Triarchsecurity base palette — per DEV-02 */
-  --bg-base: #020d12;
-  --bg-surface: #071318;
-  --bg-elevated: #0d1f26;
-  --accent-teal: #00e5b4;
-  --accent-teal-dim: #00b38c;
-  --accent-teal-hover: #33ebc3;
-  --text-primary: #e8f4f0;
-  --text-muted: #6b9a8e;
-  --border-subtle: #0d2a23;
-  --border-default: #0f3329;
+  /* Triarch Dev golden palette */
+  --bg-base: #0a0a0c;
+  --bg-surface: #111114;
+  --bg-elevated: #1a1a1e;
+  --accent-gold: #d4a029;
+  --accent-gold-dim: #b8891f;
+  --accent-gold-hover: #e8b84a;
+  --text-primary: #f0ece4;
+  --text-muted: #9a8e6b;
+  --border-subtle: rgba(212, 160, 41, 0.1);
+  --border-default: rgba(212, 160, 41, 0.2);
 
   /* Semantic aliases — keeps existing var() references working */
   --color-background: var(--bg-base);
   --color-foreground: var(--text-primary);
   --color-muted: var(--text-muted);
-  --color-accent: var(--accent-teal);
-  --color-accent-hover: var(--accent-teal-hover);
-  --color-accent-dim: var(--accent-teal-dim);
+  --color-accent: var(--accent-gold);
+  --color-accent-hover: var(--accent-gold-hover);
+  --color-accent-dim: var(--accent-gold-dim);
   --color-surface: var(--bg-surface);
   --color-border: var(--border-default);
 
@@ -30,8 +30,8 @@
   --color-admin-border: var(--border-default);
   --color-admin-text: var(--text-primary);
   --color-admin-text-muted: var(--text-muted);
-  --color-admin-accent: var(--accent-teal);
-  --color-admin-accent-hover: var(--accent-teal-hover);
+  --color-admin-accent: var(--accent-gold);
+  --color-admin-accent-hover: var(--accent-gold-hover);
 
   /* Typography — per DEV-03 */
   --font-sans: var(--font-exo2);

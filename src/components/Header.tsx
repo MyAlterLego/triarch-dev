@@ -14,7 +14,7 @@ export function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <a href="#" className="flex items-center gap-3">
-          <img src="/logo.png" alt="Triarch Development" className="h-8 w-8 object-contain" />
+          <img src="/triarch-logo.png" alt="Triarch Development" className="h-8 w-8 object-contain" />
           <span className="text-lg font-bold tracking-wide uppercase">
             Triarch <span className="font-normal text-accent">Development</span>
           </span>

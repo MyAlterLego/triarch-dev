@@ -17,7 +17,7 @@ export function AdminSidebar() {
     <div className="px-5 py-5">
       <span
         className="text-xl font-bold tracking-widest uppercase"
-        style={{ color: 'var(--accent-teal)' }}
+        style={{ color: 'var(--accent-gold)' }}
       >
         TRIARCH
       </span>
