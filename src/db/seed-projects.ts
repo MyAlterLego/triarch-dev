@@ -69,7 +69,7 @@ async function seed() {
       deployedUrl: 'https://darksouls.triarch.dev',
       githubRepo: 'MyAlterLego/darksouls-rpg',
       techStack: { framework: 'Next.js 16', orm: 'Drizzle', auth: 'Firebase', ui: 'Tailwind 4, Radix UI' },
-      currentVersion: 'v5.1.1',
+      currentVersion: 'v6.9.1',
       ecosystem: 'triarch-dev',
       apiKey: generateApiKey(),
     },
