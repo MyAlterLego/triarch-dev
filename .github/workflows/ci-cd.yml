@@ -58,4 +58,7 @@ jobs:
       status: ${{ needs.deploy.result }}
       project_name: Triarch Dev
       version: ${{ needs.deploy.outputs.version }}
+      wait_for_fah: true
+      app_hosting_backend: triarch-dev-website
+      firebase_project_id: triarch-dev-website
     secrets: inherit
