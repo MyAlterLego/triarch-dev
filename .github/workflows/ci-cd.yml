@@ -51,8 +51,6 @@ jobs:
       firebase_project_id: triarch-dev-website
       deploy_command: apphosting
     secrets: inherit
-    permissions:
-      contents: write
 
   notify:
     needs: [quality-gate, deploy]
