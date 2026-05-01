@@ -39,7 +39,11 @@ export async function POST(req: NextRequest) {
   const name = repoName || projectKey;
   const org = 'MyAlterLego';
 
-  const createRes = await fetch(`https://api.github.com/orgs/${org}/repos`, {
+  // MyAlterLego is a User account, not an Org. POST /orgs/.../repos returns
+  // 404 for user accounts. POST /user/repos creates under the authenticated
+  // user, which is what we want as long as GITHUB_TOKEN is authed as
+  // MyAlterLego.
+  const createRes = await fetch(`https://api.github.com/user/repos`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${ghToken}`,
