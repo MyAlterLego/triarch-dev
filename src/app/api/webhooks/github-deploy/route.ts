@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db } from '@/lib/db';
-import { projects } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { projects, releaseLogs } from '@/db/schema';
+import { and, eq } from 'drizzle-orm';
 
 /**
  * GitHub webhook listener for deploy / release events.
@@ -47,12 +47,41 @@ export async function POST(req: NextRequest) {
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   let action: string | null = null;
+  let releaseLogged: { version: string; type: string } | null = null;
+
+  async function logReleaseIfNew(version: string, releaseType: string, releasedBy: string, summary: string, metadata: Record<string, unknown>) {
+    const existing = await db
+      .select({ id: releaseLogs.id })
+      .from(releaseLogs)
+      .where(and(eq(releaseLogs.project, project.key), eq(releaseLogs.version, version)))
+      .limit(1);
+    if (existing.length > 0) return;
+    await db.insert(releaseLogs).values({
+      project: project.key,
+      version,
+      releaseType,
+      releasedAt: new Date(),
+      releasedBy,
+      summary,
+      entries: [],
+      metadata: { source: 'github_webhook', ...metadata },
+    });
+    releaseLogged = { version, type: releaseType };
+  }
 
   if (event === 'release' && payload.action === 'published') {
     const tagName: string | undefined = payload.release?.tag_name;
     if (tagName) {
-      updates.currentVersion = tagName.startsWith('v') ? tagName : `v${tagName}`;
+      const version = tagName.startsWith('v') ? tagName : `v${tagName}`;
+      updates.currentVersion = version;
       action = `release ${tagName}`;
+      await logReleaseIfNew(
+        version,
+        'unknown',
+        payload.release?.author?.login ?? 'github',
+        payload.release?.name || tagName,
+        { html_url: payload.release?.html_url, body: payload.release?.body ?? '' }
+      );
     }
   } else if (event === 'workflow_run' && payload.action === 'completed') {
     const run = payload.workflow_run;
@@ -64,7 +93,18 @@ export async function POST(req: NextRequest) {
       if (conclusion === 'success') {
         updates.status = 'active';
         const versionMatch = commitMsg?.match(/^v(\d+\.\d+\.\d+(?:[\w.-]+)?)/);
-        if (versionMatch) updates.currentVersion = `v${versionMatch[1]}`;
+        if (versionMatch) {
+          const version = `v${versionMatch[1]}`;
+          updates.currentVersion = version;
+          const summary = (commitMsg ?? '').split('\n')[0].replace(/^v[\d.]+(?:[\w.-]+)?[:\s-]+/, '').trim() || version;
+          await logReleaseIfNew(
+            version,
+            'unknown',
+            run?.head_commit?.author?.name ?? 'unknown',
+            summary,
+            { sha: run?.head_sha, run_url: run?.html_url, run_id: run?.id }
+          );
+        }
         action = `deploy success${versionMatch ? ` (${versionMatch[0]})` : ''}`;
       } else if (conclusion === 'failure') {
         updates.status = 'deploy_failed';
@@ -83,5 +123,6 @@ export async function POST(req: NextRequest) {
     repo: repoFullName,
     project: project.key,
     action: action ?? 'no-op',
+    releaseLogged,
   });
 }
