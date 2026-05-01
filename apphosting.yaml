@@ -18,6 +18,11 @@ env:
     availability:
       - RUNTIME
 
+  - variable: DEPLOY_WEBHOOK_URL
+    value: https://admin.triarch.dev/api/webhooks/github-deploy
+    availability:
+      - RUNTIME
+
   # Secrets — set via: firebase apphosting:secrets:set <KEY>
   - variable: DATABASE_URL
     secret: DATABASE_URL
@@ -33,3 +38,6 @@ env:
 
   - variable: GITHUB_PACKAGES_TOKEN
     secret: GITHUB_PACKAGES_TOKEN
+
+  - variable: DEPLOY_WEBHOOK_SECRET
+    secret: DEPLOY_WEBHOOK_SECRET

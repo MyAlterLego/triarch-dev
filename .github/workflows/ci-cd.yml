@@ -49,6 +49,7 @@ jobs:
     uses: MyAlterLego/shared-workflows/.github/workflows/deploy-firebase.yml@v1
     with:
       firebase_project_id: triarch-dev-website
+      app_hosting_backend: triarch-dev
       deploy_command: apphosting
     secrets: inherit
 
@@ -61,6 +62,6 @@ jobs:
       project_name: Triarch Dev
       version: ${{ needs.deploy.outputs.version }}
       wait_for_fah: true
-      app_hosting_backend: triarch-dev-website
+      app_hosting_backend: triarch-dev
       firebase_project_id: triarch-dev-website
     secrets: inherit
