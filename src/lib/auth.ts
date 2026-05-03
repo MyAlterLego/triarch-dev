@@ -1,6 +1,7 @@
 import type { NextAuthOptions, Session } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
 import GoogleProvider from 'next-auth/providers/google';
+import { getCurrentUserContext } from '@/lib/auth-context';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -19,7 +20,28 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user }) {
       const email = user.email ?? '';
-      return email === process.env.ADMIN_EMAIL || email.endsWith('@triarchsecurity.com');
+      if (!email) return false;
+
+      // Primary path: DB-backed membership/staff lookup via getCurrentUserContext.
+      // A user is allowed to sign in if they have ANY membership row (staff or per-project).
+      // This replaces the hardcoded @triarchsecurity.com allowlist per MEMBER-03.
+      const ctx = await getCurrentUserContext({ user: { email } });
+      if (ctx !== null) {
+        const allowed = ctx.isStaff || ctx.memberships.length > 0;
+        if (allowed) return true;
+        // Authenticated user with NO memberships: still fall through to the
+        // env-allowlist below. Required during the v1.14 rollout so members
+        // get added by the existing admins via the manage-members page.
+      }
+
+      // Fallback path: env-allowlist. Used when:
+      //   - getCurrentUserContext returned null (DB error — caller logs the err)
+      //   - DB returned an empty membership set for an admin not yet seeded
+      // Slated for removal in v1.15 once staff seeding is stable.
+      return (
+        email === process.env.ADMIN_EMAIL ||
+        email.toLowerCase().endsWith('@triarchsecurity.com')
+      );
     },
     async jwt({ token, account }) {
       if (account) {
