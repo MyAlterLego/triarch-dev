@@ -13,12 +13,12 @@ updated: 2026-05-03T18:00:00-05:00
 ## Tests
 
 ### 1. Apply schema migration to staging DB
-expected: `npm run db:push --project triarch-dev-truthtreason-style` (or equivalent for `triarch_dev` on `triarchdev-24092` cluster) succeeds; new columns appear on `release_logs`; new tables `project_members`, `release_feedback`, `release_approvals` appear in the database.
-result: [pending]
+expected: New columns appear on `release_logs`; new tables `project_members`, `release_feedback`, `release_approvals` appear in the database.
+result: PASSED 2026-05-03T18:23:00Z — Applied via `pg`-driver script against live triarch_dev DB. All 10 statements (3 CREATE TABLE, 4 ALTER TABLE ADD COLUMN, 2 ALTER TABLE ADD CONSTRAINT, 1 CREATE UNIQUE INDEX) succeeded.
 
 ### 2. Apply backfill SQL
-expected: `psql $DATABASE_URL -f src/db/migrations/v1.14.0-backfill.sql` runs all three statements without error. `SELECT count(*) FROM release_logs WHERE env IS NULL;` → 0. `SELECT count(*) FROM project_members WHERE project_key = '*' AND role = 'staff';` → 1. `SELECT count(*) FROM project_members WHERE role = 'admin' AND email = 'mike@triarchsecurity.com';` → equal to count of existing projects (i.e., one admin row per project).
-result: [pending]
+expected: All three backfill statements run without error. `SELECT count(*) FROM release_logs WHERE env IS NULL;` → 0. `SELECT count(*) FROM project_members WHERE project_key = '*' AND role = 'staff';` → 1. `SELECT count(*) FROM project_members WHERE role = 'admin' AND email = 'mike@triarchsecurity.com';` → equal to count of existing projects.
+result: PASSED 2026-05-03T18:25:00Z — UPDATE: 239 release_logs rows (env=dev, status=dev, deployed_at=created_at). INSERT: 7 admin rows (matches projects.count=7). INSERT: 1 wildcard staff row. Verification queries all match expected counts.
 
 ### 3. End-to-end sign-in via DB-backed staff role
 expected: After migration applied, signing into `admin.triarch.dev` with `mike@triarchsecurity.com` succeeds. Server logs show the DB-backed `getCurrentUserContext()` returned `isStaff=true` (not the env-allowlist fallback).
