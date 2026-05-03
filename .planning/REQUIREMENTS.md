@@ -68,18 +68,18 @@ This phase closes the gap — every existing endpoint gets the right access poli
 
 ### Page-level audit
 
-- [ ] **MEMBER-AUDIT-08**: Audit server-component pages under `src/app/admin/modules/` and `src/app/admin/platform/` for direct DB reads or session-only checks; route everything through the API endpoints (which are now membership-aware) OR add inline membership checks where the page reads the DB directly.
+- [x] **MEMBER-AUDIT-08**: Audit server-component pages under `src/app/admin/modules/` and `src/app/admin/platform/` for direct DB reads or session-only checks; route everything through the API endpoints (which are now membership-aware) OR add inline membership checks where the page reads the DB directly.
 
 ### Verification
 
-- [ ] **MEMBER-AUDIT-09**: With `mike@mikegeehan.com` signed in (darksouls-rpg admin, non-staff):
+- [x] **MEMBER-AUDIT-09**: With `mike@mikegeehan.com` signed in (darksouls-rpg admin, non-staff):
   - Project list shows only darksouls
   - Release-logs page/API shows only darksouls' release logs
   - Bug-reports page/API shows only darksouls' bugs
   - Feature-requests page/API shows only darksouls' features
   - Direct API calls to `/api/platform/projects/{otherId}/destroy`, `/scaffold-repo`, etc. return 403
   - Existing Triarch staff (mike@triarchsecurity.com) experience unchanged — sees everything
-- [ ] **MEMBER-AUDIT-10**: Update `01-HUMAN-UAT.md` items 4 + 5 with results from MEMBER-AUDIT-09.
+- [x] **MEMBER-AUDIT-10**: Update `01-HUMAN-UAT.md` items 4 + 5 with results from MEMBER-AUDIT-09.
 
 ---
 

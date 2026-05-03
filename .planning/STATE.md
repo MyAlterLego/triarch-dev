@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-03T23:30:00.000Z"
+last_updated: "2026-05-03T23:16:23Z"
 progress:
   total_phases: 6
   completed_phases: 1
@@ -52,10 +52,13 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 - [Phase 01.1-04]: reports/route.ts classified project-list (not staff-only) — reports are customer-deliverable, non-staff see only their project's reports
 - [Phase 01.1-03]: settings/route.ts and service-offerings/route.ts POST preserve { error, session } destructure — session used for userId/createdBy
 - [Phase 01.1-03]: No ctx added speculatively to any callsite — none of the 23 handlers use ctx in body logic
+- [Phase 01.1-06]: Task 3 was no-op — 13 of 14 admin pages are client components delegating to the now-membership-aware API; only the dashboard needed an inline filter
+- [Phase 01.1-06]: Dashboard DB-error fallback (!ctx) passes null projectKeys → full view, mirrors API convention from Plans 03/04/05
+- [Phase 01.1-06]: Empty memberships for non-staff → zeros + empty Project Health grid (not 403/redirect), consistent with API empty-list behavior
 
 ## Stopped At
 
-Completed 01.1-03-PLAN.md (wave 2 parallel) — all 23 staff-only endpoints migrated to requireStaff(). Build green. Phase 01.1 code execution complete; Plan 06 (UAT + deploy) is next.
+Completed 01.1-06-PLAN.md (Wave 3) — page-level audit (14 pages), dashboard membership filter, MEMBER-AUDIT-09/10 UAT spec appended. Phase 01.1 code is complete. Remaining work: deploy v1.14 + run MEMBER-AUDIT-09a-09h live tests post-deploy.
 
 ## Repository state
 

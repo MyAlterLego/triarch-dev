@@ -54,7 +54,7 @@ Build order: schema and access control first (everything depends on them), then 
 - [x] 01.1-03-PLAN.md — Migrate staff-only endpoints (~23 files: destroy, provisioning, navigation, settings, access-logs, backfills, service-offerings)
 - [x] 01.1-04-PLAN.md — Migrate project-list endpoints (release-logs, bug-reports, feature-requests, projects, reports) — GET filter + POST body.project membership check
 - [x] 01.1-05-PLAN.md — Migrate project-detail endpoints (release-logs/[id], bug-reports/[id], feature-requests/[id], reports/[id]) — fetch row, then membership check, 404 to non-members
-- [ ] 01.1-06-PLAN.md — Page-level audit (PAGE-AUDIT.md), scope src/app/admin/page.tsx dashboard for non-staff, append MEMBER-AUDIT-09 UAT block to 01-HUMAN-UAT.md
+- [x] 01.1-06-PLAN.md — Page-level audit (PAGE-AUDIT.md), scope src/app/admin/page.tsx dashboard for non-staff, append MEMBER-AUDIT-09 UAT block to 01-HUMAN-UAT.md
 
 ### Phase 2: Customer Releases Page
 **Goal**: Customer admins can see, comment on, and approve/reject their project's dev releases at a project-scoped URL that enforces membership.
