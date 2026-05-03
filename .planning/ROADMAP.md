@@ -8,7 +8,7 @@ Build order: schema and access control first (everything depends on them), then 
 
 ## Phases
 
-- [ ] **Phase 1: Schema + Membership Migration** — `releaseLogs` schema additions, `project_members` / `release_feedback` / `release_approvals` tables, DB-backed staff role, manage-members admin page
+- [x] **Phase 1: Schema + Membership Migration** — `releaseLogs` schema additions, `project_members` / `release_feedback` / `release_approvals` tables, DB-backed staff role, manage-members admin page (completed 2026-05-03)
 - [ ] **Phase 2: Customer Releases Page** — `/projects/{slug}/releases` UI, feedback submission, approval/reject actions, audit trail
 - [ ] **Phase 3: Slack Interactive Approval** — Slack App config, signed message with Approve/Reject buttons, signature-verified callback handler
 - [ ] **Phase 4: GitHub App Promotion** — GitHub App install, installation-token auth, `workflow_dispatch` of `deploy-prod.yml`
@@ -28,10 +28,10 @@ Build order: schema and access control first (everything depends on them), then 
   5. Existing projects in `projects` table have at least one `project_members` row (creator → admin) backfilled
   6. `/admin/platform/projects/{key}/members` page allows staff to add/remove members for a project
   7. Existing release ingest endpoint accepts `env` parameter and persists it; backwards-compatible default is `dev`
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 - [x] 01-01-PLAN.md — Drizzle schema additions (releaseLogs columns + project_members + release_feedback + release_approvals) + idempotent backfill SQL
 - [x] 01-02-PLAN.md — auth-context helper + auth.ts signIn cutover with env-allowlist fallback
-- [ ] 01-03-PLAN.md — manage-members admin page + API (GET/POST/DELETE) + projects-page nav button
+- [x] 01-03-PLAN.md — manage-members admin page + API (GET/POST/DELETE) + projects-page nav button
 - [x] 01-04-PLAN.md — projects list membership filtering + release-logs ingest accepts env/commitSha/deployedAt
 
 ### Phase 2: Customer Releases Page
@@ -92,7 +92,7 @@ Build order: schema and access control first (everything depends on them), then 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Schema + Membership Migration | 3/4 | In Progress|  |
+| 1. Schema + Membership Migration | 4/4 | Complete   | 2026-05-03 |
 | 2. Customer Releases Page | 0/0 | Not started | - |
 | 3. Slack Interactive Approval | 0/0 | Not started | - |
 | 4. GitHub App Promotion | 0/0 | Not started | - |

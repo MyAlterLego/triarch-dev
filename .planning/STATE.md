@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-03T18:09:13.025Z"
+last_updated: "2026-05-03T18:11:19.741Z"
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Triarch Dev Admin — Project State
@@ -18,14 +18,14 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 01 — schema-membership-migration (Plans 01 + 02 complete, Plan 03 next)
+**Current focus:** Phase 01 complete — all 4 plans (01-01, 01-02, 01-03, 01-04) code-complete; awaiting Mike's db:push + backfill SQL
 
 ## Active Milestone: v1.14.0 — Customer Release Gating
 
 **Goal:** Customer admins approve dev releases via admin.triarch.dev → Slack interactive buttons → GitHub App workflow_dispatch → status round-trips back; Truth+Treason is the pilot.
 **Phases:** 5
 **Requirements:** 32
-**Status:** Executing Phase 01 — Plans 01-01 and 01-02 complete
+**Status:** Phase 01 code-complete — all 4 plans done (01-03 manage-members page + API routes)
 
 ## Decisions
 
@@ -41,6 +41,9 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 | 2026-05-03 | 01-04 | Non-staff with empty memberships returns { projects: [] } (200) not 403 |
 | 2026-05-03 | 01-04 | env validation silently coerces invalid values to 'dev' for CI backwards compat |
 | 2026-05-03 | 01-04 | status='dev' is server-controlled on insert; Phase 2 gating is only transition path |
+
+- [Phase 01]: requireStaff() helper is local to each route file (copy-paste is fine per Plan 04 note — no shared import coupling)
+- [Phase 01]: Manage Members button rendered for all /admin users (access enforced server-side); conditional isStaff render deferred to post-pilot if /admin widens access
 
 ## Stopped At
 

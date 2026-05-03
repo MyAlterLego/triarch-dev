@@ -32,7 +32,7 @@ Foundation for everything else. Database extensions + access control move to a D
 
 ### Manage-members admin page
 
-- [ ] **ADMIN-01**: `/admin/platform/projects/{key}/members` page — staff-only — list members for a project, add member by email + role, remove member; minimal UI mirroring existing admin patterns
+- [x] **ADMIN-01**: `/admin/platform/projects/{key}/members` page — staff-only — list members for a project, add member by email + role, remove member; minimal UI mirroring existing admin patterns
 
 ---
 
@@ -112,7 +112,7 @@ Captured in `BACKLOG.md`:
 | MEMBER-03 | Phase 1 | Complete (01-02) |
 | MEMBER-02 | Phase 1 | Pending (01-04) |
 | FEEDBACK-01, APPROVAL-01 | Phase 1 | Complete (01-01) |
-| ADMIN-01 | Phase 1 | Pending |
+| ADMIN-01 | Phase 1 | Complete |
 | GATE-01, GATE-02, GATE-03, GATE-04, GATE-05, GATE-06 | Phase 2 | Pending |
 | REJECT-01 | Phase 2 | Pending |
 | GATE-07, GATE-08, GATE-09, GATE-09a | Phase 3 | Pending |
