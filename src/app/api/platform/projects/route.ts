@@ -1,15 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
+import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
 import { projects } from '@/db/schema';
-import { asc } from 'drizzle-orm';
+import { asc, inArray } from 'drizzle-orm';
 import crypto from 'crypto';
 
 export async function GET() {
-  const { error } = await requireAdmin();
+  const { error, session } = await requireAdmin();
   if (error) return error;
 
-  const rows = await db.select().from(projects).orderBy(asc(projects.createdAt));
+  const ctx = await getCurrentUserContext(session);
+
+  // Staff (or DB-error fallback for an authenticated user): return the full list.
+  // The fallback path mirrors the env-allowlist policy in src/lib/auth.ts —
+  // if the membership table is unreachable, an authenticated session that got
+  // past the signIn callback is treated as trusted.
+  if (!ctx || ctx.isStaff) {
+    const rows = await db.select().from(projects).orderBy(asc(projects.createdAt));
+    return NextResponse.json({ projects: rows });
+  }
+
+  // Non-staff: filter to projects where the user has a per-project membership.
+  const projectKeys = ctx.memberships
+    .filter((m) => m.project_key !== '*')
+    .map((m) => m.project_key);
+
+  if (projectKeys.length === 0) {
+    return NextResponse.json({ projects: [] });
+  }
+
+  const rows = await db
+    .select()
+    .from(projects)
+    .where(inArray(projects.key, projectKeys))
+    .orderBy(asc(projects.createdAt));
+
   return NextResponse.json({ projects: rows });
 }
 
