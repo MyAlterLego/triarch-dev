@@ -1,8 +1,9 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
 import { projects, releaseLogs, bugReports, featureRequests } from '@/db/schema';
-import { eq, sql, and } from 'drizzle-orm';
+import { eq, sql, and, inArray } from 'drizzle-orm';
 import {
   FileText,
   Bug,
@@ -26,7 +27,25 @@ interface ProjectHealth {
   status: string;
 }
 
-async function getDashboardStats() {
+async function getDashboardStats(projectKeys: string[] | null) {
+  if (projectKeys && projectKeys.length === 0) {
+    return {
+      projects: 0,
+      releases: 0,
+      openBugs: 0,
+      pendingFeatures: 0,
+      projectHealth: [] as ProjectHealth[],
+    };
+  }
+
+  const projectFilter = projectKeys ? inArray(projects.key, projectKeys) : undefined;
+  const releasesFilter = projectKeys ? inArray(releaseLogs.project, projectKeys) : undefined;
+  const bugsFilter = projectKeys ? inArray(bugReports.project, projectKeys) : undefined;
+  const featuresFilter = projectKeys ? inArray(featureRequests.project, projectKeys) : undefined;
+
+  const openBugsCondition = sql`${bugReports.status} NOT IN ('closed', 'verified')`;
+  const pendingFeaturesCondition = sql`${featureRequests.status} NOT IN ('shipped', 'closed', 'declined')`;
+
   const [
     projectCount,
     releaseCount,
@@ -36,18 +55,19 @@ async function getDashboardStats() {
     bugsByProject,
     featuresByProject,
   ] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(projects),
-    db.select({ count: sql<number>`count(*)` }).from(releaseLogs),
+    db.select({ count: sql<number>`count(*)` }).from(projects).where(projectFilter),
+    db.select({ count: sql<number>`count(*)` }).from(releaseLogs).where(releasesFilter),
     db.select({ count: sql<number>`count(*)` }).from(bugReports)
-      .where(sql`${bugReports.status} NOT IN ('closed', 'verified')`),
+      .where(bugsFilter ? and(bugsFilter, openBugsCondition) : openBugsCondition),
     db.select({ count: sql<number>`count(*)` }).from(featureRequests)
-      .where(sql`${featureRequests.status} NOT IN ('shipped', 'closed', 'declined')`),
-    db.select({ key: projects.key, name: projects.name, currentVersion: projects.currentVersion, status: projects.status }).from(projects),
+      .where(featuresFilter ? and(featuresFilter, pendingFeaturesCondition) : pendingFeaturesCondition),
+    db.select({ key: projects.key, name: projects.name, currentVersion: projects.currentVersion, status: projects.status })
+      .from(projects).where(projectFilter),
     db.select({ project: bugReports.project, count: sql<number>`count(*)` }).from(bugReports)
-      .where(sql`${bugReports.status} NOT IN ('closed', 'verified')`)
+      .where(bugsFilter ? and(bugsFilter, openBugsCondition) : openBugsCondition)
       .groupBy(bugReports.project),
     db.select({ project: featureRequests.project, count: sql<number>`count(*)` }).from(featureRequests)
-      .where(sql`${featureRequests.status} NOT IN ('shipped', 'closed', 'declined')`)
+      .where(featuresFilter ? and(featuresFilter, pendingFeaturesCondition) : pendingFeaturesCondition)
       .groupBy(featureRequests.project),
   ]);
 
@@ -87,10 +107,20 @@ const modules = [
 ];
 
 export default async function AdminDashboard() {
-  const [session, stats] = await Promise.all([
-    getServerSession(authOptions),
-    getDashboardStats(),
-  ]);
+  const session = await getServerSession(authOptions);
+  const ctx = await getCurrentUserContext(session);
+
+  // null = staff or DB-error fallback (full view)
+  // []   = non-staff, no memberships (empty view)
+  // [..] = non-staff, scoped view
+  const projectKeys: string[] | null =
+    !ctx || ctx.isStaff
+      ? null
+      : ctx.memberships
+          .filter((m) => m.project_key !== '*')
+          .map((m) => m.project_key);
+
+  const stats = await getDashboardStats(projectKeys);
 
   return (
     <div className="p-8 max-w-6xl">
