@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
 import { menuSections, menuPages, menuSubpages } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
@@ -24,7 +25,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const userRole = 'admin'; // All authenticated triarch-dev users are admin for now
+  // Triarch staff get the full menu (super_admin); customer-admin members
+  // get the project-scoped menu (admin). DB error or missing context falls
+  // back to admin so we never lock anyone out of menu items they can reach.
+  const ctx = await getCurrentUserContext(session);
+  const userRole = ctx?.isStaff ? 'super_admin' : 'admin';
 
   const sections = await db
     .select()
