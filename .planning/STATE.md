@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-03T18:04:00Z"
+last_updated: "2026-05-03T18:09:13.025Z"
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Triarch Dev Admin — Project State
@@ -38,10 +38,13 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 | 2026-05-03 | 01-01 | No Drizzle relations() for new tables in Phase 1 — Phase 2 adds them when customer releases page consumes them |
 | 2026-05-03 | 01-02 | getCurrentUserContext returns null (not fallback context) on DB error — caller decides fallback policy |
 | 2026-05-03 | 01-02 | env-allowlist fallback in signIn is intentional for v1.14 rollout — slated for removal in v1.15 once staff seeding stable |
+| 2026-05-03 | 01-04 | Non-staff with empty memberships returns { projects: [] } (200) not 403 |
+| 2026-05-03 | 01-04 | env validation silently coerces invalid values to 'dev' for CI backwards compat |
+| 2026-05-03 | 01-04 | status='dev' is server-controlled on insert; Phase 2 gating is only transition path |
 
 ## Stopped At
 
-Completed 01-schema-membership-migration/01-02-PLAN.md — Plans 01-01 and 01-02 done. Next: 01-03 (manage-members admin page).
+Completed 01-schema-membership-migration/01-04-PLAN.md — Plans 01-01, 01-02, 01-04 done (01-03 ran in parallel). Phase 01 code-complete pending 01-03 final commit and Mike's db:push + backfill SQL.
 
 ## Repository state
 

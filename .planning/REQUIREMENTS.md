@@ -16,12 +16,12 @@ Foundation for everything else. Database extensions + access control move to a D
 - [x] **REL-A2**: `releaseLogs.status` column added (text enum: `dev` | `pending_approval` | `approved` | `rejected` | `promoted`); existing rows backfilled to `dev`
 - [x] **REL-A3**: `releaseLogs.commit_sha` column added (text, nullable for legacy rows); populated for new rows from CI payload
 - [x] **REL-A4**: `releaseLogs.deployed_at` column added (timestamp, nullable); populated for new rows from CI payload
-- [ ] **REL-A5**: Existing release ingest endpoint (`/api/platform/ingest/release-logs`) accepts `env` and writes it; defaults to `dev` if omitted (backwards-compatible)
+- [x] **REL-A5**: Existing release ingest endpoint (`/api/platform/ingest/release-logs`) accepts `env` and writes it; defaults to `dev` if omitted (backwards-compatible)
 
 ### Membership model
 
 - [x] **MEMBER-01**: `project_members` table created — columns (id, project_key, email, role, created_at), unique index on (project_key, lower(email))
-- [ ] **MEMBER-02**: Per-project access enforced — page and API guards verify the requesting user is a member of the project (or has staff role) before returning project-scoped data
+- [x] **MEMBER-02**: Per-project access enforced — page and API guards verify the requesting user is a member of the project (or has staff role) before returning project-scoped data
 - [x] **MEMBER-03**: `staff` role replaces hardcoded `email.endsWith('@triarchsecurity.com')` check in `src/lib/auth.ts`; staff users are seeded via membership rows where `project_key = '*'` (wildcard) or via a parallel `users.role` column on the existing user model — implementer chooses the cleaner shape
 - [x] **MEMBER-04**: Backfill — for every existing project in `projects` table, insert a `project_members` row for the project's creator email (or `mike@triarchsecurity.com` if creator unknown) with role `admin`
 
