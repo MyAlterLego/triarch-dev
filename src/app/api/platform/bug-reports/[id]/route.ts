@@ -1,31 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireSignedIn } from '@/lib/api-auth';
+import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
 import { bugReports, workflowTransitions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { error } = await requireAdmin();
+  const { error, session } = await requireSignedIn();
   if (error) return error;
 
   const { id } = await params;
   const [bug] = await db.select().from(bugReports).where(eq(bugReports.id, id));
   if (!bug) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  const ctx = await getCurrentUserContext(session);
+  const isMember =
+    !!ctx && (ctx.isStaff || ctx.memberships.some((m) => m.project_key === bug.project));
+  if (!isMember) {
+    // Non-staff non-member: do NOT leak that the row exists — return same 404 as if the id was bogus.
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   return NextResponse.json(bug);
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { error, session } = await requireAdmin();
+  const { error, session } = await requireSignedIn();
   if (error) return error;
 
   const { id } = await params;
   const body = await req.json();
   const { status, priority, triarchNotes, fixCommitSha, fixVersion, severity } = body;
 
-  // Get current state for transition logging
+  // Existing fetch — do not duplicate. Also used for transition logging below.
   const [current] = await db.select().from(bugReports).where(eq(bugReports.id, id));
   if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  // Membership gate using the row we just fetched.
+  const ctx = await getCurrentUserContext(session);
+  const isMember =
+    !!ctx && (ctx.isStaff || ctx.memberships.some((m) => m.project_key === current.project));
+  if (!isMember) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (status !== undefined) updates.status = status;
