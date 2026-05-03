@@ -36,8 +36,14 @@ env:
   - variable: GOOGLE_CLIENT_SECRET
     secret: GOOGLE_CLIENT_SECRET
 
-  - variable: GITHUB_PACKAGES_TOKEN
+  # Build-time GitHub Packages auth. .npmrc reads ${NODE_AUTH_TOKEN}; this
+  # binds the existing GITHUB_PACKAGES_TOKEN secret under the name the
+  # .npmrc expects, and exposes it during BUILD so `npm ci` can fetch
+  # @myalterlego/* packages from npm.pkg.github.com.
+  - variable: NODE_AUTH_TOKEN
     secret: GITHUB_PACKAGES_TOKEN
+    availability:
+      - BUILD
 
   - variable: DEPLOY_WEBHOOK_SECRET
     secret: DEPLOY_WEBHOOK_SECRET
