@@ -28,7 +28,11 @@ Build order: schema and access control first (everything depends on them), then 
   5. Existing projects in `projects` table have at least one `project_members` row (creator → admin) backfilled
   6. `/admin/platform/projects/{key}/members` page allows staff to add/remove members for a project
   7. Existing release ingest endpoint accepts `env` parameter and persists it; backwards-compatible default is `dev`
-**Plans**: TBD
+**Plans:** 4 plans
+- [ ] 01-01-PLAN.md — Drizzle schema additions (releaseLogs columns + project_members + release_feedback + release_approvals) + idempotent backfill SQL
+- [ ] 01-02-PLAN.md — auth-context helper + auth.ts signIn cutover with env-allowlist fallback
+- [ ] 01-03-PLAN.md — manage-members admin page + API (GET/POST/DELETE) + projects-page nav button
+- [ ] 01-04-PLAN.md — projects list membership filtering + release-logs ingest accepts env/commitSha/deployedAt
 
 ### Phase 2: Customer Releases Page
 **Goal**: Customer admins can see, comment on, and approve/reject their project's dev releases at a project-scoped URL that enforces membership.
@@ -88,7 +92,7 @@ Build order: schema and access control first (everything depends on them), then 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Schema + Membership Migration | 0/0 | Not started | - |
+| 1. Schema + Membership Migration | 0/4 | Not started | - |
 | 2. Customer Releases Page | 0/0 | Not started | - |
 | 3. Slack Interactive Approval | 0/0 | Not started | - |
 | 4. GitHub App Promotion | 0/0 | Not started | - |
