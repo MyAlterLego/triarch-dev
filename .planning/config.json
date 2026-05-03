@@ -1,0 +1,19 @@
+{
+  "project_name": "triarch-dev-admin",
+  "version": "0.0.0",
+  "models": {
+    "researcher": "opus",
+    "planner": "opus",
+    "checker": "opus",
+    "executor": "opus"
+  },
+  "workflow": {
+    "research_enabled": true,
+    "plan_checker_enabled": true,
+    "nyquist_validation_enabled": false,
+    "auto_advance": false,
+    "ui_phase": true,
+    "ui_safety_gate": true,
+    "commit_docs": true
+  }
+}
