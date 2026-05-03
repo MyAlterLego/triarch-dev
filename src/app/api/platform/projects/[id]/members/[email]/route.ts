@@ -20,12 +20,12 @@ async function requireStaff() {
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ key: string; email: string }> }
+  { params }: { params: Promise<{ id: string; email: string }> }
 ) {
   const guard = await requireStaff();
   if (guard.error) return guard.error;
 
-  const { key, email: rawEmail } = await params;
+  const { id: key, email: rawEmail } = await params;
   const email = decodeURIComponent(rawEmail);
 
   // Defense in depth: never let staff rows be deleted via the UI/API.

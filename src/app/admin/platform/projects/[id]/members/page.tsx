@@ -8,7 +8,7 @@ import { eq } from 'drizzle-orm';
 import MembersClient from './MembersClient';
 
 export default async function MembersPage(
-  { params }: { params: Promise<{ key: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   const ctx = await getCurrentUserContext(session);
@@ -16,7 +16,7 @@ export default async function MembersPage(
     redirect('/admin');
   }
 
-  const { key } = await params;
+  const { id: key } = await params;
 
   const [project] = await db
     .select({ key: projects.key, name: projects.name })

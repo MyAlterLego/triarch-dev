@@ -23,12 +23,12 @@ async function requireStaff() {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ key: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireStaff();
   if (guard.error) return guard.error;
 
-  const { key } = await params;
+  const { id: key } = await params;
 
   const [project] = await db
     .select({ key: projects.key, name: projects.name })
@@ -49,12 +49,12 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ key: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireStaff();
   if (guard.error) return guard.error;
 
-  const { key } = await params;
+  const { id: key } = await params;
   const body = await req.json().catch(() => null);
   if (!body || typeof body.email !== 'string' || typeof body.role !== 'string') {
     return NextResponse.json(
