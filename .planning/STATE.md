@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-03T18:00:00Z"
+last_updated: "2026-05-03T18:04:00Z"
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Triarch Dev Admin — Project State
@@ -18,14 +18,14 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 01 — schema-membership-migration (Plan 01 complete, Plan 02 next)
+**Current focus:** Phase 01 — schema-membership-migration (Plans 01 + 02 complete, Plan 03 next)
 
 ## Active Milestone: v1.14.0 — Customer Release Gating
 
 **Goal:** Customer admins approve dev releases via admin.triarch.dev → Slack interactive buttons → GitHub App workflow_dispatch → status round-trips back; Truth+Treason is the pilot.
 **Phases:** 5
 **Requirements:** 32
-**Status:** Executing Phase 01 — Plan 01-01 complete
+**Status:** Executing Phase 01 — Plans 01-01 and 01-02 complete
 
 ## Decisions
 
@@ -36,10 +36,12 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 | 2026-05-03 | 01-01 | staff role uses wildcard project_key='*' row — single table for all access control |
 | 2026-05-03 | 01-01 | Backfill SQL uses WHERE NOT EXISTS (not ON CONFLICT) — consistent idempotency across all three statements |
 | 2026-05-03 | 01-01 | No Drizzle relations() for new tables in Phase 1 — Phase 2 adds them when customer releases page consumes them |
+| 2026-05-03 | 01-02 | getCurrentUserContext returns null (not fallback context) on DB error — caller decides fallback policy |
+| 2026-05-03 | 01-02 | env-allowlist fallback in signIn is intentional for v1.14 rollout — slated for removal in v1.15 once staff seeding stable |
 
 ## Stopped At
 
-Completed 01-schema-membership-migration/01-01-PLAN.md — Plan 01-01 done. Next: 01-02 (auth-context helper + auth.ts cutover).
+Completed 01-schema-membership-migration/01-02-PLAN.md — Plans 01-01 and 01-02 done. Next: 01-03 (manage-members admin page).
 
 ## Repository state
 

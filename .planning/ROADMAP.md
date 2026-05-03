@@ -30,7 +30,7 @@ Build order: schema and access control first (everything depends on them), then 
   7. Existing release ingest endpoint accepts `env` parameter and persists it; backwards-compatible default is `dev`
 **Plans:** 4 plans
 - [x] 01-01-PLAN.md — Drizzle schema additions (releaseLogs columns + project_members + release_feedback + release_approvals) + idempotent backfill SQL
-- [ ] 01-02-PLAN.md — auth-context helper + auth.ts signIn cutover with env-allowlist fallback
+- [x] 01-02-PLAN.md — auth-context helper + auth.ts signIn cutover with env-allowlist fallback
 - [ ] 01-03-PLAN.md — manage-members admin page + API (GET/POST/DELETE) + projects-page nav button
 - [ ] 01-04-PLAN.md — projects list membership filtering + release-logs ingest accepts env/commitSha/deployedAt
 
@@ -92,7 +92,7 @@ Build order: schema and access control first (everything depends on them), then 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Schema + Membership Migration | 1/4 | In progress | - |
+| 1. Schema + Membership Migration | 2/4 | In progress | - |
 | 2. Customer Releases Page | 0/0 | Not started | - |
 | 3. Slack Interactive Approval | 0/0 | Not started | - |
 | 4. GitHub App Promotion | 0/0 | Not started | - |
