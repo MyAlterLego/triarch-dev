@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireStaff } from '@/lib/api-auth';
 import { db } from '@/lib/db';
 import { projects } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -18,7 +18,7 @@ import { syncFromGithub, diff, SyncResult } from '@/lib/sync-project-state';
  * Returns: { results: SyncResult[], updated: number }
  */
 export async function POST(req: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireStaff();
   if (error) return error;
 
   const ghToken = process.env.GITHUB_TOKEN;

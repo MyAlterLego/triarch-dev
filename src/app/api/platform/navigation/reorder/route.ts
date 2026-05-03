@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireStaff } from '@/lib/api-auth';
 import { db } from '@/lib/db';
 import { menuSections, menuPages, menuSubpages } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -10,7 +10,7 @@ interface ReorderItem {
 }
 
 export async function PATCH(req: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireStaff();
   if (error) return error;
 
   const body = await req.json();

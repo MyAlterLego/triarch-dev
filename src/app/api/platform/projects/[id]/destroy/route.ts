@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireStaff } from '@/lib/api-auth';
 import { db } from '@/lib/db';
 import { projects } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -28,7 +28,7 @@ import {
  *   GCLOUD_ACCESS_TOKEN (or rely on workload identity at runtime).
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { error } = await requireAdmin();
+  const { error } = await requireStaff();
   if (error) return error;
 
   const { id } = await params;

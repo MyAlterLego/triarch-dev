@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireStaff } from '@/lib/api-auth';
 import { db } from '@/lib/db';
 import { accessAuditLogs } from '@/db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireStaff();
   if (error) return error;
 
   const { searchParams } = new URL(req.url);
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireStaff();
   if (error) return error;
 
   const body = await req.json();

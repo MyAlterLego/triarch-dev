@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireStaff } from '@/lib/api-auth';
 import { db } from '@/lib/db';
 import { projects } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -21,7 +21,7 @@ import { syncProject, SyncProjectResult } from '@/lib/release-sync';
  *   - limit: per-source page size (default 100)
  */
 export async function POST(req: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireStaff();
   if (error) return error;
 
   const ghToken = process.env.GITHUB_TOKEN;

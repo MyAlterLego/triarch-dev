@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireStaff } from '@/lib/api-auth';
 import { db } from '@/lib/db';
 import { menuSections, menuPages, menuSubpages } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
@@ -7,7 +7,7 @@ import { eq, asc } from 'drizzle-orm';
 const PROJECT = 'triarch-dev';
 
 export async function GET() {
-  const { error } = await requireAdmin();
+  const { error } = await requireStaff();
   if (error) return error;
 
   const sections = await db

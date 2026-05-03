@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireStaff } from '@/lib/api-auth';
 import { getEffectiveSetting, setSetting } from '@/lib/module-settings';
 
 export async function GET(req: NextRequest) {
-  const { error, session } = await requireAdmin();
+  const { error, session } = await requireStaff();
   if (error) return error;
 
   const { searchParams } = new URL(req.url);
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const { error, session } = await requireAdmin();
+  const { error, session } = await requireStaff();
   if (error) return error;
 
   const body = await req.json();

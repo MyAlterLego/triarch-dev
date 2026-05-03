@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireStaff } from '@/lib/api-auth';
 import { db } from '@/lib/db';
 import { projects } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -17,7 +17,7 @@ import { backfillWebhookForProject, WebhookBackfillResult } from '@/lib/webhook-
  * Required env: GITHUB_TOKEN, DEPLOY_WEBHOOK_URL, DEPLOY_WEBHOOK_SECRET
  */
 export async function POST(req: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireStaff();
   if (error) return error;
 
   const ghToken = process.env.GITHUB_TOKEN;

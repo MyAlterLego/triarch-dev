@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireStaff } from '@/lib/api-auth';
 
 const GODADDY_API_KEY = process.env.GODADDY_API_KEY;
 const GODADDY_API_SECRET = process.env.GODADDY_API_SECRET;
@@ -7,7 +7,7 @@ const FIREBASE_APP_HOSTING_IP = '35.219.200.0';
 const DOMAIN = 'triarch.dev';
 
 export async function POST(req: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireStaff();
   if (error) return error;
 
   const body = await req.json();

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireStaff } from '@/lib/api-auth';
 import { db } from '@/lib/db';
 import { reportSectionTypes } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
 
 export async function GET() {
-  const { error } = await requireAdmin();
+  const { error } = await requireStaff();
   if (error) return error;
 
   const types = await db.select().from(reportSectionTypes)

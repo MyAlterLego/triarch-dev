@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireStaff } from '@/lib/api-auth';
 import { db } from '@/lib/db';
 import { serviceOfferings, offeringComponents, offeringMilestones } from '@/db/schema';
 import { eq, desc, asc } from 'drizzle-orm';
 
 export async function GET() {
-  const { error } = await requireAdmin();
+  const { error } = await requireStaff();
   if (error) return error;
 
   const [offerings, allComponents, allMilestones] = await Promise.all([
@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { error, session } = await requireAdmin();
+  const { error, session } = await requireStaff();
   if (error) return error;
 
   const body = await req.json();
