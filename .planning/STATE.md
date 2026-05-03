@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-03T23:04:51.472Z"
+last_updated: "2026-05-03T23:06:22.625Z"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 10
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Triarch Dev Admin — Project State
@@ -46,6 +46,9 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 - [Phase 01]: Manage Members button rendered for all /admin users (access enforced server-side); conditional isStaff render deferred to post-pilot if /admin widens access
 - [Phase 01.1-01]: requireAdmin preserved as deprecated alias of requireSignedIn — identical signature keeps 32 callsites compiling through v1.14.x rollout
 - [Phase 01.1-01]: DB unreachable in requireStaff/requireMembership returns 403 (fail-closed) — cannot prove role without successful lookup
+- [Phase 01.1]: access-logs classified staff-only despite project column — audit trail is internal accountability, not customer data
+- [Phase 01.1]: reports/[id] DELETE restricted to staff-only within Plan 05 despite project-detail classification
+- [Phase 01.1]: projects/route.ts GET keeps existing membership filter; POST uses requireStaff — dual method treatment within Plan 04
 
 ## Stopped At
 

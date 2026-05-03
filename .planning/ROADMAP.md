@@ -48,9 +48,9 @@ Build order: schema and access control first (everything depends on them), then 
   6. Server-component admin pages either route through the now-membership-aware API or have inline membership filters where they read the DB directly
   7. With `mike@mikegeehan.com` signed in: project list, release-logs page, bug-reports page, feature-requests page each show only darksouls-rpg data; direct API calls to other projects' destructive endpoints return 403
   8. Triarch staff (mike@triarchsecurity.com) experience unchanged — sees all data across all projects
-**Plans:** 1/6 plans executed
+**Plans:** 2/6 plans executed
 - [x] 01.1-01-PLAN.md — api-auth helpers (requireSignedIn / requireStaff / requireMembership) with deprecated requireAdmin alias
-- [ ] 01.1-02-PLAN.md — Endpoint classification (CLASSIFICATION.md table covering all 32 endpoints)
+- [x] 01.1-02-PLAN.md — Endpoint classification (CLASSIFICATION.md table covering all 32 endpoints)
 - [ ] 01.1-03-PLAN.md — Migrate staff-only endpoints (~23 files: destroy, provisioning, navigation, settings, access-logs, backfills, service-offerings)
 - [ ] 01.1-04-PLAN.md — Migrate project-list endpoints (release-logs, bug-reports, feature-requests, projects, reports) — GET filter + POST body.project membership check
 - [ ] 01.1-05-PLAN.md — Migrate project-detail endpoints (release-logs/[id], bug-reports/[id], feature-requests/[id], reports/[id]) — fetch row, then membership check, 404 to non-members
@@ -115,7 +115,7 @@ Build order: schema and access control first (everything depends on them), then 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Schema + Membership Migration | 4/4 | Complete   | 2026-05-03 |
-| 1.1. Membership Enforcement Audit | 1/6 | In Progress|  |
+| 1.1. Membership Enforcement Audit | 2/6 | In Progress|  |
 | 2. Customer Releases Page | 0/0 | Not started | - |
 | 3. Slack Interactive Approval | 0/0 | Not started | - |
 | 4. GitHub App Promotion | 0/0 | Not started | - |

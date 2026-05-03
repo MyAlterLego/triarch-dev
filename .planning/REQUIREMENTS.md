@@ -50,7 +50,7 @@ This phase closes the gap — every existing endpoint gets the right access poli
 
 ### Endpoint classification + updates
 
-- [ ] **MEMBER-AUDIT-04**: Classify all 32 endpoints currently using `requireAdmin` into `staff-only` / `project-list` / `project-detail` / `unclear`. Document classification in PLAN.md.
+- [x] **MEMBER-AUDIT-04**: Classify all 32 endpoints currently using `requireAdmin` into `staff-only` / `project-list` / `project-detail` / `unclear`. Document classification in PLAN.md.
 - [ ] **MEMBER-AUDIT-05**: Staff-only endpoints — ALL destructive + provisioning + platform-admin (~17–20 endpoints) — switch to `requireStaff`. Specifically (non-exhaustive):
   - `/api/platform/projects/[id]` (PUT/DELETE), `/destroy`
   - `/scaffold-repo`, `/provision-db`, `/provision-dns`, `/sync-state`, `/tools/*`
