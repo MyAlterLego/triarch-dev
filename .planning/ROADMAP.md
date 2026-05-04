@@ -50,7 +50,7 @@
 - [x] 01-02-PLAN.md — Build & publish @myalterlego/secrets v0.1.0 to GitHub Packages (VAULT-04)
 - [x] 01-03-PLAN.md — HUMAN grant secretAccessor IAM to consumer SAs + functional impersonation test (VAULT-03)
 - [x] 01-04-PLAN.md — Migrate triarch-dev admin to vault + add /api/platform/health/secrets endpoint (VAULT-05)
-- [ ] 01-05-PLAN.md — Migrate triarchsecurity-admin CRM to vault + add .npmrc + NODE_AUTH_TOKEN wiring (VAULT-06)
+- [x] 01-05-PLAN.md — Migrate triarchsecurity-admin CRM to vault + add .npmrc + NODE_AUTH_TOKEN wiring (VAULT-06)
 - [ ] 01-06-PLAN.md — Update onboarding-projects.md Step 7 + create secrets-vault.md deep-dive (VAULT-07)
 
 ### Phase 2: shared-workflows Hardening
@@ -136,7 +136,7 @@
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1. Schema + Membership Migration | v1.14.0 | 4/6 | In Progress|  |
+| 1. Schema + Membership Migration | v1.14.0 | 5/6 | In Progress|  |
 | 1.1. Membership Enforcement Audit | v1.14.0 | 6/6 | Complete | 2026-05-03 |
 | 2. Customer Releases Page | v1.14.0 | 5/5 | Complete | 2026-05-04 |
 | 3. Slack Interactive Approval | v1.14.0 | 3/3 | Complete    | 2026-05-04 |
