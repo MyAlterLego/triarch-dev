@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-04T14:26:06.302Z"
+last_updated: "2026-05-04T14:29:35.090Z"
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Triarch Dev Admin — Project State
@@ -71,10 +71,13 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 - [Phase 03-slack-interactive-approval]: notifyReleaseApproved takes pre-truncated feedbackExcerpt (caller's job) — keeps block construction declarative
 - [Phase 03-slack-interactive-approval]: Slack call is awaited inside try/catch (not unawaited) — serverless runtime keeps function alive; errors are swallowed not propagated
 - [Phase 03-slack-interactive-approval]: Guard on !result.alreadyApproved prevents duplicate Slack posts on idempotent re-approvals
+- [Phase 03-slack-interactive-approval]: req.text() is the only body read — formData() would consume the stream and break HMAC verification
+- [Phase 03-slack-interactive-approval]: Reject reason fixed as 'Rejected via Slack' for v1.14 — modal input deferred per CONTEXT.md Area 4
+- [Phase 03-slack-interactive-approval]: vitest.config.ts added to resolve @/ alias for test imports (Rule 3 fix)
 
 ## Stopped At
 
-Completed 02-05-PLAN.md (Wave 3 final) — Toast component, GET pagination endpoint, and full production ReleasesClient. Phase 02 customer-releases-page is feature-complete. DB migration (0008) is still pending human push (DATABASE_URL is Firebase secret — same blocker from Wave 1). Phase 03 (Slack notification + GitHub App wiring) is unblocked from a code perspective.
+Completed 03-04-PLAN.md (Wave 2 final) — Signature-verified POST /api/slack/interact handler + 12-test Vitest suite. Phase 03 slack-interactive-approval is feature-complete (all 5 plans done). Pending: HUMAN-UAT (plan 03-05) — Mike must populate SLACK_USER_MAP, configure Firebase secrets, and exercise the end-to-end flow.
 
 ## Repository state
 
