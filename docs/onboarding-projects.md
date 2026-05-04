@@ -208,6 +208,135 @@ but targets the new project end-to-end.
 
 ---
 
+## Step 7 — Grant vault access
+
+Shared Slack and GitHub App credentials live in the central vault (`triarch-vault` GCP project) — accessed via the [`@myalterlego/secrets`](https://github.com/MyAlterLego/secrets) npm package. New projects need:
+
+1. The `@myalterlego/secrets` package installed
+2. `.npmrc` pointing to GitHub Packages (read-scoped PAT)
+3. `NODE_AUTH_TOKEN` exposed at BUILD time in `apphosting.yaml`
+4. The Firebase App Hosting runtime service account granted `roles/secretmanager.secretAccessor` on each secret the project consumes
+
+See [`secrets-vault.md`](secrets-vault.md) for the deep-dive (architecture, rotation, troubleshooting). The summary below covers the onboarding-specific bits.
+
+**7a. Add `.npmrc` to the new repo**
+
+Create `.npmrc` at the repo root:
+
+```
+@myalterlego:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
+
+Commit this file. It is required for both local `npm install` (using a developer PAT) and CI/CD (using the `GITHUB_PACKAGES_TOKEN` Firebase secret).
+
+**7b. Set the `GITHUB_PACKAGES_TOKEN` Firebase secret**
+
+On the new project's Firebase App Hosting backend:
+
+```bash
+firebase apphosting:secrets:set GITHUB_PACKAGES_TOKEN --project=<new-firebase-project>
+# Paste a GitHub PAT with read:packages scope on MyAlterLego org
+```
+
+Reuse the existing PAT from `triarch-dev-website` if you have it (one PAT, multiple Firebase projects, simpler rotation).
+
+**7c. Wire `NODE_AUTH_TOKEN` in `apphosting.yaml`**
+
+Add this entry to the new project's `apphosting.yaml`:
+
+```yaml
+  - variable: NODE_AUTH_TOKEN
+    secret: GITHUB_PACKAGES_TOKEN
+    availability:
+      - BUILD
+```
+
+`availability: BUILD` is critical — exposing the token at RUNTIME would leak it to the running app. Build-only is what `.npmrc` needs for `npm ci`.
+
+**7d. Install the package**
+
+```bash
+NODE_AUTH_TOKEN=$(gh auth token) npm install @myalterlego/secrets
+```
+
+**7e. Determine which secrets this project needs**
+
+The 7 vault secrets and typical consumer mapping:
+
+| Secret | Used by |
+|--------|---------|
+| `SLACK_BOT_TOKEN` | Any project posting to Slack |
+| `SLACK_SIGNING_SECRET` | Any project that verifies inbound Slack requests |
+| `SLACK_PAYLOAD_SECRET` | Admin-style projects with interactive Slack buttons |
+| `GITHUB_APP_ID` | Projects that dispatch GitHub Actions workflows |
+| `GITHUB_APP_PRIVATE_KEY` | Projects that dispatch GitHub Actions workflows |
+| `GITHUB_APP_INSTALLATION_ID` | Projects that dispatch GitHub Actions workflows |
+| `SLACK_USER_MAP` | Projects that map Slack user IDs to staff emails |
+
+**Triarch-dev admin** uses all 7 (it is the canonical consumer).
+**Triarchsecurity-admin (CRM)** uses 2 (SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET).
+
+Most new projects only need the Slack credentials.
+
+**7f. Identify the runtime service account**
+
+Firebase App Hosting runs your app under a service account named `firebase-app-hosting-compute@<your-firebase-project>.iam.gserviceaccount.com` (per Firebase docs). Verify with:
+
+```bash
+gcloud iam service-accounts list --project=<your-firebase-project> --format="table(email)" \
+  | grep firebase-app-hosting-compute
+```
+
+If the result is empty, the legacy `firebase-adminsdk-fbsvc@<project>...` SA may be used instead. See [`secrets-vault.md`](secrets-vault.md#runtime-service-account-resolution) for the resolution rule.
+
+**7g. Grant `secretAccessor` on each needed secret**
+
+Replace `SA_EMAIL` and the secret list with what your project actually consumes:
+
+```bash
+SA_EMAIL="firebase-app-hosting-compute@<your-firebase-project>.iam.gserviceaccount.com"
+for SECRET in SLACK_BOT_TOKEN SLACK_SIGNING_SECRET; do
+  gcloud secrets add-iam-policy-binding "$SECRET" \
+    --project=triarch-vault \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/secretmanager.secretAccessor"
+done
+```
+
+Verify each binding:
+
+```bash
+for SECRET in SLACK_BOT_TOKEN SLACK_SIGNING_SECRET; do
+  gcloud secrets get-iam-policy "$SECRET" --project=triarch-vault \
+    --format="value(bindings.members)" | grep -q "$SA_EMAIL" \
+    && echo "OK: $SECRET" || echo "MISSING: $SECRET"
+done
+```
+
+All entries must read `OK: <secret>`.
+
+**7h. Use the package in code**
+
+```typescript
+import { getSecret } from '@myalterlego/secrets';
+
+const slackToken = await getSecret('SLACK_BOT_TOKEN');
+```
+
+The package caches each value in-process for 300 seconds and falls back to `process.env[name]` on vault failure. See [`secrets-vault.md`](secrets-vault.md#failure-modes) for the behavior matrix.
+
+**Verify:** Deploy the new project and call its health endpoint (if present) or trigger a code path that exercises a vault read. In the App Hosting logs, you should see no `PERMISSION_DENIED` errors for `SecretManagerService.AccessSecretVersion`.
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| `PERMISSION_DENIED` accessing a secret | SA email mismatch or grant missing | Re-run 7f then 7g; wait 60s for IAM propagation |
+| `npm ci` fails with `404 Not Found` for `@myalterlego/secrets` | `.npmrc` missing or `NODE_AUTH_TOKEN` not set | Confirm 7a + 7b + 7c |
+| `getSecret` returns `process.env` value silently | Vault read failed but env var also set — fallback engaged | Check App Hosting logs for the silent-fail warning; verify SA grant |
+| `npm install` fails locally with `401 Unauthorized` | Local dev needs a developer PAT in `NODE_AUTH_TOKEN` env | `export NODE_AUTH_TOKEN=$(gh auth token)` before `npm install` |
+
+---
+
 ## Verification Checklist
 
 - [ ] Project record created; `apiKey` saved to a secure location (password manager)
@@ -219,6 +348,10 @@ but targets the new project end-to-end.
 - [ ] Customer page at `/projects/<slug>/releases` renders the dev release
 - [ ] Full approve flow ends with paired `env='prod'` row + `status='promoted'` in DB
 - [ ] Customer page Timeline shows all 5 lifecycle events with correct actors and timestamps
+- [ ] `.npmrc` committed with `@myalterlego` registry + `NODE_AUTH_TOKEN` reference
+- [ ] `GITHUB_PACKAGES_TOKEN` Firebase secret set on the new project
+- [ ] `NODE_AUTH_TOKEN` entry added to `apphosting.yaml` with `availability: [BUILD]`
+- [ ] `roles/secretmanager.secretAccessor` granted on each needed secret to the new project's runtime SA
 
 ---
 
@@ -234,3 +367,5 @@ but targets the new project end-to-end.
 | Slack message never arrives | Bot not invited to `#release-approvals`, or `SLACK_BOT_TOKEN` secret missing | See [03-HUMAN-UAT.md](.planning/phases/03-slack-interactive-approval/03-HUMAN-UAT.md) Steps 4–6 |
 | `workflow_dispatch` fires but deploy-prod.yml fails immediately | GitHub App not installed on this repo | See [04-HUMAN-UAT.md](.planning/phases/04-github-app-promotion/04-HUMAN-UAT.md) Step 4 (Install App → add repo) |
 | Timeline stops at "Promotion dispatched" — no "Deployed to production" event | `deploy-prod.yml` did not POST to `/api/releases/promoted` after completing | Check workflow logs for the POST step; verify shared-workflows ref is ≥v0.4.0 |
+| Slack message never arrives AND new project log shows `PERMISSION_DENIED` for `AccessSecretVersion` | Vault SA grant missing for the new project | See Step 7g; grant `secretAccessor` on the Slack secrets to the new project's `firebase-app-hosting-compute@` SA |
+| Build fails on `npm ci` with `@myalterlego/secrets` 404 | `.npmrc` not committed or `NODE_AUTH_TOKEN` not exposed at BUILD | See Steps 7a–7c |
