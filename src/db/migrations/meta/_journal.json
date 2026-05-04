@@ -57,6 +57,13 @@
       "when": 1777831109113,
       "tag": "0007_flashy_madelyne_pryor",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777859695129,
+      "tag": "0008_yielding_hellcat",
+      "breakpoints": true
     }
   ]
 }
