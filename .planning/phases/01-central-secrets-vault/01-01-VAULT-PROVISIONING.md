@@ -55,3 +55,18 @@ billingAccounts/XXXXXX-XXXXXX-60242F    True
 
 Project `triarch-vault` (numeric ID `125442121919`) is `ACTIVE` with Secret Manager
 API `ENABLED` and billing linked.
+
+## Step 5 — Secret values captured (REDACTED)
+
+Captured 7 secret values to `/tmp/vault-secret-values/` (chmod 700, gitignored,
+deleted after Step 9).
+
+| Secret | Source | Bytes |
+|--------|--------|-------|
+| SLACK_BOT_TOKEN | `firebase apphosting:secrets:access` (triarch-dev-website) | 60 |
+| SLACK_SIGNING_SECRET | `firebase apphosting:secrets:access` (triarch-dev-website) | 33 |
+| SLACK_PAYLOAD_SECRET | `firebase apphosting:secrets:access` (triarch-dev-website) | 46 |
+| GITHUB_APP_ID | `firebase apphosting:secrets:access` (triarch-dev-website) | 9 |
+| GITHUB_APP_PRIVATE_KEY | `firebase apphosting:secrets:access` (triarch-dev-website) | 1676 |
+| GITHUB_APP_INSTALLATION_ID | `firebase apphosting:secrets:access` (triarch-dev-website) | 11 |
+| SLACK_USER_MAP | hand-built JSON from `src/lib/slack-identity.ts` | 42 |
