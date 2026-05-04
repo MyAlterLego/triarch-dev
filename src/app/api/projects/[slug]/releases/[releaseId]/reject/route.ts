@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSignedIn } from '@/lib/api-auth';
 import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
-import { releaseLogs, releaseApprovals, projects } from '@/db/schema';
+import { releaseLogs, projects } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
-
-const REASON_MAX_CHARS = 500;
+import { rejectRelease } from '@/lib/release-actions';
 
 export async function POST(
   req: NextRequest,
@@ -55,67 +54,34 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  // 7. Reason validation — required, non-empty, within 500 chars
+  // 7. Parse reason
   const body = await req.json().catch(() => null);
-  const reason = typeof body?.reason === 'string' ? body.reason.trim() : '';
+  const rawReason = typeof body?.reason === 'string' ? body.reason : '';
 
-  if (!reason) {
-    return NextResponse.json({ error: 'Rejection reason is required' }, { status: 400 });
-  }
-  if (reason.length > REASON_MAX_CHARS) {
-    return NextResponse.json({ error: 'Reason exceeds 500 characters' }, { status: 400 });
-  }
-
-  // 8. Status precondition: only 'dev' (or null treated as 'dev') is rejectable
-  // NO idempotency short-circuit for reject — REJECT-01: double-rejection is 409 error
-  const currentStatus = release.status ?? 'dev';
-  if (currentStatus !== 'dev') {
-    return NextResponse.json(
-      { error: `Cannot reject a release in status '${currentStatus}'` },
-      { status: 409 }
-    );
-  }
-
-  // 9. Capture audit context from request headers
+  // 8. Header capture
   const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
   const userAgent = req.headers.get('user-agent')?.slice(0, 512) ?? null;
 
-  // 10. Atomic transaction: insert audit row (with reason) + update release status
-  const result = await db.transaction(async (tx) => {
-    const [inserted] = await tx
-      .insert(releaseApprovals)
-      .values({
-        releaseId: release.id,
-        approverEmail: ctx.email,
-        decision: 'rejected',
-        ipAddress,
-        userAgent,
-        reason,
-      })
-      .returning();
+  // 9. Delegate to shared helper
+  const result = await rejectRelease({ release, approverEmail: ctx.email, reason: rawReason, ipAddress, userAgent });
 
-    const [updated] = await tx
-      .update(releaseLogs)
-      .set({ status: 'rejected' })
-      .where(eq(releaseLogs.id, release.id))
-      .returning({ id: releaseLogs.id, status: releaseLogs.status });
+  if (!result.ok) {
+    const status = result.code === 'invalid_reason' ? 400 : 409;
+    return NextResponse.json({ error: result.message }, { status });
+  }
 
-    return { inserted, updated };
-  });
-
-  // 11. Return success response
   return NextResponse.json({
     ok: true,
-    release: { id: result.updated.id, status: result.updated.status },
+    release: result.release,
     approval: {
-      id: result.inserted.id,
-      releaseId: result.inserted.releaseId,
-      approverEmail: result.inserted.approverEmail,
-      decision: result.inserted.decision,
-      approvedAt: result.inserted.approvedAt?.toISOString() ?? null,
-      reason: result.inserted.reason,
-      ipAddress: result.inserted.ipAddress,
-      userAgent: result.inserted.userAgent,
+      id: result.approval.id,
+      releaseId: result.approval.releaseId,
+      approverEmail: result.approval.approverEmail,
+      decision: result.approval.decision,
+      approvedAt: result.approval.approvedAt?.toISOString() ?? null,
+      reason: result.approval.reason,
+      ipAddress: result.approval.ipAddress,
+      userAgent: result.approval.userAgent,
     },
   });
 }

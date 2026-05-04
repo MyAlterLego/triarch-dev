@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSignedIn } from '@/lib/api-auth';
 import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
-import { releaseLogs, releaseApprovals, projects } from '@/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { releaseLogs, projects } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { approveRelease } from '@/lib/release-actions';
 
 export async function POST(
   req: NextRequest,
@@ -53,89 +54,33 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  // 7. Idempotent short-circuit: already approved → return existing row, no new INSERT
-  if (release.status === 'approved') {
-    const [existingApproval] = await db
-      .select()
-      .from(releaseApprovals)
-      .where(
-        and(
-          eq(releaseApprovals.releaseId, release.id),
-          eq(releaseApprovals.decision, 'approved')
-        )
-      )
-      .orderBy(desc(releaseApprovals.approvedAt))
-      .limit(1);
-
-    return NextResponse.json({
-      ok: true,
-      alreadyApproved: true,
-      release: { id: release.id, status: release.status },
-      approval: existingApproval
-        ? {
-            id: existingApproval.id,
-            releaseId: existingApproval.releaseId,
-            approverEmail: existingApproval.approverEmail,
-            decision: existingApproval.decision,
-            approvedAt: existingApproval.approvedAt?.toISOString() ?? null,
-            reason: existingApproval.reason,
-            ipAddress: existingApproval.ipAddress,
-            userAgent: existingApproval.userAgent,
-          }
-        : null,
-    });
-  }
-
-  // 8. Status precondition: only 'dev' (or null treated as 'dev') is approvable
-  const currentStatus = release.status ?? 'dev';
-  if (currentStatus !== 'dev') {
-    return NextResponse.json(
-      { error: `Cannot approve a release in status '${currentStatus}'` },
-      { status: 409 }
-    );
-  }
-
-  // 9. Capture audit context from request headers
+  // 7. Header capture
   const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
   const userAgent = req.headers.get('user-agent')?.slice(0, 512) ?? null;
 
-  // 10. Atomic transaction: insert audit row + update release status
-  const result = await db.transaction(async (tx) => {
-    const [inserted] = await tx
-      .insert(releaseApprovals)
-      .values({
-        releaseId: release.id,
-        approverEmail: ctx.email,
-        decision: 'approved',
-        ipAddress,
-        userAgent,
-        reason: null,
-      })
-      .returning();
+  // 8. Delegate to shared helper
+  const result = await approveRelease({ release, approverEmail: ctx.email, ipAddress, userAgent });
 
-    const [updated] = await tx
-      .update(releaseLogs)
-      .set({ status: 'approved' })
-      .where(eq(releaseLogs.id, release.id))
-      .returning({ id: releaseLogs.id, status: releaseLogs.status });
+  if (!result.ok) {
+    // Only invalid_status is possible from approveRelease
+    return NextResponse.json({ error: result.message }, { status: 409 });
+  }
 
-    return { inserted, updated };
-  });
-
-  // 11. Return success response
   return NextResponse.json({
     ok: true,
-    alreadyApproved: false,
-    release: { id: result.updated.id, status: result.updated.status },
-    approval: {
-      id: result.inserted.id,
-      releaseId: result.inserted.releaseId,
-      approverEmail: result.inserted.approverEmail,
-      decision: result.inserted.decision,
-      approvedAt: result.inserted.approvedAt?.toISOString() ?? null,
-      reason: result.inserted.reason,
-      ipAddress: result.inserted.ipAddress,
-      userAgent: result.inserted.userAgent,
-    },
+    alreadyApproved: result.alreadyApproved,
+    release: result.release,
+    approval: result.approval
+      ? {
+          id: result.approval.id,
+          releaseId: result.approval.releaseId,
+          approverEmail: result.approval.approverEmail,
+          decision: result.approval.decision,
+          approvedAt: result.approval.approvedAt?.toISOString() ?? null,
+          reason: result.approval.reason,
+          ipAddress: result.approval.ipAddress,
+          userAgent: result.approval.userAgent,
+        }
+      : null,
   });
 }
