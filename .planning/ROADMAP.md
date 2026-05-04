@@ -121,7 +121,11 @@ Build order: schema and access control first (everything depends on them), then 
   5. `shared-workflows` repo `deploy-prod.yml` POSTs prod deploy completion to admin's `/api/releases/promoted`
   6. Truth+Treason consumes the updated shared-workflows; one full release passes through the entire UI → Slack → GitHub App → round-trip path successfully
   7. Onboarding runbook documented for adding a new project to the gating workflow
-**Plans**: TBD
+**Plans:** 4 plans
+- [ ] 05-01-PLAN.md — POST /api/releases/promoted endpoint + Vitest suite (idempotent + atomic round-trip ingest)
+- [ ] 05-02-PLAN.md — Release timeline view component + integration into ReleasesClient (lifecycle visualization)
+- [ ] 05-03-PLAN.md — Onboarding runbook (docs/onboarding-projects.md + planning archive copy + CLAUDE.md reference)
+- [ ] 05-04-PLAN.md — Master 05-HUMAN-UAT.md (consolidates Phase 2/3/4 deferred items + Phase 5 cross-repo + Truth+Treason E2E pilot; human checkpoint gate)
 
 ## Progress
 
@@ -134,4 +138,4 @@ Build order: schema and access control first (everything depends on them), then 
 | 2. Customer Releases Page | 4/5 | In Progress|  |
 | 3. Slack Interactive Approval | 5/5 | Complete   | 2026-05-04 |
 | 4. GitHub App Promotion | 1/4 | In Progress|  |
-| 5. Round-trip + shared-workflows + Pilot | 0/0 | Not started | - |
+| 5. Round-trip + shared-workflows + Pilot | 0/4 | Not started | - |
