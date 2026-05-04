@@ -47,3 +47,20 @@ env:
 
   - variable: DEPLOY_WEBHOOK_SECRET
     secret: DEPLOY_WEBHOOK_SECRET
+
+  # Slack App secrets (Phase 3) — see .planning/phases/03-slack-interactive-approval/03-HUMAN-UAT.md
+  # Set via: firebase apphosting:secrets:set <KEY>
+  # SLACK_PAYLOAD_SECRET is self-generated: openssl rand -base64 32
+  - variable: SLACK_BOT_TOKEN
+    secret: SLACK_BOT_TOKEN
+
+  - variable: SLACK_SIGNING_SECRET
+    secret: SLACK_SIGNING_SECRET
+
+  - variable: SLACK_PAYLOAD_SECRET
+    secret: SLACK_PAYLOAD_SECRET
+
+  - variable: SLACK_RELEASE_APPROVAL_CHANNEL
+    value: "#release-approvals"
+    availability:
+      - RUNTIME
