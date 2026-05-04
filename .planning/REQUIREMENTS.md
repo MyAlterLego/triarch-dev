@@ -93,7 +93,7 @@ Customer-facing gating UI lives at `/projects/{slug}/releases`.
 - [ ] **GATE-04**: "Approve for Production" button visible only to project members with role `admin` and only when `status = 'dev'`; disabled in any other state
 - [ ] **GATE-05**: Approval action writes a `release_approvals` row capturing approver email, timestamp, request IP, and user-agent; idempotent — second approval attempt for an already-approved release is a no-op with a clear UI message
 - [ ] **GATE-06**: Approval transitions `releaseLogs.status` from `dev` → `approved` atomically with the audit-row insert
-- [ ] **REJECT-01**: "Reject" button (admin-only, only when `status = 'dev'`); writes a `release_approvals` row with a `rejected_at` field OR a separate `release_rejections` table — implementer chooses; transitions status to `rejected`. Rejected releases cannot be re-approved without a new dev deploy
+- [x] **REJECT-01**: "Reject" button (admin-only, only when `status = 'dev'`); writes a `release_approvals` row with a `rejected_at` field OR a separate `release_rejections` table — implementer chooses; transitions status to `rejected`. Rejected releases cannot be re-approved without a new dev deploy
 
 ---
 
@@ -162,7 +162,7 @@ Captured in `BACKLOG.md`:
 | ADMIN-01 | Phase 1 | Complete |
 | MEMBER-AUDIT-01..10 | Phase 1.1 | Pending |
 | GATE-01, GATE-02, GATE-03, GATE-04, GATE-05, GATE-06 | Phase 2 | Pending |
-| REJECT-01 | Phase 2 | Pending |
+| REJECT-01 | Phase 2 | Complete |
 | GATE-07, GATE-08, GATE-09, GATE-09a | Phase 3 | Pending |
 | ENV-S01 | Phase 3 | Pending |
 | GATE-10, GATE-11, GATE-11a, GATE-11b | Phase 4 | Pending |

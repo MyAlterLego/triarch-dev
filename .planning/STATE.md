@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
-status: planning
-last_updated: "2026-05-03T23:22:32.772Z"
+status: executing
+last_updated: "2026-05-04T01:59:32.489Z"
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 15
+  completed_plans: 11
 ---
 
 # Triarch Dev Admin — Project State
@@ -18,14 +18,14 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 01.1 — membership-enforcement-audit
+**Current focus:** Phase 02 — customer-releases-page
 
 ## Active Milestone: v1.14.0 — Customer Release Gating
 
 **Goal:** Customer admins approve dev releases via admin.triarch.dev → Slack interactive buttons → GitHub App workflow_dispatch → status round-trips back; Truth+Treason is the pilot.
 **Phases:** 6 (Phase 1.1 inserted)
 **Requirements:** 42 (32 original + 10 added in Phase 1.1)
-**Status:** Ready to plan
+**Status:** Executing Phase 02
 
 ## Decisions
 
@@ -55,10 +55,12 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 - [Phase 01.1-06]: Task 3 was no-op — 13 of 14 admin pages are client components delegating to the now-membership-aware API; only the dashboard needed an inline filter
 - [Phase 01.1-06]: Dashboard DB-error fallback (!ctx) passes null projectKeys → full view, mirrors API convention from Plans 03/04/05
 - [Phase 01.1-06]: Empty memberships for non-staff → zeros + empty Project Health grid (not 403/redirect), consistent with API empty-list behavior
+- [Phase 02-01]: reason column uses text() not varchar(500) — server-side 500-char limit; matches releaseFeedback.body pattern
+- [Phase 02-01]: DB push deferred to human — DATABASE_URL is Firebase secret, not in local shell; same pattern as Phase 01-01
 
 ## Stopped At
 
-Completed 01.1-06-PLAN.md (Wave 3) — page-level audit (14 pages), dashboard membership filter, MEMBER-AUDIT-09/10 UAT spec appended. Phase 01.1 code is complete. Remaining work: deploy v1.14 + run MEMBER-AUDIT-09a-09h live tests post-deploy.
+Completed 02-01-PLAN.md (Wave 1) — reason column + three relations() declarations + migration 0008 generated. DB push deferred to human (DATABASE_URL is Firebase secret). Wave 2 plans (02-02, 02-03, 02-04) are unblocked and can proceed in parallel.
 
 ## Repository state
 
