@@ -24,7 +24,7 @@
 
 **Milestone Goal:** Customer-gated parallel release candidates with auto-rebase-and-merge promotion, unified credential storage on GCP Secret Manager, and OttoBot as the canonical Slack control plane with audit trail and expanded scopes.
 
-- [ ] **Phase 1: Central Secrets Vault** - GCP `triarch-vault` project + `@myalterlego/secrets` package + all consumers migrated
+- [x] **Phase 1: Central Secrets Vault** - GCP `triarch-vault` project + `@myalterlego/secrets` package + all consumers migrated (completed 2026-05-04)
 - [ ] **Phase 2: shared-workflows Hardening** - v1.14 deferred cross-repo notify steps + branch preview deploy wiring
 - [x] **Phase 3: Schema + GitHub App Permissions** - `release_logs.branch` column, `slack_action_audit` table, App permission upgrade (completed 2026-05-04)
 - [ ] **Phase 4: promote-branch Workflow** - New `promote-branch.yml` rebase/CI/merge workflow with conflict detection + callback
@@ -51,7 +51,7 @@
 - [x] 01-03-PLAN.md — HUMAN grant secretAccessor IAM to consumer SAs + functional impersonation test (VAULT-03)
 - [x] 01-04-PLAN.md — Migrate triarch-dev admin to vault + add /api/platform/health/secrets endpoint (VAULT-05)
 - [x] 01-05-PLAN.md — Migrate triarchsecurity-admin CRM to vault + add .npmrc + NODE_AUTH_TOKEN wiring (VAULT-06)
-- [ ] 01-06-PLAN.md — Update onboarding-projects.md Step 7 + create secrets-vault.md deep-dive (VAULT-07)
+- [x] 01-06-PLAN.md — Update onboarding-projects.md Step 7 + create secrets-vault.md deep-dive (VAULT-07)
 
 ### Phase 2: shared-workflows Hardening
 **Goal**: Every deploy in shared-workflows notifies the admin control plane — dev deploys POST to release-logs ingest, prod deploys POST to the promoted endpoint, and non-main branch deploys trigger FAH branch preview URLs
@@ -136,7 +136,7 @@
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1. Schema + Membership Migration | v1.14.0 | 5/6 | In Progress|  |
+| 1. Schema + Membership Migration | v1.14.0 | 6/6 | Complete   | 2026-05-04 |
 | 1.1. Membership Enforcement Audit | v1.14.0 | 6/6 | Complete | 2026-05-03 |
 | 2. Customer Releases Page | v1.14.0 | 5/5 | Complete | 2026-05-04 |
 | 3. Slack Interactive Approval | v1.14.0 | 3/3 | Complete    | 2026-05-04 |
