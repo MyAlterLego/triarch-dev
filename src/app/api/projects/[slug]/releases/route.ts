@@ -3,7 +3,7 @@ import { requireSignedIn } from '@/lib/api-auth';
 import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
 import { projects, releaseLogs } from '@/db/schema';
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, and, inArray } from 'drizzle-orm';
 import type { ReleaseRow } from '@/app/projects/[slug]/releases/types';
 
 export async function GET(
@@ -58,6 +58,25 @@ export async function GET(
   const hasMore = rows.length > limit;
   const pageRows = hasMore ? rows.slice(0, limit) : rows;
 
+  // Fetch paired prod rows for dev releases
+  const versions = pageRows.map((r) => r.version);
+  const prodRows = versions.length === 0 ? [] : await db
+    .select({
+      id: releaseLogs.id,
+      version: releaseLogs.version,
+      deployedAt: releaseLogs.deployedAt,
+      releasedAt: releaseLogs.releasedAt,
+      releasedBy: releaseLogs.releasedBy,
+      commitSha: releaseLogs.commitSha,
+    })
+    .from(releaseLogs)
+    .where(and(
+      eq(releaseLogs.project, project.key),
+      eq(releaseLogs.env, 'prod'),
+      inArray(releaseLogs.version, versions),
+    ));
+  const prodByVersion = new Map(prodRows.map((p) => [p.version, p]));
+
   // Serialise dates for the client (Drizzle returns Date objects from node-postgres)
   const releases: ReleaseRow[] = pageRows.map((r) => ({
     id: r.id,
@@ -87,6 +106,20 @@ export async function GET(
       ipAddress: a.ipAddress,
       userAgent: a.userAgent,
     })),
+    promotionDispatchedAt: r.promotionDispatchedAt?.toISOString() ?? null,
+    promotionDispatchedBy: r.promotionDispatchedBy ?? null,
+    pairedProd: (() => {
+      if (r.env !== 'dev') return null;
+      const prod = prodByVersion.get(r.version);
+      if (!prod) return null;
+      return {
+        id: prod.id,
+        deployedAt: prod.deployedAt?.toISOString() ?? null,
+        releasedAt: prod.releasedAt.toISOString(),
+        releasedBy: prod.releasedBy ?? null,
+        commitSha: prod.commitSha ?? null,
+      };
+    })(),
   }));
 
   return NextResponse.json({ releases, hasMore });

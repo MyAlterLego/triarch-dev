@@ -34,4 +34,14 @@ export interface ReleaseRow {
   summary: string | null;
   feedback: FeedbackItem[];
   approvals: ApprovalItem[];
+  // Phase 05-02: promotion dispatch audit + paired prod row (populated for dev rows only)
+  promotionDispatchedAt: string | null;
+  promotionDispatchedBy: string | null;
+  pairedProd: {
+    id: string;
+    deployedAt: string | null;
+    releasedAt: string;
+    releasedBy: string | null;
+    commitSha: string | null;
+  } | null;
 }
