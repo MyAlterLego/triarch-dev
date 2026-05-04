@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-04T15:01:25.739Z"
+last_updated: "2026-05-04T15:07:09.739Z"
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 24
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Triarch Dev Admin — Project State
@@ -78,6 +78,9 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 - [Phase 04]: RUNTIME-only availability (no field) for GitHub App secrets in apphosting.yaml — matches Phase 3 Slack pattern
 - [Phase 04-02]: JWT iat=now-60s, exp=now+9min: 60-sec past-skew handles clock drift; 1-min margin under GitHub's 10-min ceiling
 - [Phase 04-02]: 50-min installation token TTL (not 60-min) — 10-min safety margin under GitHub's lifetime; single-flight latch prevents concurrent JWT signing
+- [Phase 04]: promoteAndAudit is fire-and-forget (not awaited) in route.ts - Slack 3-second rule compliance
+- [Phase 04]: Audit columns updated on dispatch ATTEMPT regardless of outcome; NOT updated on project-lookup failure (no attempt)
+- [Phase 04]: chat.update strictly guarded to failure path - success path never amends the original Slack message
 
 ## Stopped At
 

@@ -107,7 +107,7 @@ Build order: schema and access control first (everything depends on them), then 
 - [x] 04-01-PLAN.md — Schema delta: release_logs.promotion_dispatched_at + promotion_dispatched_by columns + 0009 migration
 - [x] 04-02-PLAN.md — src/lib/github-app.ts JWT signer + 50-min installation-token cache (single-flight) + dispatchWorkflow + Vitest suite
 - [x] 04-03-PLAN.md — apphosting.yaml secret references (3) + 04-HUMAN-UAT.md GitHub App setup runbook
-- [ ] 04-04-PLAN.md — Wire promoteAndAudit into /api/slack/interact (fire-and-forget) + slack.ts threaded reply + chat.update on failure
+- [x] 04-04-PLAN.md — Wire promoteAndAudit into /api/slack/interact (fire-and-forget) + slack.ts threaded reply + chat.update on failure
 
 ### Phase 5: Round-trip + shared-workflows + Pilot
 **Goal**: Close the loop — both dev and prod deploys report back to admin via shared-workflows, the timeline reflects the full lifecycle, and Truth+Treason exercises the workflow end-to-end.
