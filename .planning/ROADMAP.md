@@ -102,7 +102,12 @@ Build order: schema and access control first (everything depends on them), then 
   4. App credentials (`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID`) stored in App Hosting secrets
   5. Slack approve callback dispatches `workflow_dispatch` on `deploy-prod.yml` with `tag` input set to the release version
   6. Slack callback returns 200 within 3 seconds (per Slack rules) — dispatch happens async
-**Plans**: TBD
+**Plans:** 4 plans
+
+- [ ] 04-01-PLAN.md — Schema delta: release_logs.promotion_dispatched_at + promotion_dispatched_by columns + 0009 migration
+- [ ] 04-02-PLAN.md — src/lib/github-app.ts JWT signer + 50-min installation-token cache (single-flight) + dispatchWorkflow + Vitest suite
+- [ ] 04-03-PLAN.md — apphosting.yaml secret references (3) + 04-HUMAN-UAT.md GitHub App setup runbook
+- [ ] 04-04-PLAN.md — Wire promoteAndAudit into /api/slack/interact (fire-and-forget) + slack.ts threaded reply + chat.update on failure
 
 ### Phase 5: Round-trip + shared-workflows + Pilot
 **Goal**: Close the loop — both dev and prod deploys report back to admin via shared-workflows, the timeline reflects the full lifecycle, and Truth+Treason exercises the workflow end-to-end.
@@ -128,5 +133,5 @@ Build order: schema and access control first (everything depends on them), then 
 | 1.1. Membership Enforcement Audit | 5/6 | Complete    | 2026-05-03 |
 | 2. Customer Releases Page | 4/5 | In Progress|  |
 | 3. Slack Interactive Approval | 5/5 | Complete   | 2026-05-04 |
-| 4. GitHub App Promotion | 0/0 | Not started | - |
+| 4. GitHub App Promotion | 0/4 | Planned | - |
 | 5. Round-trip + shared-workflows + Pilot | 0/0 | Not started | - |
