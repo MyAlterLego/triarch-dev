@@ -2,13 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
-status: ready_to_plan
-last_updated: "2026-05-04T22:00:00.000Z"
+status: executing
+stopped_at: "Paused at 03-03 Task 3 checkpoint — awaiting Mike human-verify (SCHEMA-03 GitHub App contents:write upgrade)"
+last_updated: "2026-05-04T22:12:11.505Z"
 progress:
   total_phases: 8
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
 ---
 
 # Triarch Dev Admin — Project State
@@ -18,27 +19,24 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-04 — v2.0 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 1 — Central Secrets Vault
+**Current focus:** Phase 03 — schema-github-app-permissions
 
 ## Current Position
 
-Phase: 1 of 8 (Central Secrets Vault)
-Plan: — (not yet planned)
-Status: Ready to plan
-Last activity: 2026-05-04 — v2.0 roadmap created; 8 phases, 31 requirements mapped
-
-Progress: [░░░░░░░░░░] 0%
+Phase: 03 (schema-github-app-permissions) — EXECUTING
+Plan: 1 of 3
 
 ## Active Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
 **Goal:** Three intertwined initiatives — multi-branch parallel RCs with auto-rebase-and-merge promotion, central credential vault on GCP Secret Manager, OttoBot dispatcher hardening with expanded Slack scopes.
 **Phases:** 8 (reset to Phase 1 for v2.0)
 **Requirements:** 31 mapped (VAULT ×7, SCHEMA ×3, WORKFLOW ×5, RC ×8, OTTOBOT ×6, PILOT ×2)
-**Status:** Ready to plan — run `/gsd:plan-phase 1`
+**Status:** Executing Phase 03
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0 (v2.0 start)
 - Average duration: — (no data yet)
 - Total execution time: —
@@ -55,6 +53,7 @@ Active decisions from v1.14.0 that carry forward into v2.0:
 - [v1.14 Phase 03]: Per-project Bearer auth on `/api/releases/promoted` — Phase 2 shared-workflows must include token
 - [v1.14 Phase 04]: apphosting.yaml RUNTIME-only (no availability field) for secrets — vault migration must follow same pattern
 - [v1.14 Phase 05]: YAML field case distinction: ci-cd.yml camelCase / deploy-prod.yml snake_case — Phase 2 must respect both conventions
+- [Phase 03]: Three verification options in SCHEMA-03 runbook (existing workflow / one-shot / direct API) — Option A recommended; avoids Option B overhead when write-capable workflow already exists
 
 ### Pending Todos
 
@@ -68,6 +67,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-04
-Stopped at: v2.0 roadmap creation complete — ready for `/gsd:plan-phase 1`
+Last session: 2026-05-04T22:12:11.503Z
+Stopped at: Paused at 03-03 Task 3 checkpoint — awaiting Mike human-verify (SCHEMA-03 GitHub App contents:write upgrade)
 Resume file: None

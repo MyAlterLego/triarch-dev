@@ -23,7 +23,7 @@
 
 - [ ] **SCHEMA-01**: `release_logs.branch varchar(256)` column added (nullable for legacy rows; new rows default to `main`); migration backfills existing rows to `main`
 - [ ] **SCHEMA-02**: `slack_action_audit` table created — columns (id, action_id, actor_email, actor_slack_id, payload_hash, response_status, latency_ms, created_at) with index on (created_at desc) for query performance
-- [ ] **SCHEMA-03**: GitHub App `Triarch Release Gate` permission upgraded from `contents:read` to `contents:write` (required for merge step in `promote-branch.yml`); installation re-authorized
+- [x] **SCHEMA-03**: GitHub App `Triarch Release Gate` permission upgraded from `contents:read` to `contents:write` (required for merge step in `promote-branch.yml`); installation re-authorized
 
 ### Workflow — shared-workflows cross-repo (carried + new)
 
@@ -101,7 +101,7 @@
 | WORKFLOW-03 | Phase 2 | Pending |
 | SCHEMA-01 | Phase 3 | Pending |
 | SCHEMA-02 | Phase 3 | Pending |
-| SCHEMA-03 | Phase 3 | Pending |
+| SCHEMA-03 | Phase 3 | Complete |
 | WORKFLOW-04 | Phase 4 | Pending |
 | WORKFLOW-05 | Phase 4 | Pending |
 | RC-01 | Phase 5 | Pending |
