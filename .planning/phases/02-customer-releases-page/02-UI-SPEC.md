@@ -1,10 +1,11 @@
 ---
 phase: 2
 slug: customer-releases-page
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-03
+reviewed_at: 2026-05-03T00:00:00Z
 ---
 
 # Phase 2 — UI Design Contract
@@ -535,7 +536,7 @@ Revealed by clicking the Reject Release button. Renders below the action buttons
 >
   <div className="flex items-start justify-between gap-3">
     <span>{message}</span>
-    <button onClick={dismiss} className="text-zinc-600 hover:text-zinc-400 flex-shrink-0">
+    <button onClick={dismiss} aria-label="Dismiss notification" className="text-zinc-600 hover:text-zinc-400 flex-shrink-0">
       <X size={14} />
     </button>
   </div>
@@ -679,6 +680,7 @@ Clicking the Trash2 icon on a comment fires the delete immediately with no confi
 | Post Comment button | `aria-label="Post comment for release {version}"` |
 | Delete comment | `aria-label="Delete comment"` |
 | Toast | `role="status"` + `aria-live="polite"` |
+| Toast dismiss button | `aria-label="Dismiss notification"` |
 | Error banner | `role="alert"` + `aria-live="assertive"` |
 | Skeleton rows | `aria-busy="true"` on `<tbody>` during loading |
 
