@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-04T15:36:47.071Z"
+last_updated: "2026-05-04T15:37:41.588Z"
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 28
-  completed_plans: 27
+  completed_plans: 28
 ---
 
 # Triarch Dev Admin — Project State
@@ -86,6 +86,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 - [Phase 05-01]: dev-row lookup done outside transaction; idempotency short-circuit before transaction opens; returns 200 immediately on prod row existence check
 - [Phase 05-03]: CLAUDE.md created from scratch (file was absent) — admin project now has project-level conventions including onboarding runbook link
 - [Phase 05-03]: Dual-location runbook pattern: canonical at docs/onboarding-projects.md + byte-identical planning archive via cp
+- [Phase 05]: Master HUMAN-UAT consolidates all deferred human steps (Phases 2–5) into one sequenced closeout document — links to per-phase UATs rather than duplicating them
+- [Phase 05]: YAML field case distinction: ci-cd.yml uses camelCase (commitSha/deployedAt) for dev ingest; deploy-prod.yml uses snake_case (commit_sha/deployed_at) for prod ingest — documented in Section D with route.ts line reference
 
 ## Stopped At
 

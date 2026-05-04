@@ -127,9 +127,9 @@ Close the loop: shared-workflows reports both dev and prod deploys; admin render
 
 - [x] **GATE-12**: New endpoint `POST /api/releases/promoted` — accepts `{project, version}`, verifies a CI service-token header, locates the dev release row by (project, version), creates a paired prod release row (`env=prod`, `status=promoted`, copy of commit_sha/deployed_at from CI payload), updates the dev row's status to `promoted`
 - [x] **GATE-13**: Release detail page (or extension of GATE-01 page) shows full timeline for a version: deployed-to-dev → feedback chronological → approved → promoted-to-prod → deployed-to-prod, each with timestamp and actor
-- [ ] **WORKFLOW-01**: `shared-workflows` repo `ci-cd.yml` notify step (or new dedicated step) POSTs to `${ADMIN_API_URL}/api/platform/ingest/release-logs` with `env=dev`, version, commit, deployed_at; uses CI service token from `secrets.ADMIN_API_TOKEN`
-- [ ] **WORKFLOW-02**: `shared-workflows` repo `deploy-prod.yml` notify step POSTs to `${ADMIN_API_URL}/api/releases/promoted` with `{project, version, commit, deployed_at}`; same auth
-- [ ] **PILOT-01**: Truth+Treason consumes the updated shared-workflows; first end-to-end run promotes a real release through the full UI → Slack → GitHub App → round-trip path; success criteria documented in milestone audit
+- [x] **WORKFLOW-01**: `shared-workflows` repo `ci-cd.yml` notify step (or new dedicated step) POSTs to `${ADMIN_API_URL}/api/platform/ingest/release-logs` with `env=dev`, version, commit, deployed_at; uses CI service token from `secrets.ADMIN_API_TOKEN`
+- [x] **WORKFLOW-02**: `shared-workflows` repo `deploy-prod.yml` notify step POSTs to `${ADMIN_API_URL}/api/releases/promoted` with `{project, version, commit, deployed_at}`; same auth
+- [x] **PILOT-01**: Truth+Treason consumes the updated shared-workflows; first end-to-end run promotes a real release through the full UI → Slack → GitHub App → round-trip path; success criteria documented in milestone audit
 - [x] **PILOT-02**: After pilot success, runbook for onboarding a new project to the gating workflow added under `Plans/` or admin docs
 
 ---

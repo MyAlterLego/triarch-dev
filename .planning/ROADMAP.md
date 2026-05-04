@@ -13,7 +13,7 @@ Build order: schema and access control first (everything depends on them), then 
 - [ ] **Phase 2: Customer Releases Page** — `/projects/{slug}/releases` UI, feedback submission, approval/reject actions, audit trail
 - [x] **Phase 3: Slack Interactive Approval** — Slack App config, signed message with Approve/Reject buttons, signature-verified callback handler (completed 2026-05-04)
 - [ ] **Phase 4: GitHub App Promotion** — GitHub App install, installation-token auth, `workflow_dispatch` of `deploy-prod.yml`
-- [ ] **Phase 5: Round-trip + shared-workflows + Pilot** — `/api/releases/promoted` endpoint, paired prod row, shared-workflows updates, full timeline UI, Truth+Treason end-to-end pilot
+- [x] **Phase 5: Round-trip + shared-workflows + Pilot** — `/api/releases/promoted` endpoint, paired prod row, shared-workflows updates, full timeline UI, Truth+Treason end-to-end pilot (completed 2026-05-04)
 
 ## Phase Details
 
@@ -121,11 +121,11 @@ Build order: schema and access control first (everything depends on them), then 
   5. `shared-workflows` repo `deploy-prod.yml` POSTs prod deploy completion to admin's `/api/releases/promoted`
   6. Truth+Treason consumes the updated shared-workflows; one full release passes through the entire UI → Slack → GitHub App → round-trip path successfully
   7. Onboarding runbook documented for adding a new project to the gating workflow
-**Plans:** 2/4 plans executed
+**Plans:** 4/4 plans complete
 - [x] 05-01-PLAN.md — POST /api/releases/promoted endpoint + Vitest suite (idempotent + atomic round-trip ingest)
 - [x] 05-02-PLAN.md — Release timeline view component + integration into ReleasesClient (lifecycle visualization)
 - [x] 05-03-PLAN.md — Onboarding runbook (docs/onboarding-projects.md + planning archive copy + CLAUDE.md reference)
-- [ ] 05-04-PLAN.md — Master 05-HUMAN-UAT.md (consolidates Phase 2/3/4 deferred items + Phase 5 cross-repo + Truth+Treason E2E pilot; human checkpoint gate)
+- [x] 05-04-PLAN.md — Master 05-HUMAN-UAT.md (consolidates Phase 2/3/4 deferred items + Phase 5 cross-repo + Truth+Treason E2E pilot; human checkpoint gate)
 
 ## Progress
 
@@ -138,4 +138,4 @@ Build order: schema and access control first (everything depends on them), then 
 | 2. Customer Releases Page | 4/5 | In Progress|  |
 | 3. Slack Interactive Approval | 5/5 | Complete   | 2026-05-04 |
 | 4. GitHub App Promotion | 1/4 | In Progress|  |
-| 5. Round-trip + shared-workflows + Pilot | 2/4 | In Progress|  |
+| 5. Round-trip + shared-workflows + Pilot | 4/4 | Complete   | 2026-05-04 |
