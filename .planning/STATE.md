@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
-status: planning
-last_updated: "2026-05-04T15:11:26.641Z"
+status: executing
+last_updated: "2026-05-04T15:31:50.079Z"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 24
-  completed_plans: 24
+  total_plans: 28
+  completed_plans: 26
 ---
 
 # Triarch Dev Admin — Project State
@@ -18,14 +18,14 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 04 — github-app-promotion
+**Current focus:** Phase 05 — round-trip-+-shared-workflows+pilot
 
 ## Active Milestone: v1.14.0 — Customer Release Gating
 
 **Goal:** Customer admins approve dev releases via admin.triarch.dev → Slack interactive buttons → GitHub App workflow_dispatch → status round-trips back; Truth+Treason is the pilot.
 **Phases:** 6 (Phase 1.1 inserted)
 **Requirements:** 42 (32 original + 10 added in Phase 1.1)
-**Status:** Ready to plan
+**Status:** Executing Phase 05
 
 ## Decisions
 
@@ -81,6 +81,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 - [Phase 04]: promoteAndAudit is fire-and-forget (not awaited) in route.ts - Slack 3-second rule compliance
 - [Phase 04]: Audit columns updated on dispatch ATTEMPT regardless of outcome; NOT updated on project-lookup failure (no attempt)
 - [Phase 04]: chat.update strictly guarded to failure path - success path never amends the original Slack message
+- [Phase 05-round-trip-+-shared-workflows+pilot]: format.ts shared module extracted from ReleasesClient for formatRelativeTime/formatDeployedAt — avoids circular import from Timeline.tsx into 800-line client component
+- [Phase 05-round-trip-+-shared-workflows+pilot]: pairedProd only populated for env='dev' rows — prod rows surface via dev row's pairedProd field to avoid double-listing
 
 ## Stopped At
 
