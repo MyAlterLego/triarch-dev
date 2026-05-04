@@ -64,3 +64,15 @@ env:
     value: "#release-approvals"
     availability:
       - RUNTIME
+
+  # GitHub App secrets (Phase 4) - see .planning/phases/04-github-app-promotion/04-HUMAN-UAT.md
+  # Set via: firebase apphosting:secrets:set <KEY>
+  # GITHUB_APP_PRIVATE_KEY: paste entire PEM contents including BEGIN/END lines
+  - variable: GITHUB_APP_ID
+    secret: GITHUB_APP_ID
+
+  - variable: GITHUB_APP_PRIVATE_KEY
+    secret: GITHUB_APP_PRIVATE_KEY
+
+  - variable: GITHUB_APP_INSTALLATION_ID
+    secret: GITHUB_APP_INSTALLATION_ID
