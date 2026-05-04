@@ -87,18 +87,46 @@
 
 ## Traceability
 
-Empty — populated by the roadmapper after phase definition.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TBD | TBD | Pending |
+| VAULT-01 | Phase 1 | Pending |
+| VAULT-02 | Phase 1 | Pending |
+| VAULT-03 | Phase 1 | Pending |
+| VAULT-04 | Phase 1 | Pending |
+| VAULT-05 | Phase 1 | Pending |
+| VAULT-06 | Phase 1 | Pending |
+| VAULT-07 | Phase 1 | Pending |
+| WORKFLOW-01 | Phase 2 | Pending |
+| WORKFLOW-02 | Phase 2 | Pending |
+| WORKFLOW-03 | Phase 2 | Pending |
+| SCHEMA-01 | Phase 3 | Pending |
+| SCHEMA-02 | Phase 3 | Pending |
+| SCHEMA-03 | Phase 3 | Pending |
+| WORKFLOW-04 | Phase 4 | Pending |
+| WORKFLOW-05 | Phase 4 | Pending |
+| RC-01 | Phase 5 | Pending |
+| RC-02 | Phase 5 | Pending |
+| RC-03 | Phase 5 | Pending |
+| RC-07 | Phase 5 | Pending |
+| RC-04 | Phase 6 | Pending |
+| RC-05 | Phase 6 | Pending |
+| RC-06 | Phase 6 | Pending |
+| RC-08 | Phase 6 | Pending |
+| OTTOBOT-01 | Phase 7 | Pending |
+| OTTOBOT-02 | Phase 7 | Pending |
+| OTTOBOT-03 | Phase 7 | Pending |
+| OTTOBOT-04 | Phase 7 | Pending |
+| OTTOBOT-05 | Phase 7 | Pending |
+| OTTOBOT-06 | Phase 7 | Pending |
+| PILOT-01 | Phase 8 | Pending |
+| PILOT-02 | Phase 8 | Pending |
 
 **Coverage:**
-- v2 requirements: 28 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 28
+- v2 requirements: 31 total
+- Mapped to phases: 31 (100%)
+- Unmapped: 0
 
 ---
 
 *Requirements defined: 2026-05-04*
-*Last updated: 2026-05-04 after v1.14.0 archive*
+*Last updated: 2026-05-04 — traceability populated by roadmapper*
