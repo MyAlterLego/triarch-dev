@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     env: envInput,
     commitSha,
     deployedAt,
+    branch,
   } = body;
 
   if (!version || !releaseType) {
@@ -39,6 +40,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // SCHEMA-01: branch is optional (Phase 2 shared-workflows will start passing it). Default to 'main' for omitted/empty values.
+  const branchValue: string =
+    typeof branch === 'string' && branch.trim().length > 0 ? branch.trim() : 'main';
+
   const [release] = await db.insert(releaseLogs).values({
     project: project!.key,
     version,
@@ -52,6 +57,8 @@ export async function POST(req: NextRequest) {
     status: 'dev',                                                // new rows always start in 'dev'; gating moves them forward
     commitSha: typeof commitSha === 'string' ? commitSha : null,  // REL-A3
     deployedAt: deployedAtParsed,                                 // REL-A4
+    // v2.0 Phase 3: branch (SCHEMA-01) — shared-workflows will pass once Phase 2 ships
+    branch: branchValue,
   }).returning();
 
   return NextResponse.json(release, { status: 201 });
