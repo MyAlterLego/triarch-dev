@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
-status: planning
-last_updated: "2026-05-03T23:22:32.772Z"
+status: completed
+last_updated: "2026-05-04T15:42:19.707Z"
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 10
-  completed_plans: 10
+  completed_phases: 6
+  total_plans: 28
+  completed_plans: 28
 ---
 
 # Triarch Dev Admin — Project State
@@ -18,14 +18,14 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 01.1 — membership-enforcement-audit
+**Current focus:** Phase 05 — round-trip-+-shared-workflows+pilot
 
 ## Active Milestone: v1.14.0 — Customer Release Gating
 
 **Goal:** Customer admins approve dev releases via admin.triarch.dev → Slack interactive buttons → GitHub App workflow_dispatch → status round-trips back; Truth+Treason is the pilot.
 **Phases:** 6 (Phase 1.1 inserted)
 **Requirements:** 42 (32 original + 10 added in Phase 1.1)
-**Status:** Ready to plan
+**Status:** Milestone complete
 
 ## Decisions
 
@@ -55,10 +55,43 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 - [Phase 01.1-06]: Task 3 was no-op — 13 of 14 admin pages are client components delegating to the now-membership-aware API; only the dashboard needed an inline filter
 - [Phase 01.1-06]: Dashboard DB-error fallback (!ctx) passes null projectKeys → full view, mirrors API convention from Plans 03/04/05
 - [Phase 01.1-06]: Empty memberships for non-staff → zeros + empty Project Health grid (not 403/redirect), consistent with API empty-list behavior
+- [Phase 02-01]: reason column uses text() not varchar(500) — server-side 500-char limit; matches releaseFeedback.body pattern
+- [Phase 02-01]: DB push deferred to human — DATABASE_URL is Firebase secret, not in local shell; same pattern as Phase 01-01
+- [Phase 02]: CustomerHeader is a client component (signOut requires next-auth/react client-only import)
+- [Phase 02]: notFound() called for both missing project and non-member — indistinguishable 404 for GATE-01 no-leak guarantee
+- [Phase 02-04]: Idempotent re-approval returns 200 with alreadyApproved:true + existing row; double-rejection is 409 per REJECT-01
+- [Phase 02-04]: Non-members receive 404 (not 403) to avoid leaking project existence — same pattern as release-logs/[id]
+- [Phase 02-05]: Auto-dismiss timer for success toasts lives in ReleasesClient useEffect, not in Toast.tsx — Toast is purely presentational
+- [Phase 02-05]: Countdown intervals tracked per-releaseId in approveStep Record — supports multiple expanded rows simultaneously
+- [Phase 02-05]: GET pagination endpoint mirrors page.tsx sort exactly (coalesce DESC) for stable offset semantics
+- [Phase 03]: SLACK_RELEASE_APPROVAL_CHANNEL is plain env var (RUNTIME-only) with #release-approvals default; Slack secrets carry no availability field (App Hosting RUNTIME default); HUMAN-UAT runbook is formal gate for ENV-S01
+- [Phase 03-slack-interactive-approval]: RejectResult uses discriminated union — callers map code to HTTP status; reason trimming in helper for single source of truth
+- [Phase 03-slack-interactive-approval]: HMAC-SHA256 payload signing uses base64url sig packed as {releaseId}.{nonce}.{sig} for Slack button value compactness
+- [Phase 03-slack-interactive-approval]: SLACK_USER_MAP initially empty — Mike populates during HUMAN-UAT plan 03-05
+- [Phase 03-slack-interactive-approval]: notifyReleaseApproved takes pre-truncated feedbackExcerpt (caller's job) — keeps block construction declarative
+- [Phase 03-slack-interactive-approval]: Slack call is awaited inside try/catch (not unawaited) — serverless runtime keeps function alive; errors are swallowed not propagated
+- [Phase 03-slack-interactive-approval]: Guard on !result.alreadyApproved prevents duplicate Slack posts on idempotent re-approvals
+- [Phase 03-slack-interactive-approval]: req.text() is the only body read — formData() would consume the stream and break HMAC verification
+- [Phase 03-slack-interactive-approval]: Reject reason fixed as 'Rejected via Slack' for v1.14 — modal input deferred per CONTEXT.md Area 4
+- [Phase 03-slack-interactive-approval]: vitest.config.ts added to resolve @/ alias for test imports (Rule 3 fix)
+- [Phase 04-github-app-promotion]: promotionDispatchedAt + promotionDispatchedBy columns nullable — legacy rows and dev-only releases keep NULL; DB push deferred to Mike post-merge per Phase 01-01 and 02-01 precedent
+- [Phase 04]: RUNTIME-only availability (no field) for GitHub App secrets in apphosting.yaml — matches Phase 3 Slack pattern
+- [Phase 04-02]: JWT iat=now-60s, exp=now+9min: 60-sec past-skew handles clock drift; 1-min margin under GitHub's 10-min ceiling
+- [Phase 04-02]: 50-min installation token TTL (not 60-min) — 10-min safety margin under GitHub's lifetime; single-flight latch prevents concurrent JWT signing
+- [Phase 04]: promoteAndAudit is fire-and-forget (not awaited) in route.ts - Slack 3-second rule compliance
+- [Phase 04]: Audit columns updated on dispatch ATTEMPT regardless of outcome; NOT updated on project-lookup failure (no attempt)
+- [Phase 04]: chat.update strictly guarded to failure path - success path never amends the original Slack message
+- [Phase 05-round-trip-+-shared-workflows+pilot]: format.ts shared module extracted from ReleasesClient for formatRelativeTime/formatDeployedAt — avoids circular import from Timeline.tsx into 800-line client component
+- [Phase 05-round-trip-+-shared-workflows+pilot]: pairedProd only populated for env='dev' rows — prod rows surface via dev row's pairedProd field to avoid double-listing
+- [Phase 05-01]: dev-row lookup done outside transaction; idempotency short-circuit before transaction opens; returns 200 immediately on prod row existence check
+- [Phase 05-03]: CLAUDE.md created from scratch (file was absent) — admin project now has project-level conventions including onboarding runbook link
+- [Phase 05-03]: Dual-location runbook pattern: canonical at docs/onboarding-projects.md + byte-identical planning archive via cp
+- [Phase 05]: Master HUMAN-UAT consolidates all deferred human steps (Phases 2–5) into one sequenced closeout document — links to per-phase UATs rather than duplicating them
+- [Phase 05]: YAML field case distinction: ci-cd.yml uses camelCase (commitSha/deployedAt) for dev ingest; deploy-prod.yml uses snake_case (commit_sha/deployed_at) for prod ingest — documented in Section D with route.ts line reference
 
 ## Stopped At
 
-Completed 01.1-06-PLAN.md (Wave 3) — page-level audit (14 pages), dashboard membership filter, MEMBER-AUDIT-09/10 UAT spec appended. Phase 01.1 code is complete. Remaining work: deploy v1.14 + run MEMBER-AUDIT-09a-09h live tests post-deploy.
+Completed 04-01-PLAN.md (Wave 1) — Schema delta: two nullable promotion dispatch audit columns (promotionDispatchedAt, promotionDispatchedBy) added to releaseLogs; migration 0009_promotion_dispatch_audit.sql generated; tsc + build + 32/32 tests all pass. DB push deferred to Mike per precedent.
 
 ## Repository state
 

@@ -147,6 +147,9 @@ export const releaseLogs = pgTable('release_logs', {
   status: varchar('status', { length: 24 }),              // 'dev' | 'pending_approval' | 'approved' | 'rejected' | 'promoted' — nullable for legacy rows; backfill sets 'dev'
   commitSha: varchar('commit_sha', { length: 64 }),       // populated for new CI rows
   deployedAt: timestamp('deployed_at', { withTimezone: true }),  // populated for new CI rows; backfill copies createdAt
+  // ── v1.14.0 Phase 4: GitHub App promotion dispatch audit ──
+  promotionDispatchedAt: timestamp('promotion_dispatched_at', { withTimezone: true }),  // populated when /api/slack/interact dispatches deploy-prod.yml
+  promotionDispatchedBy: varchar('promotion_dispatched_by', { length: 256 }),           // mapped staff email of the Slack actor who clicked Promote
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -179,6 +182,7 @@ export const releaseApprovals = pgTable('release_approvals', {
   approvedAt: timestamp('approved_at', { withTimezone: true }).notNull().defaultNow(),
   ipAddress: varchar('ip_address', { length: 45 }),
   userAgent: varchar('user_agent', { length: 512 }),
+  reason: text('reason'),  // rejection reason for REJECT-01; nullable (approve rows have NULL); 500-char limit enforced server-side
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -376,5 +380,24 @@ export const menuSubpagesRelations = relations(menuSubpages, ({ one }) => ({
   page: one(menuPages, {
     fields: [menuSubpages.pageId],
     references: [menuPages.id],
+  }),
+}));
+
+export const releaseLogsRelations = relations(releaseLogs, ({ many }) => ({
+  feedback: many(releaseFeedback),
+  approvals: many(releaseApprovals),
+}));
+
+export const releaseFeedbackRelations = relations(releaseFeedback, ({ one }) => ({
+  release: one(releaseLogs, {
+    fields: [releaseFeedback.releaseId],
+    references: [releaseLogs.id],
+  }),
+}));
+
+export const releaseApprovalsRelations = relations(releaseApprovals, ({ one }) => ({
+  release: one(releaseLogs, {
+    fields: [releaseApprovals.releaseId],
+    references: [releaseLogs.id],
   }),
 }));

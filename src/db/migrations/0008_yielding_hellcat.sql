@@ -1,0 +1,1 @@
+ALTER TABLE "release_approvals" ADD COLUMN "reason" text;

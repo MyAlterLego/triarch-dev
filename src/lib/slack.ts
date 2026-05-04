@@ -1,6 +1,9 @@
+import { signPayload } from '@/lib/slack-crypto';
+
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
 const SLACK_BUG_CHANNEL = process.env.SLACK_BUG_CHANNEL ?? '#triarch-bugs';
 const SLACK_FEATURE_CHANNEL = process.env.SLACK_FEATURE_CHANNEL ?? '#triarch-features';
+const SLACK_RELEASE_APPROVAL_CHANNEL = process.env.SLACK_RELEASE_APPROVAL_CHANNEL ?? '#release-approvals';
 
 interface SlackMessage {
   channel: string;
@@ -24,6 +27,74 @@ async function postSlackMessage(message: SlackMessage): Promise<{ ok: boolean; t
   });
 
   return res.json() as Promise<{ ok: boolean; ts?: string; error?: string }>;
+}
+
+/**
+ * Post a threaded reply to an existing Slack message.
+ * Used for promotion dispatch result reporting (Phase 4).
+ * Graceful no-op when SLACK_BOT_TOKEN is missing.
+ */
+export async function postSlackThreadedReply(input: {
+  channel: string;
+  thread_ts: string;
+  text: string;
+}): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  if (!SLACK_BOT_TOKEN) {
+    console.warn('[slack] SLACK_BOT_TOKEN not set - skipping threaded reply');
+    return { ok: false, error: 'no_token' };
+  }
+  const res = await fetch('https://slack.com/api/chat.postMessage', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      channel: input.channel,
+      thread_ts: input.thread_ts,
+      text: input.text,
+    }),
+  });
+  const data = await res.json() as { ok: boolean; ts?: string; error?: string };
+  if (!data.ok) {
+    console.warn(`[slack] threaded reply failed: ${data.error}`);
+  }
+  return data;
+}
+
+/**
+ * Update an existing Slack message in place (chat.update).
+ * Used to amend the original "Approved" message when a downstream dispatch fails (Phase 4 CONTEXT.md Area 3).
+ * Graceful no-op when SLACK_BOT_TOKEN is missing.
+ */
+export async function updateSlackMessage(input: {
+  channel: string;
+  ts: string;
+  text: string;
+  blocks?: unknown[];
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!SLACK_BOT_TOKEN) {
+    console.warn('[slack] SLACK_BOT_TOKEN not set - skipping message update');
+    return { ok: false, error: 'no_token' };
+  }
+  const res = await fetch('https://slack.com/api/chat.update', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      channel: input.channel,
+      ts: input.ts,
+      text: input.text,
+      ...(input.blocks ? { blocks: input.blocks } : {}),
+    }),
+  });
+  const data = await res.json() as { ok: boolean; error?: string };
+  if (!data.ok) {
+    console.warn(`[slack] message update failed: ${data.error}`);
+  }
+  return data;
 }
 
 const SEVERITY_EMOJI: Record<string, string> = {
@@ -148,5 +219,64 @@ export async function notifyFeatureRequest(feature: {
         ],
       },
     ],
+  });
+}
+
+export async function notifyReleaseApproved(input: {
+  releaseId: string;
+  project: string;
+  version: string;
+  approverEmail: string;
+  status: string;
+  feedbackExcerpt: string; // already <= 200 chars per caller
+  feedbackOverflowCount: number; // 0 if no overflow
+}) {
+  const blocks: unknown[] = [
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `:rocket: *Release Approved: ${input.project} ${input.version}*\n*Approver:* ${input.approverEmail}\n*Status:* ${input.status}`,
+      },
+    },
+  ];
+
+  if (input.feedbackExcerpt) {
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text:
+          `> ${input.feedbackExcerpt}` +
+          (input.feedbackOverflowCount > 0 ? `\n_(${input.feedbackOverflowCount} more comments)_` : ''),
+      },
+    });
+  }
+
+  blocks.push({
+    type: 'actions',
+    block_id: `release_actions_${input.releaseId}`,
+    elements: [
+      {
+        type: 'button',
+        text: { type: 'plain_text', text: 'Approve & Promote' },
+        style: 'primary',
+        action_id: 'slack_promote',
+        value: signPayload(input.releaseId, 'promote'),
+      },
+      {
+        type: 'button',
+        text: { type: 'plain_text', text: 'Reject' },
+        style: 'danger',
+        action_id: 'slack_reject',
+        value: signPayload(input.releaseId, 'reject'),
+      },
+    ],
+  });
+
+  return postSlackMessage({
+    channel: SLACK_RELEASE_APPROVAL_CHANNEL,
+    text: `Release Approved: ${input.project} ${input.version}`,
+    blocks,
   });
 }

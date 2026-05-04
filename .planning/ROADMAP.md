@@ -11,9 +11,9 @@ Build order: schema and access control first (everything depends on them), then 
 - [x] **Phase 1: Schema + Membership Migration** — `releaseLogs` schema additions, `project_members` / `release_feedback` / `release_approvals` tables, DB-backed staff role, manage-members admin page (completed 2026-05-03)
 - [x] **Phase 1.1: Membership Enforcement Audit** — close access-control gap exposed by Phase 1's auth cutover; `requireAdmin` rename, new `requireStaff` + `requireMembership` helpers, classify and update all 32 endpoints currently checking only signed-in state, page-level audit (completed 2026-05-03)
 - [ ] **Phase 2: Customer Releases Page** — `/projects/{slug}/releases` UI, feedback submission, approval/reject actions, audit trail
-- [ ] **Phase 3: Slack Interactive Approval** — Slack App config, signed message with Approve/Reject buttons, signature-verified callback handler
+- [x] **Phase 3: Slack Interactive Approval** — Slack App config, signed message with Approve/Reject buttons, signature-verified callback handler (completed 2026-05-04)
 - [ ] **Phase 4: GitHub App Promotion** — GitHub App install, installation-token auth, `workflow_dispatch` of `deploy-prod.yml`
-- [ ] **Phase 5: Round-trip + shared-workflows + Pilot** — `/api/releases/promoted` endpoint, paired prod row, shared-workflows updates, full timeline UI, Truth+Treason end-to-end pilot
+- [x] **Phase 5: Round-trip + shared-workflows + Pilot** — `/api/releases/promoted` endpoint, paired prod row, shared-workflows updates, full timeline UI, Truth+Treason end-to-end pilot (completed 2026-05-04)
 
 ## Phase Details
 
@@ -67,7 +67,12 @@ Build order: schema and access control first (everything depends on them), then 
   4. Project members with role `admin` see "Approve for Production" and "Reject" buttons when status = `dev`; both write audit rows
   5. Approval transitions release status `dev → approved` atomically with the audit insert; rejection transitions `dev → rejected`
   6. Re-approving an already-approved release is a no-op with a clear UI message; rejected releases cannot be re-approved
-**Plans**: TBD
+**Plans:** 4/5 plans executed
+- [x] 02-01-PLAN.md — Schema delta: release_approvals.reason column + Drizzle relations() declarations + 0008 migration
+- [x] 02-02-PLAN.md — Customer layout + page server component (membership 404-no-leak) + shared types + placeholder client
+- [x] 02-03-PLAN.md — Feedback API endpoints (POST + DELETE with 24h author window)
+- [x] 02-04-PLAN.md — Approve + Reject API endpoints with atomic transactions + idempotency + REJECT-01 enforcement
+- [x] 02-05-PLAN.md — Toast component + pagination GET endpoint + full ReleasesClient (replaces Plan 02 placeholder)
 
 ### Phase 3: Slack Interactive Approval
 **Goal**: Approval action sends a real Slack message with interactive buttons; the callback path is signature-verified and securely identifies the release.
@@ -79,7 +84,12 @@ Build order: schema and access control first (everything depends on them), then 
   3. Each button payload includes a release_id reference signed with `SLACK_PAYLOAD_SECRET`
   4. `POST /api/slack/interact` verifies `X-Slack-Signature` header against the Slack signing secret with a 5-minute replay window; rejects invalid or stale requests with 401
   5. Handler validates the embedded payload signature and resolves the release before taking any action
-**Plans**: TBD
+**Plans:** 5/5 plans complete
+- [x] 03-01-PLAN.md — Slack crypto helpers (signPayload / verifyPayload / verifySlackSignature) + SLACK_USER_MAP identity mapping
+- [x] 03-02-PLAN.md — Extract release-actions.ts shared helpers (approveRelease / rejectRelease) + refactor Phase 2 routes to delegate
+- [x] 03-03-PLAN.md — notifyReleaseApproved Slack message with signed buttons + wire fire-and-forget into Phase 2 approve route
+- [x] 03-04-PLAN.md — POST /api/slack/interact handler with signature + payload verification + identity dispatch + Vitest suite
+- [x] 03-05-PLAN.md — apphosting.yaml secret references + 03-HUMAN-UAT.md runbook + ENV-S01 human checkpoint
 
 ### Phase 4: GitHub App Promotion
 **Goal**: A successful Slack-button approval dispatches the project's `deploy-prod.yml` via GitHub App installation token (not a PAT).
@@ -92,7 +102,12 @@ Build order: schema and access control first (everything depends on them), then 
   4. App credentials (`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID`) stored in App Hosting secrets
   5. Slack approve callback dispatches `workflow_dispatch` on `deploy-prod.yml` with `tag` input set to the release version
   6. Slack callback returns 200 within 3 seconds (per Slack rules) — dispatch happens async
-**Plans**: TBD
+**Plans:** 1/4 plans executed
+
+- [x] 04-01-PLAN.md — Schema delta: release_logs.promotion_dispatched_at + promotion_dispatched_by columns + 0009 migration
+- [x] 04-02-PLAN.md — src/lib/github-app.ts JWT signer + 50-min installation-token cache (single-flight) + dispatchWorkflow + Vitest suite
+- [x] 04-03-PLAN.md — apphosting.yaml secret references (3) + 04-HUMAN-UAT.md GitHub App setup runbook
+- [x] 04-04-PLAN.md — Wire promoteAndAudit into /api/slack/interact (fire-and-forget) + slack.ts threaded reply + chat.update on failure
 
 ### Phase 5: Round-trip + shared-workflows + Pilot
 **Goal**: Close the loop — both dev and prod deploys report back to admin via shared-workflows, the timeline reflects the full lifecycle, and Truth+Treason exercises the workflow end-to-end.
@@ -106,7 +121,11 @@ Build order: schema and access control first (everything depends on them), then 
   5. `shared-workflows` repo `deploy-prod.yml` POSTs prod deploy completion to admin's `/api/releases/promoted`
   6. Truth+Treason consumes the updated shared-workflows; one full release passes through the entire UI → Slack → GitHub App → round-trip path successfully
   7. Onboarding runbook documented for adding a new project to the gating workflow
-**Plans**: TBD
+**Plans:** 4/4 plans complete
+- [x] 05-01-PLAN.md — POST /api/releases/promoted endpoint + Vitest suite (idempotent + atomic round-trip ingest)
+- [x] 05-02-PLAN.md — Release timeline view component + integration into ReleasesClient (lifecycle visualization)
+- [x] 05-03-PLAN.md — Onboarding runbook (docs/onboarding-projects.md + planning archive copy + CLAUDE.md reference)
+- [x] 05-04-PLAN.md — Master 05-HUMAN-UAT.md (consolidates Phase 2/3/4 deferred items + Phase 5 cross-repo + Truth+Treason E2E pilot; human checkpoint gate)
 
 ## Progress
 
@@ -116,7 +135,7 @@ Build order: schema and access control first (everything depends on them), then 
 |-------|----------------|--------|-----------|
 | 1. Schema + Membership Migration | 4/4 | Complete   | 2026-05-03 |
 | 1.1. Membership Enforcement Audit | 5/6 | Complete    | 2026-05-03 |
-| 2. Customer Releases Page | 0/0 | Not started | - |
-| 3. Slack Interactive Approval | 0/0 | Not started | - |
-| 4. GitHub App Promotion | 0/0 | Not started | - |
-| 5. Round-trip + shared-workflows + Pilot | 0/0 | Not started | - |
+| 2. Customer Releases Page | 4/5 | In Progress|  |
+| 3. Slack Interactive Approval | 5/5 | Complete   | 2026-05-04 |
+| 4. GitHub App Promotion | 1/4 | In Progress|  |
+| 5. Round-trip + shared-workflows + Pilot | 4/4 | Complete   | 2026-05-04 |
