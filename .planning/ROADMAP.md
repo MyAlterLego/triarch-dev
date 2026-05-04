@@ -105,7 +105,7 @@ Build order: schema and access control first (everything depends on them), then 
 **Plans:** 1/4 plans executed
 
 - [x] 04-01-PLAN.md — Schema delta: release_logs.promotion_dispatched_at + promotion_dispatched_by columns + 0009 migration
-- [ ] 04-02-PLAN.md — src/lib/github-app.ts JWT signer + 50-min installation-token cache (single-flight) + dispatchWorkflow + Vitest suite
+- [x] 04-02-PLAN.md — src/lib/github-app.ts JWT signer + 50-min installation-token cache (single-flight) + dispatchWorkflow + Vitest suite
 - [x] 04-03-PLAN.md — apphosting.yaml secret references (3) + 04-HUMAN-UAT.md GitHub App setup runbook
 - [ ] 04-04-PLAN.md — Wire promoteAndAudit into /api/slack/interact (fire-and-forget) + slack.ts threaded reply + chat.update on failure
 

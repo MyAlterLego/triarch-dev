@@ -116,7 +116,7 @@ Replace any PAT-based assumptions with a GitHub App installation token, used to 
 - [ ] **GATE-10**: Slack approve callback dispatches `workflow_dispatch` on the project's `deploy-prod.yml` with `tag` input set to the release version; non-blocking (returns 200 to Slack immediately, does the dispatch async)
 - [x] **GATE-11**: Dispatch uses GitHub App installation token (NOT a PAT) — short-lived (≤1h), scoped to `actions:write` on `MyAlterLego` org
 - [x] **GATE-11a**: GitHub App created in `MyAlterLego` org with permissions: `actions: write`, `contents: read`, `metadata: read`; installed on org with access to all admin-managed repos
-- [ ] **GATE-11b**: Installation-token retrieval implemented — JWT signed with private key, exchanged for installation token, cached in-process for 50 minutes; on cache miss, regenerate
+- [x] **GATE-11b**: Installation-token retrieval implemented — JWT signed with private key, exchanged for installation token, cached in-process for 50 minutes; on cache miss, regenerate
 - [x] **ENV-G01**: GitHub App credentials in App Hosting secrets: `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY` (PEM), `GITHUB_APP_INSTALLATION_ID`
 
 ---

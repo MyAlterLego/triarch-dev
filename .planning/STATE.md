@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-04T15:00:35.600Z"
+last_updated: "2026-05-04T15:01:25.739Z"
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 24
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Triarch Dev Admin — Project State
@@ -76,6 +76,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 - [Phase 03-slack-interactive-approval]: vitest.config.ts added to resolve @/ alias for test imports (Rule 3 fix)
 - [Phase 04-github-app-promotion]: promotionDispatchedAt + promotionDispatchedBy columns nullable — legacy rows and dev-only releases keep NULL; DB push deferred to Mike post-merge per Phase 01-01 and 02-01 precedent
 - [Phase 04]: RUNTIME-only availability (no field) for GitHub App secrets in apphosting.yaml — matches Phase 3 Slack pattern
+- [Phase 04-02]: JWT iat=now-60s, exp=now+9min: 60-sec past-skew handles clock drift; 1-min margin under GitHub's 10-min ceiling
+- [Phase 04-02]: 50-min installation token TTL (not 60-min) — 10-min safety margin under GitHub's lifetime; single-flight latch prevents concurrent JWT signing
 
 ## Stopped At
 
