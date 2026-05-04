@@ -9,6 +9,7 @@
 // RS256 signing uses Node built-in `crypto` — no new dependency.
 
 import crypto from 'node:crypto';
+import { getSecret } from '@myalterlego/secrets';
 
 type CachedToken = { token: string; expiresAt: number };
 
@@ -24,25 +25,40 @@ function b64url(buf: Buffer | string): string {
   return b.toString('base64url');
 }
 
-function readEnv(): { appId: string; privateKey: string; installationId: string } {
-  const appId = process.env.GITHUB_APP_ID;
-  const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
-  const installationId = process.env.GITHUB_APP_INSTALLATION_ID;
+async function readVaultEnv(): Promise<{ appId: string; privateKey: string; installationId: string }> {
   const missing: string[] = [];
-  if (!appId) missing.push('GITHUB_APP_ID');
-  if (!privateKey) missing.push('GITHUB_APP_PRIVATE_KEY');
-  if (!installationId) missing.push('GITHUB_APP_INSTALLATION_ID');
+  let appId: string;
+  let privateKeyRaw: string;
+  let installationId: string;
+  try {
+    appId = await getSecret('GITHUB_APP_ID');
+  } catch {
+    missing.push('GITHUB_APP_ID');
+    appId = '';
+  }
+  try {
+    privateKeyRaw = await getSecret('GITHUB_APP_PRIVATE_KEY');
+  } catch {
+    missing.push('GITHUB_APP_PRIVATE_KEY');
+    privateKeyRaw = '';
+  }
+  try {
+    installationId = await getSecret('GITHUB_APP_INSTALLATION_ID');
+  } catch {
+    missing.push('GITHUB_APP_INSTALLATION_ID');
+    installationId = '';
+  }
   if (missing.length) {
     throw new Error(`[github-app] missing required env vars: ${missing.join(', ')}`);
   }
   // PRIVATE_KEY may arrive with literal "\n" sequences when piped through Firebase secrets.
   // Normalize to actual newlines so the PEM parser succeeds.
-  const normalizedKey = privateKey!.replace(/\\n/g, '\n');
-  return { appId: appId!, privateKey: normalizedKey, installationId: installationId! };
+  const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
+  return { appId, privateKey, installationId };
 }
 
-export function signAppJwt(now = Math.floor(Date.now() / 1000)): string {
-  const { appId, privateKey } = readEnv();
+export async function signAppJwt(now = Math.floor(Date.now() / 1000)): Promise<string> {
+  const { appId, privateKey } = await readVaultEnv();
   const header = { alg: 'RS256', typ: 'JWT' };
   const payload = {
     iat: now - JWT_PAST_SKEW_S,
@@ -60,8 +76,8 @@ export function signAppJwt(now = Math.floor(Date.now() / 1000)): string {
 }
 
 async function exchangeForInstallationToken(): Promise<string> {
-  const { installationId } = readEnv();
-  const jwt = signAppJwt();
+  const { installationId } = await readVaultEnv();
+  const jwt = await signAppJwt();
   const res = await fetch(`https://api.github.com/app/installations/${installationId}/access_tokens`, {
     method: 'POST',
     headers: {

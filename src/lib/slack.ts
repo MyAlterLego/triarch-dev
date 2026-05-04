@@ -1,9 +1,18 @@
 import { signPayload } from '@/lib/slack-crypto';
+import { getSecret } from '@myalterlego/secrets';
 
-const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
+// Channel envs are NOT secrets — keep as process.env (apphosting.yaml plain values).
 const SLACK_BUG_CHANNEL = process.env.SLACK_BUG_CHANNEL ?? '#triarch-bugs';
 const SLACK_FEATURE_CHANNEL = process.env.SLACK_FEATURE_CHANNEL ?? '#triarch-features';
 const SLACK_RELEASE_APPROVAL_CHANNEL = process.env.SLACK_RELEASE_APPROVAL_CHANNEL ?? '#release-approvals';
+
+async function getBotToken(): Promise<string | null> {
+  try {
+    return await getSecret('SLACK_BOT_TOKEN');
+  } catch {
+    return null;
+  }
+}
 
 interface SlackMessage {
   channel: string;
@@ -12,7 +21,8 @@ interface SlackMessage {
 }
 
 async function postSlackMessage(message: SlackMessage): Promise<{ ok: boolean; ts?: string; error?: string }> {
-  if (!SLACK_BOT_TOKEN) {
+  const token = await getBotToken();
+  if (!token) {
     console.warn('[slack] SLACK_BOT_TOKEN not set — skipping notification');
     return { ok: false, error: 'no_token' };
   }
@@ -20,7 +30,7 @@ async function postSlackMessage(message: SlackMessage): Promise<{ ok: boolean; t
   const res = await fetch('https://slack.com/api/chat.postMessage', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(message),
@@ -39,14 +49,15 @@ export async function postSlackThreadedReply(input: {
   thread_ts: string;
   text: string;
 }): Promise<{ ok: boolean; ts?: string; error?: string }> {
-  if (!SLACK_BOT_TOKEN) {
+  const token = await getBotToken();
+  if (!token) {
     console.warn('[slack] SLACK_BOT_TOKEN not set - skipping threaded reply');
     return { ok: false, error: 'no_token' };
   }
   const res = await fetch('https://slack.com/api/chat.postMessage', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -73,14 +84,15 @@ export async function updateSlackMessage(input: {
   text: string;
   blocks?: unknown[];
 }): Promise<{ ok: boolean; error?: string }> {
-  if (!SLACK_BOT_TOKEN) {
+  const token = await getBotToken();
+  if (!token) {
     console.warn('[slack] SLACK_BOT_TOKEN not set - skipping message update');
     return { ok: false, error: 'no_token' };
   }
   const res = await fetch('https://slack.com/api/chat.update', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -262,14 +274,14 @@ export async function notifyReleaseApproved(input: {
         text: { type: 'plain_text', text: 'Approve & Promote' },
         style: 'primary',
         action_id: 'slack_promote',
-        value: signPayload(input.releaseId, 'promote'),
+        value: await signPayload(input.releaseId, 'promote'),
       },
       {
         type: 'button',
         text: { type: 'plain_text', text: 'Reject' },
         style: 'danger',
         action_id: 'slack_reject',
-        value: signPayload(input.releaseId, 'reject'),
+        value: await signPayload(input.releaseId, 'reject'),
       },
     ],
   });

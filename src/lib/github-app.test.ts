@@ -1,11 +1,19 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import crypto from 'node:crypto';
+
+vi.mock('@myalterlego/secrets', () => ({
+  getSecret: vi.fn(),
+}));
+
 import {
   signAppJwt,
   getInstallationToken,
   dispatchWorkflow,
   resetTokenCacheForTests,
 } from '@/lib/github-app';
+import { getSecret } from '@myalterlego/secrets';
+
+const mockedGetSecret = vi.mocked(getSecret);
 
 let testPrivateKey: string;
 let testPublicKey: string;
@@ -21,9 +29,13 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  process.env.GITHUB_APP_ID = '123456';
-  process.env.GITHUB_APP_PRIVATE_KEY = testPrivateKey;
-  process.env.GITHUB_APP_INSTALLATION_ID = '78910';
+  mockedGetSecret.mockReset();
+  mockedGetSecret.mockImplementation(async (key) => {
+    if (key === 'GITHUB_APP_ID') return '123456';
+    if (key === 'GITHUB_APP_PRIVATE_KEY') return testPrivateKey;
+    if (key === 'GITHUB_APP_INSTALLATION_ID') return '78910';
+    throw new Error(`unexpected key ${key}`);
+  });
   resetTokenCacheForTests();
 });
 
@@ -33,8 +45,8 @@ afterEach(() => {
 });
 
 describe('signAppJwt', () => {
-  it('produces a 3-part RS256 JWT with iss=app_id and exp - iat <= 600', () => {
-    const jwt = signAppJwt(1_700_000_000);
+  it('produces a 3-part RS256 JWT with iss=app_id and exp - iat <= 600', async () => {
+    const jwt = await signAppJwt(1_700_000_000);
     const parts = jwt.split('.');
     expect(parts.length).toBe(3);
     const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
@@ -43,12 +55,32 @@ describe('signAppJwt', () => {
     expect(payload.iss).toBe('123456');
     expect(payload.iat).toBeLessThanOrEqual(1_700_000_000);
     expect(payload.exp - payload.iat).toBeLessThanOrEqual(600);
-    // Verify the signature with the public key (proves RS256 signing actually happened).
     const verifier = crypto.createVerify('RSA-SHA256');
     verifier.update(`${parts[0]}.${parts[1]}`);
     verifier.end();
     const sigBuf = Buffer.from(parts[2], 'base64url');
     expect(verifier.verify(testPublicKey, sigBuf)).toBe(true);
+  });
+
+  it('PEM with literal \\n is normalized to real newlines', async () => {
+    mockedGetSecret.mockImplementation(async (key) => {
+      if (key === 'GITHUB_APP_ID') return '123456';
+      if (key === 'GITHUB_APP_PRIVATE_KEY') return testPrivateKey.replace(/\n/g, '\\n');
+      if (key === 'GITHUB_APP_INSTALLATION_ID') return '78910';
+      throw new Error(`unexpected key ${key}`);
+    });
+    const jwt = await signAppJwt(1_700_000_000);
+    expect(jwt.split('.').length).toBe(3);
+    const verifier = crypto.createVerify('RSA-SHA256');
+    const parts = jwt.split('.');
+    verifier.update(`${parts[0]}.${parts[1]}`);
+    verifier.end();
+    expect(verifier.verify(testPublicKey, Buffer.from(parts[2], 'base64url'))).toBe(true);
+  });
+
+  it('vault read failure bubbles up as missing-env error', async () => {
+    mockedGetSecret.mockRejectedValue(new Error('PERMISSION_DENIED'));
+    await expect(signAppJwt(1_700_000_000)).rejects.toThrow(/missing required env vars/);
   });
 });
 
@@ -64,7 +96,6 @@ describe('getInstallationToken', () => {
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toBe('https://api.github.com/app/installations/78910/access_tokens');
     expect(opts.method).toBe('POST');
-    // Authorization header is "Bearer <jwt>" — JWT bytes start with eyJ when b64url-encoded.
     expect((opts.headers as Record<string, string>).Authorization).toMatch(/^Bearer eyJ/);
     expect((opts.headers as Record<string, string>).Accept).toBe('application/vnd.github+json');
   });
@@ -100,7 +131,6 @@ describe('getInstallationToken', () => {
     vi.stubGlobal('fetch', mockFetch);
     const p1 = getInstallationToken();
     const p2 = getInstallationToken();
-    // Both calls in flight; mock has not resolved yet.
     resolveFetch(new Response(JSON.stringify({ token: 'ghs_only', expires_at: 'x' }), { status: 201 }));
     const [t1, t2] = await Promise.all([p1, p2]);
     expect(t1).toBe('ghs_only');
@@ -119,8 +149,8 @@ describe('getInstallationToken', () => {
     } catch (e) {
       const msg = (e as Error).message;
       expect(msg).toContain('Bad credentials');
-      expect(msg).not.toMatch(/eyJ[A-Za-z0-9_-]{20,}/); // no JWT prefix in error
-      expect(msg).not.toContain('-----BEGIN');           // no PEM in error
+      expect(msg).not.toMatch(/eyJ[A-Za-z0-9_-]{20,}/);
+      expect(msg).not.toContain('-----BEGIN');
     }
   });
 
@@ -135,9 +165,11 @@ describe('getInstallationToken', () => {
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
-  it('missing env vars: throws listing all missing names', async () => {
-    delete process.env.GITHUB_APP_PRIVATE_KEY;
-    delete process.env.GITHUB_APP_INSTALLATION_ID;
+  it('missing vault keys: throws listing all missing names', async () => {
+    mockedGetSecret.mockImplementation(async (key) => {
+      if (key === 'GITHUB_APP_ID') return '123456';
+      throw new Error('PERMISSION_DENIED');
+    });
     await expect(getInstallationToken()).rejects.toThrow(/GITHUB_APP_PRIVATE_KEY/);
     try {
       await getInstallationToken();
@@ -149,8 +181,12 @@ describe('getInstallationToken', () => {
   });
 
   it('PEM newline normalization: literal \\n strings are converted to real newlines', async () => {
-    // Escape the newlines to simulate Firebase secret serialization
-    process.env.GITHUB_APP_PRIVATE_KEY = testPrivateKey.replace(/\n/g, '\\n');
+    mockedGetSecret.mockImplementation(async (key) => {
+      if (key === 'GITHUB_APP_ID') return '123456';
+      if (key === 'GITHUB_APP_PRIVATE_KEY') return testPrivateKey.replace(/\n/g, '\\n');
+      if (key === 'GITHUB_APP_INSTALLATION_ID') return '78910';
+      throw new Error(`unexpected key ${key}`);
+    });
     const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ token: 'ghs_pem_ok', expires_at: 'x' }), { status: 201 })
     );
@@ -173,7 +209,6 @@ describe('dispatchWorkflow', () => {
     expect(dispatchCall[0]).toBe('https://api.github.com/repos/MyAlterLego/darksouls-rpg/actions/workflows/deploy-prod.yml/dispatches');
     expect(dispatchCall[1].method).toBe('POST');
     expect(JSON.parse(dispatchCall[1].body as string)).toEqual({ ref: 'main', inputs: { tag: 'v0.4.2' } });
-    // Log line must mention the workflow but NOT the token.
     const allLogs = logSpy.mock.calls.flat().join(' ');
     expect(allLogs).toContain('dispatched deploy-prod.yml');
     expect(allLogs).not.toContain('ghs_dispatch');
@@ -181,8 +216,6 @@ describe('dispatchWorkflow', () => {
   });
 
   it('non-204 status: throws with body but without token', async () => {
-    // First call: token exchange succeeds, dispatch fails with 404.
-    // The token gets cached after the first exchange, so the second call only needs the dispatch mock.
     const mockFetch = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ token: 'ghs_dispatch_fail', expires_at: 'x' }), { status: 201 }))
       .mockResolvedValueOnce(new Response('{"message":"Workflow not found"}', { status: 404 }))

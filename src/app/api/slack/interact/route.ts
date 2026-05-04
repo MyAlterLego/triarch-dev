@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   // STEP 3: Verify Slack signature — BEFORE any payload interpretation or DB access.
   // A 5-minute replay window is enforced inside verifySlackSignature.
   // On failure (bad_signature, stale, malformed, no_secret) → 401.
-  const sigResult = verifySlackSignature({ rawBody, timestamp, signature });
+  const sigResult = await verifySlackSignature({ rawBody, timestamp, signature });
   if (!sigResult.ok) {
     return NextResponse.json({ error: sigResult.reason }, { status: 401 });
   }
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
   // STEP 8: Verify the embedded button value signature — BEFORE release DB lookup.
   // This defends against button-value tampering (GATE-08).
   const expected = ACTION_TO_EXPECTED[actionId as ActionId];
-  const verifiedPayload = verifyPayload(packedValue, expected);
+  const verifiedPayload = await verifyPayload(packedValue, expected);
   if (!verifiedPayload.ok) {
     return NextResponse.json({ error: 'invalid_payload_signature' }, { status: 401 });
   }

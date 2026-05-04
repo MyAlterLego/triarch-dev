@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { getSecret } from '@myalterlego/secrets';
 
 /**
  * Converts a Buffer to base64url encoding (RFC 4648 §5, no padding).
@@ -39,12 +40,16 @@ function safeEqB64url(a: string, b: string): boolean {
  * Packed format: `${releaseId}.${nonce}.${sig}`
  * where sig = base64url(HMAC-SHA256(SLACK_PAYLOAD_SECRET, `${releaseId}:${action}:${nonce}`))
  *
- * Reads SLACK_PAYLOAD_SECRET at call time (not module-load time) — env is
- * populated at runtime via apphosting.yaml secret references.
+ * Reads SLACK_PAYLOAD_SECRET from the central vault (@myalterlego/secrets) on each
+ * call. The vault client caches for 300s; falls back to process.env on vault failure.
  */
-export function signPayload(releaseId: string, action: string, nonce?: string): string {
-  const secret = process.env.SLACK_PAYLOAD_SECRET;
-  if (!secret) throw new Error('SLACK_PAYLOAD_SECRET not set');
+export async function signPayload(releaseId: string, action: string, nonce?: string): Promise<string> {
+  let secret: string;
+  try {
+    secret = await getSecret('SLACK_PAYLOAD_SECRET');
+  } catch {
+    throw new Error('SLACK_PAYLOAD_SECRET not set');
+  }
   const n = nonce ?? randomBytes(8).toString('hex');
   const sig = b64url(
     createHmac('sha256', secret).update(`${releaseId}:${action}:${n}`).digest()
@@ -62,9 +67,13 @@ export type VerifyPayloadResult =
  * Splits on '.', recomputes the HMAC for the given expectedAction, and
  * compares using timingSafeEqual to prevent timing-based forgeries.
  */
-export function verifyPayload(packed: string, expectedAction: string): VerifyPayloadResult {
-  const secret = process.env.SLACK_PAYLOAD_SECRET;
-  if (!secret) return { ok: false, reason: 'no_secret' };
+export async function verifyPayload(packed: string, expectedAction: string): Promise<VerifyPayloadResult> {
+  let secret: string;
+  try {
+    secret = await getSecret('SLACK_PAYLOAD_SECRET');
+  } catch {
+    return { ok: false, reason: 'no_secret' };
+  }
   const parts = packed.split('.');
   if (parts.length !== 3) return { ok: false, reason: 'malformed' };
   const [releaseId, nonce, sig] = parts;
@@ -91,14 +100,18 @@ export type VerifySignatureResult =
  *
  * `opts.now` is injectable for deterministic tests (defaults to Date.now()).
  */
-export function verifySlackSignature(opts: {
+export async function verifySlackSignature(opts: {
   rawBody: string;
   timestamp: string | null;
   signature: string | null;
   now?: number;
-}): VerifySignatureResult {
-  const secret = process.env.SLACK_SIGNING_SECRET;
-  if (!secret) return { ok: false, reason: 'no_secret' };
+}): Promise<VerifySignatureResult> {
+  let secret: string;
+  try {
+    secret = await getSecret('SLACK_SIGNING_SECRET');
+  } catch {
+    return { ok: false, reason: 'no_secret' };
+  }
   if (!opts.timestamp || !opts.signature) return { ok: false, reason: 'malformed' };
   const tsNum = Number(opts.timestamp);
   if (!Number.isFinite(tsNum)) return { ok: false, reason: 'malformed' };
