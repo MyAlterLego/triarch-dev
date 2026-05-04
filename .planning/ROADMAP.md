@@ -67,7 +67,12 @@ Build order: schema and access control first (everything depends on them), then 
   4. Project members with role `admin` see "Approve for Production" and "Reject" buttons when status = `dev`; both write audit rows
   5. Approval transitions release status `dev → approved` atomically with the audit insert; rejection transitions `dev → rejected`
   6. Re-approving an already-approved release is a no-op with a clear UI message; rejected releases cannot be re-approved
-**Plans**: TBD
+**Plans:** 5 plans
+- [ ] 02-01-PLAN.md — Schema delta: release_approvals.reason column + Drizzle relations() declarations + 0008 migration
+- [ ] 02-02-PLAN.md — Customer layout + page server component (membership 404-no-leak) + shared types + placeholder client
+- [ ] 02-03-PLAN.md — Feedback API endpoints (POST + DELETE with 24h author window)
+- [ ] 02-04-PLAN.md — Approve + Reject API endpoints with atomic transactions + idempotency + REJECT-01 enforcement
+- [ ] 02-05-PLAN.md — Toast component + pagination GET endpoint + full ReleasesClient (replaces Plan 02 placeholder)
 
 ### Phase 3: Slack Interactive Approval
 **Goal**: Approval action sends a real Slack message with interactive buttons; the callback path is signature-verified and securely identifies the release.
@@ -116,7 +121,7 @@ Build order: schema and access control first (everything depends on them), then 
 |-------|----------------|--------|-----------|
 | 1. Schema + Membership Migration | 4/4 | Complete   | 2026-05-03 |
 | 1.1. Membership Enforcement Audit | 5/6 | Complete    | 2026-05-03 |
-| 2. Customer Releases Page | 0/0 | Not started | - |
+| 2. Customer Releases Page | 0/5 | Ready to execute | - |
 | 3. Slack Interactive Approval | 0/0 | Not started | - |
 | 4. GitHub App Promotion | 0/0 | Not started | - |
 | 5. Round-trip + shared-workflows + Pilot | 0/0 | Not started | - |
