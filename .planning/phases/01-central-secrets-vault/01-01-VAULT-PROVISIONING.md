@@ -70,3 +70,52 @@ deleted after Step 9).
 | GITHUB_APP_PRIVATE_KEY | `firebase apphosting:secrets:access` (triarch-dev-website) | 1676 |
 | GITHUB_APP_INSTALLATION_ID | `firebase apphosting:secrets:access` (triarch-dev-website) | 11 |
 | SLACK_USER_MAP | hand-built JSON from `src/lib/slack-identity.ts` | 42 |
+
+## Step 6 — Secrets created in vault
+
+```bash
+$ gcloud secrets list --project=triarch-vault --format="value(name)" | sort
+GITHUB_APP_ID
+GITHUB_APP_INSTALLATION_ID
+GITHUB_APP_PRIVATE_KEY
+SLACK_BOT_TOKEN
+SLACK_PAYLOAD_SECRET
+SLACK_SIGNING_SECRET
+SLACK_USER_MAP
+```
+
+All 7 secrets created with `--replication-policy=automatic` (Google-managed
+multi-region per CONTEXT.md D-03) and labels
+`managed-by=v2-0-phase-1,key-type=shared-credential`.
+
+## Step 7 — Versions added
+
+```bash
+$ for KEY in SLACK_BOT_TOKEN SLACK_SIGNING_SECRET SLACK_PAYLOAD_SECRET \
+             GITHUB_APP_ID GITHUB_APP_PRIVATE_KEY GITHUB_APP_INSTALLATION_ID SLACK_USER_MAP; do
+    gcloud secrets versions list "$KEY" --project=triarch-vault --limit=1 --format="value(name,state)"
+  done
+SLACK_BOT_TOKEN                1    enabled
+SLACK_SIGNING_SECRET           1    enabled
+SLACK_PAYLOAD_SECRET           1    enabled
+GITHUB_APP_ID                  1    enabled
+GITHUB_APP_PRIVATE_KEY         1    enabled
+GITHUB_APP_INSTALLATION_ID     1    enabled
+SLACK_USER_MAP                 1    enabled
+```
+
+## Step 8 — Round-trip verification
+
+Read `SLACK_USER_MAP` via `gcloud secrets versions access latest`:
+
+```bash
+$ gcloud secrets versions access latest --secret=SLACK_USER_MAP --project=triarch-vault
+{"U0AJM4MP2N6":"mike@triarchsecurity.com"}
+```
+
+End-to-end vault read confirmed for the only secret with a non-sensitive
+known value.
+
+## Step 9 — Cleanup
+
+`/tmp/vault-secret-values/` removed. No captured secret files remain on disk.
