@@ -124,7 +124,7 @@ Build order: schema and access control first (everything depends on them), then 
 **Plans:** 2/4 plans executed
 - [x] 05-01-PLAN.md — POST /api/releases/promoted endpoint + Vitest suite (idempotent + atomic round-trip ingest)
 - [x] 05-02-PLAN.md — Release timeline view component + integration into ReleasesClient (lifecycle visualization)
-- [ ] 05-03-PLAN.md — Onboarding runbook (docs/onboarding-projects.md + planning archive copy + CLAUDE.md reference)
+- [x] 05-03-PLAN.md — Onboarding runbook (docs/onboarding-projects.md + planning archive copy + CLAUDE.md reference)
 - [ ] 05-04-PLAN.md — Master 05-HUMAN-UAT.md (consolidates Phase 2/3/4 deferred items + Phase 5 cross-repo + Truth+Treason E2E pilot; human checkpoint gate)
 
 ## Progress

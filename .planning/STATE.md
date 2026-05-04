@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.14.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-04T15:31:57.134Z"
+last_updated: "2026-05-04T15:36:47.071Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 28
-  completed_plans: 26
+  completed_plans: 27
 ---
 
 # Triarch Dev Admin — Project State
@@ -84,6 +84,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-03 — scope reset post-audit)
 - [Phase 05-round-trip-+-shared-workflows+pilot]: format.ts shared module extracted from ReleasesClient for formatRelativeTime/formatDeployedAt — avoids circular import from Timeline.tsx into 800-line client component
 - [Phase 05-round-trip-+-shared-workflows+pilot]: pairedProd only populated for env='dev' rows — prod rows surface via dev row's pairedProd field to avoid double-listing
 - [Phase 05-01]: dev-row lookup done outside transaction; idempotency short-circuit before transaction opens; returns 200 immediately on prod row existence check
+- [Phase 05-03]: CLAUDE.md created from scratch (file was absent) — admin project now has project-level conventions including onboarding runbook link
+- [Phase 05-03]: Dual-location runbook pattern: canonical at docs/onboarding-projects.md + byte-identical planning archive via cp
 
 ## Stopped At
 

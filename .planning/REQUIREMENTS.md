@@ -130,7 +130,7 @@ Close the loop: shared-workflows reports both dev and prod deploys; admin render
 - [ ] **WORKFLOW-01**: `shared-workflows` repo `ci-cd.yml` notify step (or new dedicated step) POSTs to `${ADMIN_API_URL}/api/platform/ingest/release-logs` with `env=dev`, version, commit, deployed_at; uses CI service token from `secrets.ADMIN_API_TOKEN`
 - [ ] **WORKFLOW-02**: `shared-workflows` repo `deploy-prod.yml` notify step POSTs to `${ADMIN_API_URL}/api/releases/promoted` with `{project, version, commit, deployed_at}`; same auth
 - [ ] **PILOT-01**: Truth+Treason consumes the updated shared-workflows; first end-to-end run promotes a real release through the full UI → Slack → GitHub App → round-trip path; success criteria documented in milestone audit
-- [ ] **PILOT-02**: After pilot success, runbook for onboarding a new project to the gating workflow added under `Plans/` or admin docs
+- [x] **PILOT-02**: After pilot success, runbook for onboarding a new project to the gating workflow added under `Plans/` or admin docs
 
 ---
 
