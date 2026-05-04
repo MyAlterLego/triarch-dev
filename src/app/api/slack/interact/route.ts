@@ -4,7 +4,7 @@ import { releaseLogs, releaseApprovals } from '@/db/schema';
 import { and, desc, eq } from 'drizzle-orm';
 import { verifySlackSignature, verifyPayload } from '@/lib/slack-crypto';
 import { resolveSlackUserEmail } from '@/lib/slack-identity';
-import { approveRelease, rejectRelease } from '@/lib/release-actions';
+import { rejectRelease } from '@/lib/release-actions';
 import { promoteAndAudit } from '@/lib/release-promotion';
 import { getActionHandler } from '@/lib/slack-actions';
 import type { SlackInteractivePayload } from '@/lib/slack-actions';
@@ -129,12 +129,17 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // STEP 11: Stale-message guard — if already in terminal state, return ephemeral
-  // update without double-writing. Uses releaseApprovals to surface the original actor.
+  // STEP 11: Stale-message guard — release is in a TERMINAL state.
+  // Slack flow semantics:
+  //   - status='dev'      → customer hasn't approved yet (Slack message shouldn't have fired; if it did, neither button is valid)
+  //   - status='approved' → customer approved; staff Slack click promote/reject is the next step (NOT terminal)
+  //   - status='promoted' → workflow dispatched + completed; terminal
+  //   - status='rejected' → terminal
   const wantsApprove = actionId === 'slack_promote';
   const wantsReject = actionId === 'slack_reject';
+  const isTerminal = release.status === 'promoted' || release.status === 'rejected';
 
-  if ((wantsApprove && release.status === 'approved') || (wantsReject && release.status === 'rejected')) {
+  if (isTerminal) {
     const [existing] = await db
       .select()
       .from(releaseApprovals)
@@ -147,9 +152,9 @@ export async function POST(req: NextRequest) {
       .orderBy(desc(releaseApprovals.approvedAt))
       .limit(1);
 
-    const verb = wantsApprove ? 'promoted' : 'rejected';
     const date = existing?.approvedAt?.toISOString().slice(0, 10) ?? 'earlier';
     const actor = existing?.approverEmail ?? 'someone';
+    const verb = release.status === 'promoted' ? 'promoted' : 'rejected';
 
     return NextResponse.json({
       response_type: 'ephemeral',
@@ -160,7 +165,7 @@ export async function POST(req: NextRequest) {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: wantsApprove
+            text: release.status === 'promoted'
               ? `:white_check_mark: *Already promoted by ${actor} on ${date}*`
               : `:x: *Already rejected by ${actor} on ${date}*`,
           },
@@ -169,21 +174,19 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // STEP 13 + 14: Dispatch to shared release-actions helpers (ipAddress/userAgent captured at STEP 6)
+  // STEP 13 + 14: Dispatch (ipAddress/userAgent captured at STEP 6).
+  // slack_promote on a customer-approved release → fire workflow_dispatch + write promotion audit columns.
+  // (Customer's approve already happened on the customer page; we do NOT re-call approveRelease.)
   if (wantsApprove) {
-    const result = await approveRelease({ release, approverEmail: email, ipAddress, userAgent });
-    if (!result.ok) {
+    if (release.status !== 'approved') {
       return NextResponse.json({
         response_type: 'ephemeral',
         replace_original: false,
-        text: result.message,
+        text: `Cannot promote: release status is "${release.status}", expected "approved". Customer must approve first on the releases page.`,
       });
     }
-    // Phase 4: trigger background promotion dispatch (fire-and-forget).
-    // Slack 3-second rule: we MUST return 200 within 3s; the dispatch happens after the response.
-    // Guarded by !alreadyApproved to mirror Phase 3's idempotency pattern - re-clicks do not re-dispatch.
-    // The promoteAndAudit function never throws explicitly; the .catch is a defense for unexpected DB errors.
-    if (!result.alreadyApproved && payload.channel?.id && payload.message?.ts) {
+    // Fire-and-forget promotion dispatch. Slack 3-second rule: respond before any GitHub API calls.
+    if (payload.channel?.id && payload.message?.ts) {
       const channelId = payload.channel.id;
       const messageTs = payload.message.ts;
       promoteAndAudit({

@@ -17,10 +17,15 @@ const PAYLOAD_SEC = 'test_payload_secret';
 
 const approveMock = vi.fn();
 const rejectMock = vi.fn();
+const promoteAndAuditMock = vi.fn();
 
 vi.mock('@/lib/release-actions', () => ({
   approveRelease: (...args: unknown[]) => approveMock(...args),
   rejectRelease: (...args: unknown[]) => rejectMock(...args),
+}));
+
+vi.mock('@/lib/release-promotion', () => ({
+  promoteAndAudit: (...args: unknown[]) => promoteAndAuditMock(...args),
 }));
 
 // ─── Mock: db ─────────────────────────────────────────────────────────────────
@@ -118,6 +123,8 @@ function payloadBody(
     type: 'block_actions',
     user: { id: userId, name: 'mike', username: 'mike' },
     actions: [{ action_id: actionId, value, block_id: `release_actions_rel-uuid` }],
+    channel: { id: 'C_RELEASE_APPROVALS', name: 'release-approvals' },
+    message: { ts: '1714000000.000100' },
   };
   return new URLSearchParams({ payload: JSON.stringify(p) }).toString();
 }
@@ -137,9 +144,11 @@ beforeEach(() => {
 
   approveMock.mockReset();
   rejectMock.mockReset();
+  promoteAndAuditMock.mockReset();
   resolveMock.mockReset();
 
   resolveMock.mockReturnValue('mike@triarchsecurity.com');
+  promoteAndAuditMock.mockResolvedValue({ ok: true });
   approveMock.mockResolvedValue({
     ok: true,
     alreadyApproved: false,
@@ -274,29 +283,46 @@ describe('POST /api/slack/interact', () => {
     expect(rejectMock).not.toHaveBeenCalled();
   });
 
-  it('slack_promote on a dev release → 200 replace_original; approveRelease called with resolved email', async () => {
+  it('slack_promote on a dev release (customer not yet approved) → 200 ephemeral "Cannot promote"; promoteAndAudit not called', async () => {
     const { POST } = await import('@/app/api/slack/interact/route');
+    // dbSelectResult defaults to fakeRelease with status='dev' — see beforeEach
+    const body = payloadBody('slack_promote', packedValue('rel-uuid', 'promote'));
+    const req = buildSignedRequest(body);
+    const res = await POST(req as never);
+    expect(res.status).toBe(200);
+    const json = await res.json() as Record<string, unknown>;
+    expect(json.response_type).toBe('ephemeral');
+    expect((json.text as string).toLowerCase()).toContain('cannot promote');
+    expect(approveMock).not.toHaveBeenCalled();
+    expect(promoteAndAuditMock).not.toHaveBeenCalled();
+  });
+
+  it('slack_promote on a customer-approved release → 200 replace_original "Promoted"; promoteAndAudit fired fire-and-forget', async () => {
+    const { POST } = await import('@/app/api/slack/interact/route');
+    dbSelectResult = [{ ...fakeRelease, status: 'approved' }]; // customer already approved on the page
     const body = payloadBody('slack_promote', packedValue('rel-uuid', 'promote'));
     const req = buildSignedRequest(body);
     const res = await POST(req as never);
     expect(res.status).toBe(200);
     const json = await res.json() as Record<string, unknown>;
     expect(json.replace_original).toBe(true);
-    expect(approveMock).toHaveBeenCalledOnce();
-    const callArgs = approveMock.mock.calls[0][0] as Record<string, unknown>;
-    expect(callArgs.approverEmail).toBe('mike@triarchsecurity.com');
+    expect((json.text as string).toLowerCase()).toContain('promoted');
+    expect(approveMock).not.toHaveBeenCalled();
+    expect(promoteAndAuditMock).toHaveBeenCalledOnce();
+    const callArgs = promoteAndAuditMock.mock.calls[0][0] as Record<string, unknown>;
+    expect(callArgs.actorEmail).toBe('mike@triarchsecurity.com');
     expect(callArgs.release).toMatchObject({ id: 'rel-uuid' });
   });
 
-  it('slack_promote on already-approved release → 200 ephemeral "Already promoted"; approveRelease not called', async () => {
+  it('slack_promote on already-promoted release → 200 ephemeral "Already promoted"; nothing fires', async () => {
     const { POST } = await import('@/app/api/slack/interact/route');
-    dbSelectResult = [{ ...fakeRelease, status: 'approved' }]; // release already approved
+    dbSelectResult = [{ ...fakeRelease, status: 'promoted' }]; // terminal state
     dbStaleResult = [
       {
         id: 'approval-1',
         approverEmail: 'alice@triarchsecurity.com',
         approvedAt: new Date('2026-05-01T12:00:00Z'),
-        decision: 'approved',
+        decision: 'promoted',
       },
     ];
     const body = payloadBody('slack_promote', packedValue('rel-uuid', 'promote'));
@@ -307,6 +333,7 @@ describe('POST /api/slack/interact', () => {
     expect(json.replace_original).toBe(true);
     expect((json.text as string).toLowerCase()).toContain('already');
     expect(approveMock).not.toHaveBeenCalled();
+    expect(promoteAndAuditMock).not.toHaveBeenCalled();
   });
 
   it('slack_reject on a dev release → 200 replace_original; rejectRelease called with fixed reason', async () => {
