@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import type { ReleaseRow, FeedbackItem, ApprovalItem, ReleaseStatus, UserRole } from './types';
 import Toast, { type ToastKind } from '@/components/Toast';
+import { formatDeployedAt, formatRelativeTime } from './format';
+import Timeline from './Timeline';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -41,30 +43,6 @@ const SHORT_SHA_LEN = 7;
 // ---------------------------------------------------------------------------
 // Helper functions
 // ---------------------------------------------------------------------------
-
-function formatDeployedAt(deployedAt: string | null, releasedAt: string): string {
-  const iso = deployedAt ?? releasedAt;
-  return new Date(iso).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-}
-
-function formatRelativeTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) return 'just now';
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin} min ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr} hr ago`;
-  const diffDays = Math.floor(diffHr / 24);
-  return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-}
 
 function canDeleteFeedback(item: FeedbackItem, currentUserEmail: string): boolean {
   return (
@@ -688,6 +666,9 @@ function ExpandedPanel({
           )}
         </p>
       )}
+
+      {/* Release lifecycle timeline */}
+      <Timeline release={release} />
 
       {/* Feedback list */}
       <div className="space-y-3">
