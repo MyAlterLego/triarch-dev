@@ -753,7 +753,7 @@ function ExpandedPanel({
               aria-label="Confirm release approval"
               className="flex items-center gap-1.5 px-3 py-2 text-sm bg-teal-700 text-white rounded-md border border-teal-500 min-w-[160px] justify-center"
             >
-              <span aria-live="polite">Confirm approval ({countdown}s&hellip;)</span>
+              <span aria-live="polite">Click to confirm ({countdown}s left)</span>
             </button>
           )}
 
