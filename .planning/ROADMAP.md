@@ -84,7 +84,12 @@ Build order: schema and access control first (everything depends on them), then 
   3. Each button payload includes a release_id reference signed with `SLACK_PAYLOAD_SECRET`
   4. `POST /api/slack/interact` verifies `X-Slack-Signature` header against the Slack signing secret with a 5-minute replay window; rejects invalid or stale requests with 401
   5. Handler validates the embedded payload signature and resolves the release before taking any action
-**Plans**: TBD
+**Plans:** 5 plans
+- [ ] 03-01-PLAN.md — Slack crypto helpers (signPayload / verifyPayload / verifySlackSignature) + SLACK_USER_MAP identity mapping
+- [ ] 03-02-PLAN.md — Extract release-actions.ts shared helpers (approveRelease / rejectRelease) + refactor Phase 2 routes to delegate
+- [ ] 03-03-PLAN.md — notifyReleaseApproved Slack message with signed buttons + wire fire-and-forget into Phase 2 approve route
+- [ ] 03-04-PLAN.md — POST /api/slack/interact handler with signature + payload verification + identity dispatch + Vitest suite
+- [ ] 03-05-PLAN.md — apphosting.yaml secret references + 03-HUMAN-UAT.md runbook + ENV-S01 human checkpoint
 
 ### Phase 4: GitHub App Promotion
 **Goal**: A successful Slack-button approval dispatches the project's `deploy-prod.yml` via GitHub App installation token (not a PAT).
@@ -122,6 +127,6 @@ Build order: schema and access control first (everything depends on them), then 
 | 1. Schema + Membership Migration | 4/4 | Complete   | 2026-05-03 |
 | 1.1. Membership Enforcement Audit | 5/6 | Complete    | 2026-05-03 |
 | 2. Customer Releases Page | 4/5 | In Progress|  |
-| 3. Slack Interactive Approval | 0/0 | Not started | - |
+| 3. Slack Interactive Approval | 0/5 | Planned | - |
 | 4. GitHub App Promotion | 0/0 | Not started | - |
 | 5. Round-trip + shared-workflows + Pilot | 0/0 | Not started | - |
