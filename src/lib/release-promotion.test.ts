@@ -9,13 +9,19 @@ vi.mock('@/lib/slack', () => ({
   updateSlackMessage: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
-// db mock - chainable select/update/where with controllable terminal results
+// db mock - chainable select/update/where with .set() args capture
 const mockSelect = vi.fn();
-const mockUpdate = vi.fn();
+const mockSetCapture = vi.fn();
+const mockUpdateWhere = vi.fn();
 vi.mock('@/lib/db', () => ({
   db: {
     select: () => ({ from: () => ({ where: mockSelect }) }),
-    update: () => ({ set: () => ({ where: mockUpdate }) }),
+    update: () => ({
+      set: (args: unknown) => {
+        mockSetCapture(args);
+        return { where: mockUpdateWhere };
+      },
+    }),
   },
 }));
 
@@ -27,7 +33,7 @@ const baseRelease = {
   id: 'rel-1',
   project: 'darksouls-rpg',
   version: 'v0.4.2',
-  // cast as any - the only fields promoteAndAudit reads are id, project, version
+  branch: 'feat/change-font',
 } as any;
 
 const baseInput = {
@@ -45,7 +51,7 @@ beforeEach(() => {
 describe('promoteAndAudit', () => {
   it('success path: dispatches, audits, posts :rocket: threaded reply, no chat.update', async () => {
     mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
-    mockUpdate.mockResolvedValue(undefined);
+    mockUpdateWhere.mockResolvedValue(undefined);
     (dispatchWorkflow as any).mockResolvedValue({ ok: true, status: 204 });
 
     const result = await promoteAndAudit(baseInput);
@@ -54,19 +60,19 @@ describe('promoteAndAudit', () => {
     expect(dispatchWorkflow).toHaveBeenCalledWith({
       owner: 'MyAlterLego',
       repo: 'darksouls-rpg',
-      workflowFile: 'deploy-prod.yml',
+      workflowFile: 'promote-branch.yml',
       ref: 'main',
-      inputs: { tag: 'v0.4.2' },
+      inputs: { branch: 'feat/change-font' },
     });
 
     // Audit update was called
-    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
 
     // Threaded reply mentions :rocket: and the workflow file
     expect(postSlackThreadedReply).toHaveBeenCalledTimes(1);
     const threadCall = (postSlackThreadedReply as any).mock.calls[0][0];
     expect(threadCall.text).toContain(':rocket:');
-    expect(threadCall.text).toContain('deploy-prod.yml');
+    expect(threadCall.text).toContain('promote-branch.yml');
     expect(threadCall.thread_ts).toBe('1700000000.000100');
 
     // chat.update NOT called on success
@@ -81,7 +87,7 @@ describe('promoteAndAudit', () => {
     expect(result.error).toContain('project repository not configured');
 
     expect(dispatchWorkflow).not.toHaveBeenCalled();
-    expect(mockUpdate).not.toHaveBeenCalled(); // audit NOT updated when project lookup fails before dispatch attempt
+    expect(mockUpdateWhere).not.toHaveBeenCalled(); // audit NOT updated when project lookup fails before dispatch attempt
 
     expect(postSlackThreadedReply).toHaveBeenCalledTimes(1);
     expect((postSlackThreadedReply as any).mock.calls[0][0].text).toContain(':warning:');
@@ -113,15 +119,15 @@ describe('promoteAndAudit', () => {
 
   it('dispatch throws (e.g. 404 from GitHub): audit columns STILL update, threaded reply + chat.update fire', async () => {
     mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
-    mockUpdate.mockResolvedValue(undefined);
-    (dispatchWorkflow as any).mockRejectedValue(new Error('[github-app] dispatch failed for MyAlterLego/darksouls-rpg deploy-prod.yml ref=main: 404 {"message":"Workflow not found"}'));
+    mockUpdateWhere.mockResolvedValue(undefined);
+    (dispatchWorkflow as any).mockRejectedValue(new Error('[github-app] dispatch failed for MyAlterLego/darksouls-rpg promote-branch.yml ref=main: 404 {"message":"Workflow not found"}'));
 
     const result = await promoteAndAudit(baseInput);
     expect(result.ok).toBe(false);
     expect(result.error).toContain('404');
 
     // Audit IS updated even on dispatch failure - records that an attempt happened
-    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
 
     // Threaded reply :warning:
     expect((postSlackThreadedReply as any).mock.calls[0][0].text).toContain(':warning:');
@@ -134,7 +140,7 @@ describe('promoteAndAudit', () => {
 
   it('dispatch error message truncated to 200 chars in threaded reply', async () => {
     mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
-    mockUpdate.mockResolvedValue(undefined);
+    mockUpdateWhere.mockResolvedValue(undefined);
     const longError = 'X'.repeat(500);
     (dispatchWorkflow as any).mockRejectedValue(new Error(longError));
 
@@ -148,12 +154,68 @@ describe('promoteAndAudit', () => {
 
   it('never throws - even when DB update fails', async () => {
     mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
-    mockUpdate.mockRejectedValue(new Error('DB connection lost'));
+    mockUpdateWhere.mockRejectedValue(new Error('DB connection lost'));
     (dispatchWorkflow as any).mockResolvedValue({ ok: true, status: 204 });
 
     // The promise should reject (DB throw bubbles up the await), but the caller wraps in .catch.
     // For now, we verify the function does NOT crash the test process - rejection is acceptable.
     await expect(promoteAndAudit(baseInput)).rejects.toThrow();
     // (The route.ts caller wraps in .catch; this is the contract.)
+  });
+
+  it('null branch falls back to "main" in dispatch inputs', async () => {
+    const releaseNoBranch = { ...baseRelease, branch: null };
+    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
+    mockUpdateWhere.mockResolvedValue(undefined);
+    (dispatchWorkflow as any).mockResolvedValue({ ok: true, status: 204 });
+
+    await promoteAndAudit({ ...baseInput, release: releaseNoBranch });
+
+    const dispatchCall = (dispatchWorkflow as any).mock.calls[0][0];
+    expect(dispatchCall.workflowFile).toBe('promote-branch.yml');
+    expect(dispatchCall.inputs.branch).toBe('main');
+    // No legacy `tag` field
+    expect(dispatchCall.inputs.tag).toBeUndefined();
+  });
+
+  it('writes Slack metadata via jsonb_set (preserves existing metadata fields)', async () => {
+    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
+    mockUpdateWhere.mockResolvedValue(undefined);
+    (dispatchWorkflow as any).mockResolvedValue({ ok: true, status: 204 });
+
+    await promoteAndAudit(baseInput);
+
+    // .set() was called once
+    expect(mockSetCapture).toHaveBeenCalledTimes(1);
+    const setArgs = mockSetCapture.mock.calls[0][0] as Record<string, unknown>;
+
+    // Audit columns still present (D-04 — keep promotionDispatchedAt/By)
+    expect(setArgs.promotionDispatchedAt).toBeInstanceOf(Date);
+    expect(setArgs.promotionDispatchedBy).toBe('mike@triarchsecurity.com');
+
+    // metadata is a Drizzle sql template (object), NOT a plain JS object replacement (Pitfall 1)
+    // The sql template tag returns an SQL chunk object — it is truthy and NOT a plain object literal.
+    expect(setArgs.metadata).toBeDefined();
+    expect(typeof setArgs.metadata).toBe('object');
+    // Coarse check: it must NOT be a plain { dispatch: ... } object — that would mean replace, not merge.
+    // sql tagged-template results have specific Drizzle internals; assert it has at least one drizzle-marker key.
+    const md = setArgs.metadata as Record<string, unknown>;
+    // Drizzle SQL chunks contain `queryChunks` or similar; the presence of a non-`dispatch` key proves it is the sql tag, not the plain object.
+    expect('dispatch' in md).toBe(false);
+  });
+
+  it('dispatch failure path STILL writes metadata + audit columns (Pitfall 1 guard on failure path)', async () => {
+    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
+    mockUpdateWhere.mockResolvedValue(undefined);
+    (dispatchWorkflow as any).mockRejectedValue(new Error('boom 500'));
+
+    const result = await promoteAndAudit(baseInput);
+    expect(result.ok).toBe(false);
+
+    // Audit was written even though dispatch threw
+    expect(mockSetCapture).toHaveBeenCalledTimes(1);
+    const setArgs = mockSetCapture.mock.calls[0][0] as Record<string, unknown>;
+    expect(setArgs.promotionDispatchedAt).toBeInstanceOf(Date);
+    expect(setArgs.metadata).toBeDefined();
   });
 });
