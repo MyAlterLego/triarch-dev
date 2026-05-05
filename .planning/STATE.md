@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
 status: executing
-stopped_at: "Completed 07.5-01-PLAN.md: scripts/provision-dev-dbs.sql created (ENV-01 code deliverable)"
-last_updated: "2026-05-05T19:25:32.069Z"
+stopped_at: Completed 07.5-02-PLAN.md — shared-workflows v4 deploy-firebase.yml + db-migrate.yml on feat/v4-environment-input branch
+last_updated: "2026-05-05T19:28:40.882Z"
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 37
-  completed_plans: 32
+  completed_plans: 33
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-04 — v2.0 milestone started)
 ## Current Position
 
 Phase: 07.5 (Dev Cluster + Admin Dev Backend) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 
 ## Active Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
@@ -101,6 +101,8 @@ Active decisions from v1.14.0 that carry forward into v2.0:
 - [Phase 07-06]: AdminSidebar is DB-driven: nav entry added via SQL INSERT not component edit (RESEARCH §10 + Pitfall 10)
 - [Phase 07-06]: SLACK_BOT_TOKEN does NOT need rotation on workspace reinstall unless Slack issues a new token (CONTEXT D-22)
 - [Phase 07.5-01]: No GRANT statements in provision-dev-dbs.sql (D-07): default admin role on dev cluster; per-DB roles deferred to v3
+- [Phase 07.5-dev-cluster-admin-dev-backend]: environment input default prod — backwards compat: callers omitting input get v3 behavior identical (D-21)
+- [Phase 07.5-dev-cluster-admin-dev-backend]: JOB_STATUS lifted to env: block in db-migrate.yml summary step — Phase 02-02 actionlint rule; tr -d newline on firebase secrets:access stdout — Pitfall 7 CRDB URI integrity; v4 NOT tagged in code plan — Mike tags after admin canary (RUNBOOK C-2)
 
 ### Pending Todos
 
@@ -114,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T19:25:32.067Z
-Stopped at: Completed 07.5-01-PLAN.md: scripts/provision-dev-dbs.sql created (ENV-01 code deliverable)
+Last session: 2026-05-05T19:28:40.881Z
+Stopped at: Completed 07.5-02-PLAN.md — shared-workflows v4 deploy-firebase.yml + db-migrate.yml on feat/v4-environment-input branch
 Resume file: None

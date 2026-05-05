@@ -155,7 +155,7 @@
   5. Phase 4 deferred UAT scenarios (clean / conflict / ci_failed / concurrency) are exercised against the new admin-dev backend and pass — closes `04-HUMAN-UAT.md`
 **Plans**: 5 plans
 - [x] 07.5-01-PLAN.md — scripts/provision-dev-dbs.sql (ENV-01)
-- [ ] 07.5-02-PLAN.md — shared-workflows v4: deploy-firebase.yml environment input + new db-migrate.yml (ENV-03)
+- [x] 07.5-02-PLAN.md — shared-workflows v4: deploy-firebase.yml environment input + new db-migrate.yml (ENV-03)
 - [ ] 07.5-03-PLAN.md — admin apphosting.yaml + apphosting.prod.yaml overlay split (ENV-02, ENV-04)
 - [ ] 07.5-04-PLAN.md — docs/onboarding-projects.md Step 11 — Dev Environment overlay + db-migrate.yml usage (ENV-04)
 - [ ] 07.5-05-PLAN.md — 07.5-PHASE-4-UAT-CLOSURE.md + 07.5-HUMAN-UAT.md fillable runbooks (ENV-05)
@@ -190,5 +190,5 @@
 | 5. Customer Page RC UI | v2.0 | 0/5 | Planned | - |
 | 6. promoteAndAudit Rewrite | v2.0 | 4/4 | Complete   | 2026-05-05 |
 | 7. OttoBot Dispatcher Hardening | v2.0 | 5/6 | In Progress|  |
-| 7.5. Dev Cluster + Admin Dev Backend | v2.0 | 1/5 | In Progress|  |
+| 7.5. Dev Cluster + Admin Dev Backend | v2.0 | 2/5 | In Progress|  |
 | 8. Truth+Treason E2E Pilot | v2.0 | 0/TBD | Not started | - |
