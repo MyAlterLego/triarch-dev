@@ -88,7 +88,11 @@
   1. Dispatching `promote-branch.yml` with `branch=feat/change-font` on a clean branch results in a successful rebase, CI run, and merge to main
   2. Dispatching `promote-branch.yml` on a branch with a merge conflict exits non-zero and returns the conflicting file list as workflow output
   3. Admin receives the success or conflict result via signed callback within the workflow run window — the callback payload includes branch, result, and (on conflict) file list
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 04-01-PLAN.md — promote_attempts schema + migration 0012 (WORKFLOW-05)
+- [ ] 04-02-PLAN.md — POST /api/platform/promote-callback endpoint + vitest (WORKFLOW-05)
+- [ ] 04-03-PLAN.md — promote-branch.yml workflow (4 jobs) + v3 tag on shared-workflows (WORKFLOW-04)
+- [ ] 04-04-PLAN.md — Manual UAT: clean / conflict / ci_failed / concurrent paths (WORKFLOW-04, WORKFLOW-05)
 
 ### Phase 5: Customer Page RC UI
 **Goal**: The customer releases page shows branches as independent RC groups with preview URLs and per-RC approve buttons, and surfaces conflict status without blocking the rest of the page
@@ -149,7 +153,7 @@
 | 1. Central Secrets Vault | v2.0 | 0/6 | Planned | - |
 | 2. shared-workflows Hardening | v2.0 | 0/4 | Planned | - |
 | 3. Schema + GitHub App Permissions | v2.0 | 0/TBD | Not started | - |
-| 4. promote-branch Workflow | v2.0 | 0/TBD | Not started | - |
+| 4. promote-branch Workflow | v2.0 | 0/4 | Planned | - |
 | 5. Customer Page RC UI | v2.0 | 0/TBD | Not started | - |
 | 6. promoteAndAudit Rewrite | v2.0 | 0/TBD | Not started | - |
 | 7. OttoBot Dispatcher Hardening | v2.0 | 0/TBD | Not started | - |
