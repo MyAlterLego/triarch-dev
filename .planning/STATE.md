@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
 status: executing
-stopped_at: Completed Phase 05 Plan 03 (05-03-PLAN.md)
-last_updated: "2026-05-05T16:27:50.324Z"
+stopped_at: Completed Phase 05 Plan 04 (05-04-PLAN.md)
+last_updated: "2026-05-05T16:36:49.896Z"
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 22
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-04 — v2.0 milestone started)
 ## Current Position
 
 Phase: 05 (Customer Page RC UI) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 
 ## Active Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
@@ -79,6 +79,8 @@ Active decisions from v1.14.0 that carry forward into v2.0:
 - [Phase 05-02]: Transitional stub in ReleasesClient flattens initialSections to preserve flat table render until Plan 05-04 accordion UI lands
 - [Phase 05-02]: conflict auto-clear (D-16) implemented in groupIntoSections pure helper — reused server+client
 - [Phase 05-customer-page-rc-ui]: vitest 4.x silently ignores environmentMatchGlobs — replaced with environment: jsdom as default; all tsx test files in [slug] directory now get jsdom correctly
+- [Phase Phase 05-04]: renderExpandedPanel callback pattern keeps all per-row mutable state in ReleasesClient while BranchSection handles structural render
+- [Phase Phase 05-04]: RTL v16 auto-cleanup requires afterEach global; vitest uses explicit imports — vitest.setup.ts registers afterEach(cleanup) explicitly
 
 ### Pending Todos
 
@@ -92,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T16:27:50.323Z
-Stopped at: Completed Phase 05 Plan 03 (05-03-PLAN.md)
+Last session: 2026-05-05T16:36:49.894Z
+Stopped at: Completed Phase 05 Plan 04 (05-04-PLAN.md)
 Resume file: None

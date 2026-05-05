@@ -107,7 +107,7 @@
 - [x] 05-01-PLAN.md — Wave 0 test infrastructure: install RTL/jsdom devDeps, vitest jsdom env switch, 4 red test stubs + shared fixtures (RC-01, RC-02, RC-03, RC-07)
 - [x] 05-02-PLAN.md — Server-side branch grouping: extend types.ts + groupIntoSections() helper + page.tsx fetches deployedUrl + promote_attempts + load-more API surfaces branch/metadata (RC-01, RC-07)
 - [x] 05-03-PLAN.md — PreviewLink component (anchor + disabled-button states) (RC-02)
-- [ ] 05-04-PLAN.md — BranchSection component + ReleasesClient accordion restructure + conflict badge + hide approve on conflict (RC-01, RC-07)
+- [x] 05-04-PLAN.md — BranchSection component + ReleasesClient accordion restructure + conflict badge + hide approve on conflict (RC-01, RC-07)
 - [ ] 05-05-PLAN.md — Per-RC confirm label includes branch + version (D-10) + cross-branch isolation green test (RC-03)
 
 ### Phase 6: promoteAndAudit Rewrite
