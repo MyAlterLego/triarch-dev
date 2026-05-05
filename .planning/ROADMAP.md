@@ -146,14 +146,19 @@
 ### Phase 7.5: Dev Cluster + Admin Dev Backend
 **Goal**: Every Triarch app has a non-prod environment safe for schema migrations and live UAT — backed by a dedicated dev CRDB cluster, an `<app>-dev` App Hosting backend per project, and an env-aware shared-workflows tag (`v4`)
 **Depends on**: Phase 7 (so admin's audit/Slack flows are stable before forking the env)
-**Requirements**: ENV-01, ENV-02, ENV-03, ENV-04, ENV-05 (TBD — defined when the phase is planned)
+**Requirements**: ENV-01, ENV-02, ENV-03, ENV-04, ENV-05
 **Success Criteria** (what must be TRUE):
   1. A dev CRDB cluster exists and holds one DB per Triarch-owned project (`admin_dev`, `portal_dev`, `darksouls_dev`, `tmi_dev`, `truthtreason_dev`, `www_dev`); prod cluster untouched and continues to hold the prod DBs
   2. Each Triarch project has an `<app>-dev` App Hosting backend deploying from a `dev` (or `staging`) git branch, with `DATABASE_URL_DEV` secret pointing at the dev cluster's per-project DB; existing prod backends continue to deploy from `main`
   3. shared-workflows v4 introduces an `environment: dev|prod` input on `deploy-firebase.yml` and a new reusable `db-migrate.yml` that runs `drizzle-kit push` against the env's URL — replacing the manual `firebase apphosting:secrets:access | psql -f` ritual
   4. The truth+treason `apphosting.yaml` + `apphosting.prod.yaml` overlay pattern is generalized into convention and documented for all projects (customer-owned prod projects continue to live in their own GCP)
   5. Phase 4 deferred UAT scenarios (clean / conflict / ci_failed / concurrency) are exercised against the new admin-dev backend and pass — closes `04-HUMAN-UAT.md`
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 07.5-01-PLAN.md — scripts/provision-dev-dbs.sql (ENV-01)
+- [ ] 07.5-02-PLAN.md — shared-workflows v4: deploy-firebase.yml environment input + new db-migrate.yml (ENV-03)
+- [ ] 07.5-03-PLAN.md — admin apphosting.yaml + apphosting.prod.yaml overlay split (ENV-02, ENV-04)
+- [ ] 07.5-04-PLAN.md — docs/onboarding-projects.md Step 11 — Dev Environment overlay + db-migrate.yml usage (ENV-04)
+- [ ] 07.5-05-PLAN.md — 07.5-PHASE-4-UAT-CLOSURE.md + 07.5-HUMAN-UAT.md fillable runbooks (ENV-05)
 
 ### Phase 8: Truth+Treason E2E Pilot
 **Goal**: The full multi-branch RC flow is validated against a real project with real customer interaction — single-branch path first, then parallel concurrent RC promotion with no work reverted; **plus** a one-time naming-convention triage and rename of GitHub repos / Firebase projects / DB cluster + DB names to a centralized standard before the pilot ships
@@ -185,5 +190,5 @@
 | 5. Customer Page RC UI | v2.0 | 0/5 | Planned | - |
 | 6. promoteAndAudit Rewrite | v2.0 | 4/4 | Complete   | 2026-05-05 |
 | 7. OttoBot Dispatcher Hardening | v2.0 | 5/6 | In Progress|  |
-| 7.5. Dev Cluster + Admin Dev Backend | v2.0 | 0/TBD | Not started | - |
+| 7.5. Dev Cluster + Admin Dev Backend | v2.0 | 0/5 | Planned | - |
 | 8. Truth+Treason E2E Pilot | v2.0 | 0/TBD | Not started | - |
