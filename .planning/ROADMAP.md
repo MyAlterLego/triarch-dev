@@ -128,19 +128,32 @@
   5. `/admin/platform/slack-audit` shows a paginated, filterable table of audit rows accessible to staff — non-staff receive a 403
 **Plans**: TBD
 
+### Phase 7.5: Dev Cluster + Admin Dev Backend
+**Goal**: Every Triarch app has a non-prod environment safe for schema migrations and live UAT — backed by a dedicated dev CRDB cluster, an `<app>-dev` App Hosting backend per project, and an env-aware shared-workflows tag (`v4`)
+**Depends on**: Phase 7 (so admin's audit/Slack flows are stable before forking the env)
+**Requirements**: ENV-01, ENV-02, ENV-03, ENV-04, ENV-05 (TBD — defined when the phase is planned)
+**Success Criteria** (what must be TRUE):
+  1. A dev CRDB cluster exists and holds one DB per Triarch-owned project (`admin_dev`, `portal_dev`, `darksouls_dev`, `tmi_dev`, `truthtreason_dev`, `www_dev`); prod cluster untouched and continues to hold the prod DBs
+  2. Each Triarch project has an `<app>-dev` App Hosting backend deploying from a `dev` (or `staging`) git branch, with `DATABASE_URL_DEV` secret pointing at the dev cluster's per-project DB; existing prod backends continue to deploy from `main`
+  3. shared-workflows v4 introduces an `environment: dev|prod` input on `deploy-firebase.yml` and a new reusable `db-migrate.yml` that runs `drizzle-kit push` against the env's URL — replacing the manual `firebase apphosting:secrets:access | psql -f` ritual
+  4. The truth+treason `apphosting.yaml` + `apphosting.prod.yaml` overlay pattern is generalized into convention and documented for all projects (customer-owned prod projects continue to live in their own GCP)
+  5. Phase 4 deferred UAT scenarios (clean / conflict / ci_failed / concurrency) are exercised against the new admin-dev backend and pass — closes `04-HUMAN-UAT.md`
+**Plans**: TBD
+
 ### Phase 8: Truth+Treason E2E Pilot
-**Goal**: The full multi-branch RC flow is validated against a real project with real customer interaction — single-branch path first, then parallel concurrent RC promotion with no work reverted
-**Depends on**: Phase 2 (shared-workflows), Phase 4 (promote-branch), Phase 5 (UI), Phase 6 (dispatch rewrite), Phase 7 (audit)
-**Requirements**: PILOT-01, PILOT-02
+**Goal**: The full multi-branch RC flow is validated against a real project with real customer interaction — single-branch path first, then parallel concurrent RC promotion with no work reverted; **plus** a one-time naming-convention triage and rename of GitHub repos / Firebase projects / DB cluster + DB names to a centralized standard before the pilot ships
+**Depends on**: Phase 2, Phase 4, Phase 5, Phase 6, Phase 7, Phase 7.5 (dev cluster prerequisite)
+**Requirements**: PILOT-01, PILOT-02, NAMING-01, NAMING-02 (NAMING reqs defined when the phase is planned)
 **Success Criteria** (what must be TRUE):
   1. Truth+Treason runs a complete single-branch release through the updated shared-workflows path: CI/CD notifies admin, customer approves via UI, OttoBot fires, GitHub App promotes via `promote-branch.yml`, round-trip ingest marks the release promoted — all steps confirmed in milestone audit doc
   2. Two parallel feature branches (`feat/change-font` and `feat/add-audio`) both deploy to preview URLs; customer approves font first — rebase + merge succeeds, main has font; customer approves audio — audio rebases on updated main (which has font), CI green, auto-merge succeeds with both features present in production, no work reverted
+  3. **Naming-convention triage and rename**: a single audit document captures current names (GitHub repos, Firebase project IDs, App Hosting backend IDs, CRDB cluster + DB names), proposes a single canonical convention, and applies the renames. Examples to resolve: GH repo `MyAlterLego/triarch-dev` (which is admin) renamed to `MyAlterLego/triarchsecurity-admin`; misnamed `triarch-dev-*` Firebase projects (which are de-facto prod for darksouls/tmi/truthtreason/www) renamed or aliased; DB names aligned to `<app>_dev` / `<app>_prod`. Convention works across all 5 axes (GH org, GH repo, FB project, FB backend, DB name). All renames preserve referential integrity (consumer ci-cd.yml refs, app code env reads, deploy notifications)
 **Plans**: TBD
 
 ## Progress
 
-**Execution Order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
-(Phase 3 may run in parallel with Phase 1/2; Phase 5 can start as soon as Phase 3 schema is pushed)
+**Execution Order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 7.5 → 8
+(Phase 3 may run in parallel with Phase 1/2; Phase 5 can start as soon as Phase 3 schema is pushed; Phase 7.5 inserted before Phase 8 to provide the dev environment the pilot needs)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -153,8 +166,9 @@
 | 1. Central Secrets Vault | v2.0 | 0/6 | Planned | - |
 | 2. shared-workflows Hardening | v2.0 | 0/4 | Planned | - |
 | 3. Schema + GitHub App Permissions | v2.0 | 0/TBD | Not started | - |
-| 4. promote-branch Workflow | v2.0 | 0/4 | Planned | - |
+| 4. promote-branch Workflow | v2.0 | 4/4 | Complete (UAT deferred to 7.5) | 2026-05-05 |
 | 5. Customer Page RC UI | v2.0 | 0/TBD | Not started | - |
 | 6. promoteAndAudit Rewrite | v2.0 | 0/TBD | Not started | - |
 | 7. OttoBot Dispatcher Hardening | v2.0 | 0/TBD | Not started | - |
+| 7.5. Dev Cluster + Admin Dev Backend | v2.0 | 0/TBD | Not started | - |
 | 8. Truth+Treason E2E Pilot | v2.0 | 0/TBD | Not started | - |
