@@ -24,6 +24,8 @@ import type {
 import Toast, { type ToastKind } from '@/components/Toast';
 import { formatDeployedAt, formatRelativeTime } from './format';
 import Timeline from './Timeline';
+import { groupIntoSections } from './group-sections';
+import BranchSectionComponent from './BranchSection';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -151,15 +153,13 @@ export default function ReleasesClient({
   pageSize,
 }: Props) {
   // -- Core state -----------------------------------------------------------
-  // Transitional: derive flat releases from sections. Plan 05-04 will replace this with section state.
-  const [releases, setReleases] = useState<ReleaseRow[]>(
-    initialSections.flatMap((s) => s.releases),
+  const [sections, setSections] = useState<BranchSection[]>(initialSections);
+  // SSR-safe: lazy initializer using server-computed isActive flag (pitfall 2)
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    () => new Set(initialSections.filter((s) => s.isActive).map((s) => s.branch)),
   );
-  // Hold the conflict snapshot for client-side re-grouping during load-more (Plan 05-04 wires this up)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _conflictsByBranchRef = useRef(conflictsByBranch);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _projectDeployedUrl = projectDeployedUrl;
+  // Stable snapshot of conflicts for client-side load-more re-grouping (pitfall 7)
+  const conflictsByBranchRef = useRef(conflictsByBranch);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [hasMoreState, setHasMoreState] = useState(hasMore);
   const [offset, setOffset] = useState(pageSize);
@@ -241,9 +241,33 @@ export default function ReleasesClient({
     });
   }
 
+  function toggleSection(branch: string) {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(branch)) {
+        next.delete(branch);
+      } else {
+        next.add(branch);
+      }
+      return next;
+    });
+  }
+
+  // findRelease: flat lookup across all sections
+  const findRelease = useCallback(
+    (id: string): ReleaseRow | undefined =>
+      sections.flatMap((s) => s.releases).find((r) => r.id === id),
+    [sections],
+  );
+
   function updateReleaseInState(releaseId: string, patch: Partial<ReleaseRow>) {
-    setReleases((prev) =>
-      prev.map((r) => (r.id === releaseId ? { ...r, ...patch } : r)),
+    setSections((prev) =>
+      prev.map((section) => ({
+        ...section,
+        releases: section.releases.map((r) =>
+          r.id === releaseId ? { ...r, ...patch } : r,
+        ),
+      })),
     );
   }
 
@@ -268,7 +292,7 @@ export default function ReleasesClient({
           status: 'approved',
           approvals: [
             data.approval as ApprovalItem,
-            ...(releases.find((r) => r.id === releaseId)?.approvals ?? []),
+            ...(findRelease(releaseId)?.approvals ?? []),
           ],
         });
       }
@@ -302,7 +326,7 @@ export default function ReleasesClient({
           status: 'rejected',
           approvals: [
             data.approval as ApprovalItem,
-            ...(releases.find((r) => r.id === releaseId)?.approvals ?? []),
+            ...(findRelease(releaseId)?.approvals ?? []),
           ],
         });
         setShowRejectForm((prev) => ({ ...prev, [releaseId]: false }));
@@ -337,7 +361,7 @@ export default function ReleasesClient({
         const newItem = data as FeedbackItem;
         updateReleaseInState(releaseId, {
           feedback: [
-            ...(releases.find((r) => r.id === releaseId)?.feedback ?? []),
+            ...(findRelease(releaseId)?.feedback ?? []),
             newItem,
           ],
         });
@@ -362,7 +386,7 @@ export default function ReleasesClient({
 
       if (res.ok) {
         updateReleaseInState(releaseId, {
-          feedback: (releases.find((r) => r.id === releaseId)?.feedback ?? []).filter(
+          feedback: (findRelease(releaseId)?.feedback ?? []).filter(
             (f) => f.id !== feedbackId,
           ),
         });
@@ -383,7 +407,13 @@ export default function ReleasesClient({
       );
       if (!res.ok) throw new Error('fetch failed');
       const data = await res.json();
-      setReleases((prev) => [...prev, ...(data.releases as ReleaseRow[])]);
+      const newReleases = data.releases as ReleaseRow[];
+      setSections((prev) => {
+        const flat = [...prev.flatMap((s) => s.releases), ...newReleases];
+        // Rebuild conflicts Map from stable snapshot ref (pitfall 7)
+        const conflictsMap = new Map(Object.entries(conflictsByBranchRef.current));
+        return groupIntoSections(flat, conflictsMap, projectDeployedUrl);
+      });
       setOffset((prev) => prev + pageSize);
       setHasMoreState(data.hasMore);
       setPageError(null);
@@ -392,7 +422,7 @@ export default function ReleasesClient({
     } finally {
       setLoadingMore(false);
     }
-  }, [projectSlug, pageSize, offset]);
+  }, [projectSlug, pageSize, offset, projectDeployedUrl]);
 
   // -- Render ---------------------------------------------------------------
 
@@ -424,170 +454,115 @@ export default function ReleasesClient({
           </div>
         </div>
 
-        {/* Releases table card */}
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                <th className="text-[10px] text-zinc-500 uppercase tracking-wide text-left px-4 py-2 border-b border-zinc-800 w-8" />
-                <th className="text-[10px] text-zinc-500 uppercase tracking-wide text-left px-4 py-2 border-b border-zinc-800 w-28">
-                  Version
-                </th>
-                <th className="text-[10px] text-zinc-500 uppercase tracking-wide text-left px-4 py-2 border-b border-zinc-800 w-16">
-                  Env
-                </th>
-                <th className="text-[10px] text-zinc-500 uppercase tracking-wide text-left px-4 py-2 border-b border-zinc-800 w-32">
-                  Status
-                </th>
-                <th className="text-[10px] text-zinc-500 uppercase tracking-wide text-left px-4 py-2 border-b border-zinc-800 w-24">
-                  Commit
-                </th>
-                <th className="text-[10px] text-zinc-500 uppercase tracking-wide text-left px-4 py-2 border-b border-zinc-800 w-36">
-                  Deployed
-                </th>
-                <th className="text-[10px] text-zinc-500 uppercase tracking-wide text-left px-4 py-2 border-b border-zinc-800">
-                  Approver
-                </th>
-              </tr>
-            </thead>
-            <tbody aria-busy={false}>
-              {releases.length === 0 ? (
-                <tr>
-                  <td colSpan={7}>
-                    <EmptyState projectName={projectName} />
-                  </td>
-                </tr>
-              ) : (
-                releases.map((release) => {
-                  const expanded = expandedIds.has(release.id);
-                  const status = release.status ?? 'dev';
-                  const approver = release.approvals[0]?.approverEmail ?? '—';
-
-                  return (
-                    <React.Fragment key={release.id}>
-                      {/* Collapsed row */}
-                      <tr
-                        className="border-b border-zinc-800 last:border-0 cursor-pointer hover:bg-zinc-800/30 transition-colors"
-                        onClick={() => toggleExpanded(release.id)}
-                        aria-expanded={expanded}
-                        aria-controls={`panel-${release.id}`}
-                      >
-                        <td className="px-4 py-3 w-8">
-                          {expanded ? (
-                            <ChevronDown size={14} className="text-zinc-500" />
-                          ) : (
-                            <ChevronRight size={14} className="text-zinc-500" />
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="font-mono text-sm font-bold text-teal-400">
-                            {release.version}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] border ${
-                              ENV_BADGE_COLORS[release.env ?? 'dev']
-                            }`}
-                          >
-                            {release.env ?? 'dev'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] border ${
-                              STATUS_BADGE_COLORS[status] ?? STATUS_BADGE_COLORS.dev
-                            }`}
-                            aria-label={`${status} status`}
-                          >
-                            {status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-[10px] font-mono text-zinc-500">
-                            {release.commitSha?.slice(0, SHORT_SHA_LEN) ?? '—'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-xs text-zinc-400">
-                            {formatDeployedAt(release.deployedAt, release.releasedAt)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-[10px] font-mono text-zinc-500">
-                            {approver}
-                          </span>
-                        </td>
-                      </tr>
-
-                      {/* Expanded panel */}
-                      {expanded && (
-                        <tr id={`panel-${release.id}`}>
-                          <td
-                            colSpan={7}
-                            className="border-b border-zinc-800 bg-zinc-900/30"
-                          >
-                            <ExpandedPanel
-                              release={release}
-                              status={status as ReleaseStatus}
-                              userRole={userRole}
-                              currentUserEmail={currentUserEmail}
-                              projectSlug={projectSlug}
-                              feedbackDraft={feedbackDrafts[release.id] ?? ''}
-                              onFeedbackDraftChange={(val) =>
-                                setFeedbackDrafts((prev) => ({ ...prev, [release.id]: val }))
-                              }
-                              submitting={submittingFeedback[release.id] ?? false}
-                              onPostFeedback={() => handlePostFeedback(release.id)}
-                              onDeleteFeedback={(fId) =>
-                                handleDeleteFeedback(release.id, fId)
-                              }
-                              approveStep={approveStep[release.id] ?? 'idle'}
-                              countdown={countdownState[release.id] ?? COUNTDOWN_SECONDS}
-                              onApproveStep1={() => {
-                                setApproveStep((prev) => ({ ...prev, [release.id]: 'confirm' }));
-                                setCountdownState((prev) => ({
-                                  ...prev,
-                                  [release.id]: COUNTDOWN_SECONDS,
-                                }));
-                              }}
-                              onApproveConfirm={() =>
-                                handleApprove(release.id, release.version)
-                              }
-                              approveConfirmRef={(btn) =>
-                                approveConfirmRefs.current.set(release.id, btn)
-                              }
-                              showRejectForm={showRejectForm[release.id] ?? false}
-                              onShowRejectForm={() =>
-                                setShowRejectForm((prev) => ({ ...prev, [release.id]: true }))
-                              }
-                              onHideRejectForm={() => {
-                                setShowRejectForm((prev) => ({ ...prev, [release.id]: false }));
-                                setRejectReasons((prev) => ({ ...prev, [release.id]: '' }));
-                                // Return focus to reject button
-                                const btn = rejectButtonRefs.current.get(release.id);
-                                if (btn) btn.focus();
-                              }}
-                              rejectReason={rejectReasons[release.id] ?? ''}
-                              onRejectReasonChange={(val) =>
-                                setRejectReasons((prev) => ({ ...prev, [release.id]: val }))
-                              }
-                              rejecting={rejecting[release.id] ?? false}
-                              onReject={() => handleReject(release.id, release.version)}
-                              rejectButtonRef={(btn) =>
-                                rejectButtonRefs.current.set(release.id, btn)
-                              }
-                            />
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        {/* Branch sections (Phase 05-04) */}
+        {sections.length === 0 ? (
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
+            <EmptyState projectName={projectName} />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {sections.map((section) => (
+              <BranchSectionComponent
+                key={section.branch}
+                section={section}
+                projectDeployedUrl={projectDeployedUrl}
+                isExpanded={expandedSections.has(section.branch)}
+                expandedRowIds={expandedIds}
+                userRole={userRole}
+                currentUserEmail={currentUserEmail}
+                projectSlug={projectSlug}
+                onToggleSection={toggleSection}
+                onToggleRow={toggleExpanded}
+                approveStep={approveStep}
+                countdownState={countdownState}
+                feedbackDrafts={feedbackDrafts}
+                submittingFeedback={submittingFeedback}
+                showRejectForm={showRejectForm}
+                rejectReasons={rejectReasons}
+                rejecting={rejecting}
+                onApproveStep1={(releaseId) => {
+                  setApproveStep((prev) => ({ ...prev, [releaseId]: 'confirm' }));
+                  setCountdownState((prev) => ({
+                    ...prev,
+                    [releaseId]: COUNTDOWN_SECONDS,
+                  }));
+                }}
+                onApproveConfirm={(releaseId, version) => handleApprove(releaseId, version)}
+                onShowRejectForm={(releaseId) =>
+                  setShowRejectForm((prev) => ({ ...prev, [releaseId]: true }))
+                }
+                onHideRejectForm={(releaseId) => {
+                  setShowRejectForm((prev) => ({ ...prev, [releaseId]: false }));
+                  setRejectReasons((prev) => ({ ...prev, [releaseId]: '' }));
+                  const btn = rejectButtonRefs.current.get(releaseId);
+                  if (btn) btn.focus();
+                }}
+                onRejectReasonChange={(releaseId, val) =>
+                  setRejectReasons((prev) => ({ ...prev, [releaseId]: val }))
+                }
+                onReject={(releaseId, version) => handleReject(releaseId, version)}
+                onFeedbackDraftChange={(releaseId, val) =>
+                  setFeedbackDrafts((prev) => ({ ...prev, [releaseId]: val }))
+                }
+                onPostFeedback={(releaseId) => handlePostFeedback(releaseId)}
+                onDeleteFeedback={(releaseId, fId) => handleDeleteFeedback(releaseId, fId)}
+                approveConfirmRef={(releaseId, btn) =>
+                  approveConfirmRefs.current.set(releaseId, btn)
+                }
+                rejectButtonRef={(releaseId, btn) =>
+                  rejectButtonRefs.current.set(releaseId, btn)
+                }
+                renderExpandedPanel={(release, isConflict) => (
+                  <ExpandedPanel
+                    release={release}
+                    status={(release.status ?? 'dev') as ReleaseStatus}
+                    userRole={userRole}
+                    currentUserEmail={currentUserEmail}
+                    projectSlug={projectSlug}
+                    isConflict={isConflict}
+                    feedbackDraft={feedbackDrafts[release.id] ?? ''}
+                    onFeedbackDraftChange={(val) =>
+                      setFeedbackDrafts((prev) => ({ ...prev, [release.id]: val }))
+                    }
+                    submitting={submittingFeedback[release.id] ?? false}
+                    onPostFeedback={() => handlePostFeedback(release.id)}
+                    onDeleteFeedback={(fId) => handleDeleteFeedback(release.id, fId)}
+                    approveStep={approveStep[release.id] ?? 'idle'}
+                    countdown={countdownState[release.id] ?? COUNTDOWN_SECONDS}
+                    onApproveStep1={() => {
+                      setApproveStep((prev) => ({ ...prev, [release.id]: 'confirm' }));
+                      setCountdownState((prev) => ({
+                        ...prev,
+                        [release.id]: COUNTDOWN_SECONDS,
+                      }));
+                    }}
+                    onApproveConfirm={() => handleApprove(release.id, release.version)}
+                    approveConfirmRef={(btn) =>
+                      approveConfirmRefs.current.set(release.id, btn)
+                    }
+                    showRejectForm={showRejectForm[release.id] ?? false}
+                    onShowRejectForm={() =>
+                      setShowRejectForm((prev) => ({ ...prev, [release.id]: true }))
+                    }
+                    onHideRejectForm={() => {
+                      setShowRejectForm((prev) => ({ ...prev, [release.id]: false }));
+                      setRejectReasons((prev) => ({ ...prev, [release.id]: '' }));
+                      const btn = rejectButtonRefs.current.get(release.id);
+                      if (btn) btn.focus();
+                    }}
+                    rejectReason={rejectReasons[release.id] ?? ''}
+                    onRejectReasonChange={(val) =>
+                      setRejectReasons((prev) => ({ ...prev, [release.id]: val }))
+                    }
+                    rejecting={rejecting[release.id] ?? false}
+                    onReject={() => handleReject(release.id, release.version)}
+                    rejectButtonRef={(btn) => rejectButtonRefs.current.set(release.id, btn)}
+                  />
+                )}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Load more */}
         {hasMoreState && (
@@ -608,6 +583,7 @@ interface ExpandedPanelProps {
   userRole: UserRole;
   currentUserEmail: string;
   projectSlug: string;
+  isConflict: boolean;   // D-17: when true, hides approve/reject area and shows resolve helper
   feedbackDraft: string;
   onFeedbackDraftChange: (val: string) => void;
   submitting: boolean;
@@ -633,6 +609,7 @@ function ExpandedPanel({
   status,
   userRole,
   currentUserEmail,
+  isConflict,
   feedbackDraft,
   onFeedbackDraftChange,
   submitting,
@@ -754,8 +731,8 @@ function ExpandedPanel({
         </div>
       )}
 
-      {/* Action buttons row — admin only, status='dev' only */}
-      {userRole === 'admin' && status === 'dev' && (
+      {/* Action buttons row — admin only, status='dev' only, not conflicted (D-17) */}
+      {userRole === 'admin' && status === 'dev' && !isConflict && (
         <div className="flex items-center gap-3 pt-2 border-t border-zinc-800">
           {/* Approve button */}
           {approveStep === 'idle' ? (
@@ -835,6 +812,13 @@ function ExpandedPanel({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Conflict resolution helper — replaces approve/reject area when branch is in conflict (D-17) */}
+      {userRole === 'admin' && status === 'dev' && isConflict && (
+        <div className="pt-2 border-t border-zinc-800">
+          <p className="text-xs text-zinc-500 italic">Resolve conflict to enable approval</p>
         </div>
       )}
     </div>
