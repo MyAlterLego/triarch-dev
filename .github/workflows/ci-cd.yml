@@ -46,7 +46,7 @@ jobs:
   deploy:
     needs: quality-gate
     if: github.event_name == 'push'
-    uses: MyAlterLego/shared-workflows/.github/workflows/deploy-firebase.yml@v1
+    uses: MyAlterLego/shared-workflows/.github/workflows/deploy-firebase.yml@v2
     with:
       firebase_project_id: triarch-dev-website
       app_hosting_backend: triarch-dev

@@ -61,7 +61,11 @@
   1. After a `deploy-firebase.yml` run completes, a `release_logs` row appears in admin with `env=dev`, version, commitSha, and deployedAt populated
   2. After a `deploy-prod.yml` run completes, the corresponding release row in admin is updated with `env=prod` status via the `/api/releases/promoted` endpoint
   3. A workflow run with `git_branch=feat/change-font` creates a Firebase App Hosting branch rollout and the preview URL is accessible
-**Plans**: TBD
+**Plans**: 4 plans
+- [x] 02-01-PLAN.md — Wave 0 clone + deploy-firebase.yml git_branch input + dev callback (WORKFLOW-01, WORKFLOW-03)
+- [x] 02-02-PLAN.md — Create deploy-prod.yml with snake_case prod callback (WORKFLOW-02)
+- [ ] 02-03-PLAN.md — Tag v2 + admin canary ref bump + ADMIN_API_TOKEN secret + onboarding doc step
+- [ ] 02-04-PLAN.md — CRM ref bump + ADMIN_API_TOKEN secret + prod-endpoint idempotency E2E
 
 ### Phase 3: Schema + GitHub App Permissions
 **Goal**: The database has the branch column and audit table needed by subsequent phases, and the GitHub App has write permissions required for the merge step
@@ -138,12 +142,12 @@
 |-------|-----------|----------------|--------|-----------|
 | 1. Schema + Membership Migration | v1.14.0 | 6/6 | Complete   | 2026-05-04 |
 | 1.1. Membership Enforcement Audit | v1.14.0 | 6/6 | Complete | 2026-05-03 |
-| 2. Customer Releases Page | v1.14.0 | 5/5 | Complete | 2026-05-04 |
+| 2. Customer Releases Page | v1.14.0 | 2/4 | In Progress|  |
 | 3. Slack Interactive Approval | v1.14.0 | 3/3 | Complete    | 2026-05-04 |
 | 4. GitHub App Promotion | v1.14.0 | 4/4 | Complete | 2026-05-04 |
 | 5. Round-trip + shared-workflows + Pilot | v1.14.0 | 4/4 | Complete | 2026-05-04 |
 | 1. Central Secrets Vault | v2.0 | 0/6 | Planned | - |
-| 2. shared-workflows Hardening | v2.0 | 0/TBD | Not started | - |
+| 2. shared-workflows Hardening | v2.0 | 0/4 | Planned | - |
 | 3. Schema + GitHub App Permissions | v2.0 | 0/TBD | Not started | - |
 | 4. promote-branch Workflow | v2.0 | 0/TBD | Not started | - |
 | 5. Customer Page RC UI | v2.0 | 0/TBD | Not started | - |
