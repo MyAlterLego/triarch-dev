@@ -138,7 +138,7 @@
 **Plans**: 6 plans
 - [x] 07-01-PLAN.md — Wave 0 test infrastructure: shared Slack fixture factory + 5 RED test stubs (slack-audit, commands, events, slack-audit page, SlackAuditClient)
 - [x] 07-02-PLAN.md — recordSlackAudit helper + /api/slack/interact audit wire-up (OTTOBOT-01)
-- [ ] 07-03-PLAN.md — POST /api/slack/commands (deploy + status + help) + shared src/lib/slack-status.ts Block Kit builder (OTTOBOT-03, OTTOBOT-04)
+- [x] 07-03-PLAN.md — POST /api/slack/commands (deploy + status + help) + shared src/lib/slack-status.ts Block Kit builder (OTTOBOT-03, OTTOBOT-04)
 - [ ] 07-04-PLAN.md — POST /api/slack/events (url_verification + app_mention + dedup) (OTTOBOT-05)
 - [ ] 07-05-PLAN.md — /admin/platform/slack-audit RSC + SlackAuditClient + load-more API (OTTOBOT-06)
 - [ ] 07-06-PLAN.md — menu_pages seed SQL + onboarding-projects.md scope upgrade procedure + 07-HUMAN-UAT.md (OTTOBOT-02 + OTTOBOT-06 nav)
@@ -184,6 +184,6 @@
 | 4. promote-branch Workflow | v2.0 | 4/4 | Complete (UAT deferred to 7.5) | 2026-05-05 |
 | 5. Customer Page RC UI | v2.0 | 0/5 | Planned | - |
 | 6. promoteAndAudit Rewrite | v2.0 | 4/4 | Complete   | 2026-05-05 |
-| 7. OttoBot Dispatcher Hardening | v2.0 | 2/6 | In Progress|  |
+| 7. OttoBot Dispatcher Hardening | v2.0 | 3/6 | In Progress|  |
 | 7.5. Dev Cluster + Admin Dev Backend | v2.0 | 0/TBD | Not started | - |
 | 8. Truth+Treason E2E Pilot | v2.0 | 0/TBD | Not started | - |
