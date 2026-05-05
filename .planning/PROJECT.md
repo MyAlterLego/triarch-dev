@@ -18,9 +18,11 @@ Already operational at v1.14.6: foundation, DB-backed staff/membership roles, pr
 
 **v2.0 Phase 05 (Customer Page RC UI) shipped 2026-05-05:** `/projects/{slug}/releases` restructured into collapsible per-branch sections (main pinned first, feature branches by recency); inline `<PreviewLink>` ExternalLink icon with disabled fallback for missing `metadata.previewUrl`; per-RC two-step approve UX with branch+version in confirm label and full cross-branch state isolation; conflict badge in section header + per row driven by `promote_attempts` query, approve hidden with "Resolve conflict to enable approval" helper, auto-clears when newer release lands. Test infra: RTL + jsdom installed, 11 new tests across 4 test files, 85/85 GREEN. Five HUMAN-UAT items deferred to Phase 7.5/8 pilot (need live multi-branch + conflict data).
 
+**v2.0 Phase 06 (promoteAndAudit Rewrite) shipped 2026-05-05:** `promoteAndAudit` now dispatches `promote-branch.yml + {branch}` (replacing `deploy-prod.yml + {tag}`); persists `metadata.dispatch.{slackChannelId, slackMessageTs, dispatchedAt}` via `sql\`jsonb_set(...)\`` (preserves Phase 5 `metadata.previewUrl`); `notifyReleaseApproved` includes branch in OttoBot approval header (`{branch} {version} approved by {approverEmail}`); `/api/platform/promote-callback` looks up release by `(project, branch)` and posts threaded Slack reply for conflict (`:warning:` + capped file list + rebase hint), merged (`:white_check_mark:` + sha), and ci_failed (`:no_entry:` + run URL); D-11 graceful skip when metadata missing; D-15 best-effort try/catch always returns 201. New 3-test concurrent-approval suite proves D-16 per-row UUID isolation. `docs/onboarding-projects.md` Step 9 documents consumer's `promote-branch.yml@v3` stub + `ADMIN_API_TOKEN`. 105/105 tests GREEN. Four HUMAN-UAT items batched with Phase 8 Truth+Treason pilot.
+
 **Active milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain** (in progress)
 - Headline: customer-gated parallel release candidates with auto-rebase-and-merge promotion, unified credential storage, and OttoBot as the canonical Slack control plane.
-- Phases 01, 02, 03, 04, 05 complete — Phase 06+ continues.
+- Phases 01, 02, 03, 04, 05, 06 complete — Phase 07+ continues.
 
 ## Current Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
@@ -116,4 +118,4 @@ These are characteristics of the existing codebase that this milestone respects 
 - **URL pattern**: existing admin pages live under `/admin/*`; gating UI introduces customer-facing `/projects/{slug}/*`
 
 ---
-*Last updated: 2026-05-05 — Phase 05 (Customer Page RC UI) complete*
+*Last updated: 2026-05-05 — Phase 06 (promoteAndAudit Rewrite) complete*
