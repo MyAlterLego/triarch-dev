@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
-status: planning
-stopped_at: Phase 7.5 context + runbook captured (auto)
-last_updated: "2026-05-05T18:57:47.275Z"
+status: executing
+stopped_at: "Completed 07.5-01-PLAN.md: scripts/provision-dev-dbs.sql created (ENV-01 code deliverable)"
+last_updated: "2026-05-05T19:25:32.069Z"
 progress:
   total_phases: 9
   completed_phases: 6
-  total_plans: 32
-  completed_plans: 31
+  total_plans: 37
+  completed_plans: 32
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,19 +19,19 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-04 — v2.0 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 07 — OttoBot Dispatcher Hardening
+**Current focus:** Phase 07.5 — Dev Cluster + Admin Dev Backend
 
 ## Current Position
 
-Phase: 7.5
-Plan: Not started
+Phase: 07.5 (Dev Cluster + Admin Dev Backend) — EXECUTING
+Plan: 2 of 5
 
 ## Active Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
 **Goal:** Three intertwined initiatives — multi-branch parallel RCs with auto-rebase-and-merge promotion, central credential vault on GCP Secret Manager, OttoBot dispatcher hardening with expanded Slack scopes.
 **Phases:** 8 (reset to Phase 1 for v2.0)
 **Requirements:** 31 mapped (VAULT ×7, SCHEMA ×3, WORKFLOW ×5, RC ×8, OTTOBOT ×6, PILOT ×2)
-**Status:** Ready to plan
+**Status:** Ready to execute
 
 ## Performance Metrics
 
@@ -100,6 +100,7 @@ Active decisions from v1.14.0 that carry forward into v2.0:
 - [Phase 07-05]: router.push (not replace) for URL mirroring — matches pushMock test expectation
 - [Phase 07-06]: AdminSidebar is DB-driven: nav entry added via SQL INSERT not component edit (RESEARCH §10 + Pitfall 10)
 - [Phase 07-06]: SLACK_BOT_TOKEN does NOT need rotation on workspace reinstall unless Slack issues a new token (CONTEXT D-22)
+- [Phase 07.5-01]: No GRANT statements in provision-dev-dbs.sql (D-07): default admin role on dev cluster; per-DB roles deferred to v3
 
 ### Pending Todos
 
@@ -113,6 +114,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T18:57:47.272Z
-Stopped at: Phase 7.5 context + runbook captured (auto)
-Resume file: .planning/phases/07.5-dev-cluster-admin-dev-backend/07.5-CONTEXT.md
+Last session: 2026-05-05T19:25:32.067Z
+Stopped at: Completed 07.5-01-PLAN.md: scripts/provision-dev-dbs.sql created (ENV-01 code deliverable)
+Resume file: None
