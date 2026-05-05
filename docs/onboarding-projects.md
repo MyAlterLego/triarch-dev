@@ -408,6 +408,102 @@ the release row. Set the secret and re-deploy to register the next push.
 
 ---
 
+## Step 9 — Add the local `promote-branch.yml` workflow stub
+
+Phase 6 (`promoteAndAudit`) dispatches `promote-branch.yml` on the consumer repo's `main` branch
+when staff click "Approve & Promote" in `#release-approvals`. The repo must therefore host a local
+stub at `.github/workflows/promote-branch.yml` that delegates to the reusable workflow in
+`MyAlterLego/shared-workflows`. Without this stub, the GitHub Actions `workflow_dispatch` call will
+return 404 and the promotion will fail silently with a Slack warning.
+
+### 9a. Create the stub workflow file
+
+In the consumer repo, create `.github/workflows/promote-branch.yml`:
+
+```yaml
+name: Promote Branch to Main
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Feature branch to rebase + merge into main'
+        required: true
+        type: string
+
+jobs:
+  promote:
+    uses: MyAlterLego/shared-workflows/.github/workflows/promote-branch.yml@v3
+    with:
+      branch: ${{ inputs.branch }}
+    secrets:
+      ADMIN_API_TOKEN: ${{ secrets.ADMIN_API_TOKEN }}
+```
+
+Commit and push this file to `main`. GitHub only recognises `workflow_dispatch` triggers on
+workflows that exist on the default branch.
+
+### 9b. Confirm `ADMIN_API_TOKEN` is already set
+
+The `ADMIN_API_TOKEN` secret was added in Step 8 for the `deploy-firebase.yml` / `deploy-prod.yml`
+round-trip callbacks. The same per-project Bearer token is passed through to the
+`promote-branch.yml` reusable workflow so the shared-workflows step can POST the promotion result
+back to `/api/platform/promote-callback`. No new secret value is needed — the existing secret is
+forwarded via `secrets: inherit`-equivalent `secrets: { ADMIN_API_TOKEN: ... }` in the stub.
+
+Verify the secret exists:
+
+```bash
+gh secret list --repo <owner>/<repo> | grep ADMIN_API_TOKEN
+```
+
+If missing, fetch the value from admin's `projects` table (same query as Step 8) and set it:
+
+```bash
+printf '%s' "$API_KEY" | gh secret set ADMIN_API_TOKEN --repo <owner>/<repo>
+```
+
+### 9c. Verify the workflow is registered
+
+After the stub is merged to `main`:
+
+```bash
+gh workflow list --repo <owner>/<repo> | grep "Promote Branch to Main"
+```
+
+The workflow should appear with status `active`. If it does not appear, confirm the file was
+committed to `main` (not a feature branch) and that the `name:` field in the YAML is set to
+`Promote Branch to Main`.
+
+### 9d. Optional: sanity-check the file content
+
+```bash
+gh api /repos/<owner>/<repo>/contents/.github/workflows/promote-branch.yml \
+  | jq -r .content | base64 -d
+```
+
+This decodes and prints the stub YAML directly from the GitHub API — confirms the correct
+`promote-branch.yml@v3` ref is in place before triggering a real promotion.
+
+### 9e. Optional: no-op dispatch test
+
+Trigger a manual dispatch from the GitHub UI: **Actions → Promote Branch to Main → Run workflow →
+enter `main` as the branch input.** The shared-workflows reusable workflow will rebase `main` on
+`main` (no-op), run CI, and POST the `merged` callback to admin. Verify with:
+
+```bash
+DATABASE_URL=$(firebase apphosting:secrets:access DATABASE_URL --project triarch-dev-website)
+psql "$DATABASE_URL" -c "SELECT branch, result, merge_sha, created_at FROM promote_attempts WHERE project='<project-key>' ORDER BY created_at DESC LIMIT 1"
+```
+
+Expected: one row with `branch='main'`, `result='merged'`.
+
+> **Note:** Multi-branch end-to-end validation (`feat/X` + `feat/Y` running in parallel) is
+> exercised in the Phase 8 Truth+Treason pilot (PILOT-02). For new project onboarding, the no-op
+> sanity check above is sufficient confirmation that the dispatch chain is wired correctly.
+
+---
+
 ## Verification Checklist
 
 - [ ] Project record created; `apiKey` saved to a secure location (password manager)
@@ -423,6 +519,8 @@ the release row. Set the secret and re-deploy to register the next push.
 - [ ] `GITHUB_PACKAGES_TOKEN` Firebase secret set on the new project
 - [ ] `NODE_AUTH_TOKEN` entry added to `apphosting.yaml` with `availability: [BUILD]`
 - [ ] `roles/secretmanager.secretAccessor` granted on each needed secret to the new project's runtime SA
+- [ ] `.github/workflows/promote-branch.yml` stub committed to `main` and confirmed `active` via `gh workflow list`
+- [ ] `ADMIN_API_TOKEN` secret present on repo (shared with deploy-firebase / deploy-prod callbacks)
 
 ---
 
