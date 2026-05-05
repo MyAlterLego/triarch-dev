@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
 status: executing
-stopped_at: Completed 06-promoteandaudit-rewrite/06-01-PLAN.md
-last_updated: "2026-05-05T17:26:21.394Z"
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-05-05T17:27:00.673Z"
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 26
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-04 — v2.0 milestone started)
 ## Current Position
 
 Phase: 06 (promoteAndAudit Rewrite) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
 ## Active Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
@@ -85,6 +85,8 @@ Active decisions from v1.14.0 that carry forward into v2.0:
 - [Phase 05-05]: BranchSection <tr> rows get aria-label='Release {id}' — enables unique row identification when both sections expanded with same version string (RC-03 test requirement)
 - [Phase 06-01]: D-01/D-02: workflowFile='promote-branch.yml', inputs={branch: release.branch ?? 'main'} — tag input removed
 - [Phase 06-01]: D-08/D-09: sql jsonb_set COALESCE merge writes metadata.dispatch.{slackChannelId,slackMessageTs,dispatchedAt} without destroying metadata.previewUrl (Pitfall 1 guard)
+- [Phase 06-02]: Option A (RESEARCH §2): signPayload unchanged — branch travels through DB row, not Slack button value
+- [Phase 06-02]: null branch falls back to literal 'main' via branchDisplay = input.branch ?? 'main'
 
 ### Pending Todos
 
@@ -98,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T17:26:21.392Z
-Stopped at: Completed 06-promoteandaudit-rewrite/06-01-PLAN.md
+Last session: 2026-05-05T17:27:00.671Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None
