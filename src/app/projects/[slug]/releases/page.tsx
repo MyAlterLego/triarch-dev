@@ -3,11 +3,12 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
-import { projects, releaseLogs } from '@/db/schema';
+import { projects, releaseLogs, promoteAttempts } from '@/db/schema';
 import { eq, desc, sql, and, inArray } from 'drizzle-orm';
 import CustomerHeader from '@/app/projects/CustomerHeader';
 import ReleasesClient from './ReleasesClient';
-import type { ReleaseRow, UserRole } from './types';
+import { groupIntoSections } from './group-sections';
+import type { ReleaseRow, UserRole, ConflictState, BranchSection } from './types';
 
 const PAGE_SIZE = 20;
 
@@ -24,7 +25,7 @@ export default async function ReleasesPage({
 
   // Look up project by slug = projects.key
   const [project] = await db
-    .select({ key: projects.key, name: projects.name })
+    .select({ key: projects.key, name: projects.name, deployedUrl: projects.deployedUrl })
     .from(projects)
     .where(eq(projects.key, slug));
 
@@ -72,6 +73,35 @@ export default async function ReleasesPage({
     ));
   const prodByVersion = new Map(prodRows.map((p) => [p.version, p]));
 
+  // Fetch latest conflict per branch from promote_attempts
+  const conflictRows = await db
+    .select({
+      branch: promoteAttempts.branch,
+      createdAt: promoteAttempts.createdAt,
+      conflictFiles: promoteAttempts.conflictFiles,
+      rebaseError: promoteAttempts.rebaseError,
+    })
+    .from(promoteAttempts)
+    .where(
+      and(
+        eq(promoteAttempts.project, project.key),
+        eq(promoteAttempts.result, 'conflict'),
+      ),
+    )
+    .orderBy(desc(promoteAttempts.createdAt));
+
+  // Deduplicate to latest conflict per branch
+  const latestConflictByBranch = new Map<string, ConflictState>();
+  for (const row of conflictRows) {
+    if (!latestConflictByBranch.has(row.branch)) {
+      latestConflictByBranch.set(row.branch, {
+        files: (row.conflictFiles as string[]) ?? [],
+        rebaseError: row.rebaseError ?? null,
+        createdAt: row.createdAt.toISOString(),
+      });
+    }
+  }
+
   // Serialise dates for client (Drizzle returns Date objects)
   const releases: ReleaseRow[] = pageRows.map((r) => ({
     id: r.id,
@@ -115,6 +145,9 @@ export default async function ReleasesPage({
         commitSha: prod.commitSha ?? null,
       };
     })(),
+    // Phase 05-02 additions:
+    branch: r.branch ?? null,
+    metadata: (r.metadata as Record<string, unknown> | null) ?? null,
   }));
 
   // Total count for header subtext
@@ -123,6 +156,18 @@ export default async function ReleasesPage({
     .from(releaseLogs)
     .where(eq(releaseLogs.project, project.key));
 
+  const initialSections: BranchSection[] = groupIntoSections(
+    releases,
+    latestConflictByBranch,
+    project.deployedUrl ?? null,
+  );
+
+  // Serialise conflictsByBranch for client load-more re-grouping
+  const conflictsByBranch: Record<string, ConflictState> = {};
+  for (const [branch, conflict] of latestConflictByBranch.entries()) {
+    conflictsByBranch[branch] = conflict;
+  }
+
   return (
     <>
       <CustomerHeader projectName={project.name} />
@@ -130,9 +175,11 @@ export default async function ReleasesPage({
         <ReleasesClient
           projectSlug={project.key}
           projectName={project.name}
+          projectDeployedUrl={project.deployedUrl ?? null}
           userRole={userRole}
           currentUserEmail={ctx!.email}
-          initialReleases={releases}
+          initialSections={initialSections}
+          conflictsByBranch={conflictsByBranch}
           total={Number(total)}
           hasMore={hasMore}
           pageSize={PAGE_SIZE}

@@ -12,7 +12,15 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import type { ReleaseRow, FeedbackItem, ApprovalItem, ReleaseStatus, UserRole } from './types';
+import type {
+  ReleaseRow,
+  FeedbackItem,
+  ApprovalItem,
+  ReleaseStatus,
+  UserRole,
+  BranchSection,
+  ConflictState,
+} from './types';
 import Toast, { type ToastKind } from '@/components/Toast';
 import { formatDeployedAt, formatRelativeTime } from './format';
 import Timeline from './Timeline';
@@ -58,9 +66,11 @@ function canDeleteFeedback(item: FeedbackItem, currentUserEmail: string): boolea
 interface Props {
   projectSlug: string;
   projectName: string;
+  projectDeployedUrl: string | null;       // NEW (D-06): prod URL fallback for main rows
   userRole: UserRole;
   currentUserEmail: string;
-  initialReleases: ReleaseRow[];
+  initialSections: BranchSection[];        // NEW: replaces initialReleases
+  conflictsByBranch: Record<string, ConflictState>;  // NEW: snapshot for client-side load-more re-group
   total: number;
   hasMore: boolean;
   pageSize: number;
@@ -131,15 +141,25 @@ function LoadMoreButton({
 export default function ReleasesClient({
   projectSlug,
   projectName,
+  projectDeployedUrl,
   userRole,
   currentUserEmail,
-  initialReleases,
+  initialSections,
+  conflictsByBranch,
   total,
   hasMore,
   pageSize,
 }: Props) {
   // -- Core state -----------------------------------------------------------
-  const [releases, setReleases] = useState<ReleaseRow[]>(initialReleases);
+  // Transitional: derive flat releases from sections. Plan 05-04 will replace this with section state.
+  const [releases, setReleases] = useState<ReleaseRow[]>(
+    initialSections.flatMap((s) => s.releases),
+  );
+  // Hold the conflict snapshot for client-side re-grouping during load-more (Plan 05-04 wires this up)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _conflictsByBranchRef = useRef(conflictsByBranch);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _projectDeployedUrl = projectDeployedUrl;
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [hasMoreState, setHasMoreState] = useState(hasMore);
   const [offset, setOffset] = useState(pageSize);

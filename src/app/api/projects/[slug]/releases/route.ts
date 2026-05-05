@@ -120,6 +120,9 @@ export async function GET(
         commitSha: prod.commitSha ?? null,
       };
     })(),
+    // Phase 05-02 additions — surface branch + metadata so client-side re-grouping works
+    branch: r.branch ?? null,
+    metadata: (r.metadata as Record<string, unknown> | null) ?? null,
   }));
 
   return NextResponse.json({ releases, hasMore });
