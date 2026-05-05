@@ -601,3 +601,128 @@ SANITIZED=$(echo "$BRANCH" | tr '/' '-')
 
 **Research date:** 2026-05-04
 **Valid until:** 2026-06-04 (Firebase CLI behavior, shared-workflows tag state)
+
+---
+
+## Validation Architecture
+
+### Test Layers
+
+**Layer 1: Workflow YAML lint / structural validation**
+- `actionlint` catches GitHub Actions syntax errors, expression bugs, and shell-script issues inside `run:` blocks before the workflow ever runs.
+- `yamllint` catches YAML syntax errors (indentation, key duplication).
+- Run locally on `MyAlterLego/shared-workflows` clone before pushing.
+
+**Layer 2: Payload schema test (offline)**
+- Assemble each callback JSON body in a tmp file using the exact bash logic from the workflow step.
+- Verify it parses (`jq -e .`) and matches the admin endpoint's expected shape.
+- For dev: required keys `version`, `releaseType`; types per route source. For prod: required keys `version`, `commit_sha`, `deployed_at`, `deployed_by` (snake_case).
+- Hand-rolled assertions in a bash test script are sufficient; no Zod needed.
+
+**Layer 3: Live end-to-end test on sandbox deploy**
+- Push a feature branch in admin (or a sandbox consumer repo) referencing `shared-workflows@<test-sha>` (test ref before tagging `v2`).
+- Watch the workflow run via `gh run watch`.
+- Verify a `release_logs` row appears in admin with the expected fields.
+- Repeat for the three success-criteria flows: main dev deploy → release row; tagged prod deploy → prod row + dev row promoted; non-main branch deploy → release row with `metadata->>'previewUrl'` populated.
+
+### Sample Rate / Coverage
+
+- **100% of new shell `run:` steps must have at least one validation command** (actionlint passes + at least one runtime assertion the planner ties to a verifiable signal in `gh run view --log`).
+- **Each new workflow input must be exercised in at least one test push** — `git_branch=main` (default), `git_branch=feat/test-preview` (non-main path), prod tag push (deploy-prod.yml path).
+- **Each callback step must be exercised at least once with each terminal admin response code** — `201` (success), `400` (malformed payload — verified by removing a required field in a test branch), `401` (empty token — verified by deleting the secret in a test consumer repo).
+
+### Validation Commands
+
+**Workflow YAML lint:**
+```bash
+# Run locally in shared-workflows clone before pushing
+actionlint .github/workflows/deploy-firebase.yml
+actionlint .github/workflows/deploy-prod.yml
+yamllint -d "{rules: {line-length: disable}}" .github/workflows/*.yml
+```
+
+**File existence after push:**
+```bash
+gh api repos/MyAlterLego/shared-workflows/contents/.github/workflows/deploy-prod.yml --jq '.name'
+# Expected: "deploy-prod.yml"
+```
+
+**Tag verification:**
+```bash
+gh api repos/MyAlterLego/shared-workflows/tags --jq '.[].name' | grep -x v2
+# Expected: "v2"
+```
+
+**Workflow run + callback verification:**
+```bash
+# Find the most recent run for the test branch
+RUN_ID=$(gh run list --repo MyAlterLego/shared-workflows --branch <test-branch> --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run view "$RUN_ID" --repo MyAlterLego/shared-workflows --log | grep -E "Admin callback succeeded|HTTP 201|HTTP 200"
+# Expected: at least one matching line per callback step
+```
+
+**Post-deploy DB row check (admin's CRDB):**
+```bash
+# Dev deploy callback (WORKFLOW-01)
+psql "$DATABASE_URL" -c "SELECT version, env, branch, commit_sha, metadata->>'previewUrl' AS preview_url \
+  FROM release_logs \
+  WHERE project='triarch-dev-website' AND version='<X.Y.Z>' AND env='dev' \
+  ORDER BY created_at DESC LIMIT 1"
+# Expected: row exists with env='dev', branch matches input, commit_sha matches github.sha
+
+# Prod deploy callback (WORKFLOW-02)
+psql "$DATABASE_URL" -c "SELECT version, env, status, deployed_at \
+  FROM release_logs \
+  WHERE project='<project>' AND version='<X.Y.Z>' AND env='prod'"
+# Expected: prod row exists with status='promoted'
+
+# Verify dev row was also flipped to status='promoted'
+psql "$DATABASE_URL" -c "SELECT status FROM release_logs WHERE project='<project>' AND version='<X.Y.Z>' AND env='dev'"
+# Expected: status='promoted'
+
+# Branch preview URL captured (WORKFLOW-03)
+psql "$DATABASE_URL" -c "SELECT branch, metadata->>'previewUrl' FROM release_logs \
+  WHERE project='<project>' AND branch='feat/test-preview' AND env='dev' \
+  ORDER BY created_at DESC LIMIT 1"
+# Expected: branch='feat/test-preview', previewUrl matches https://<sanitized>--<backend>.us-central1.hosted.app
+```
+
+**Idempotency test (prod callback):**
+```bash
+# Manually re-POST to /api/releases/promoted with same version
+curl -X POST "$ADMIN_URL/api/releases/promoted" \
+  -H "Authorization: Bearer $ADMIN_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"version":"<X.Y.Z>","commit_sha":"<sha>","deployed_at":"<iso>","deployed_by":"<actor>"}' \
+  -w "\nHTTP %{http_code}\n"
+# Expected on 2nd call: HTTP 200 (idempotent), not 201 (new insert)
+```
+
+**Empty-token guard verification:**
+```bash
+# In a sandbox repo: temporarily unset ADMIN_API_TOKEN, push, watch run
+gh run view "$RUN_ID" --log | grep "ADMIN_API_TOKEN not set"
+# Expected: warning annotation visible, workflow still green (continue-on-error)
+```
+
+### Failure Modes
+
+| # | Failure | Detection | Mitigation |
+|---|---------|-----------|------------|
+| 1 | Empty `ADMIN_API_TOKEN` secret (Actions silently substitutes empty string) | Explicit `[ -z "$ADMIN_API_TOKEN" ]` guard at top of callback step writes `::warning::ADMIN_API_TOKEN not set` annotation. No row appears in admin. | Add guard step (research §Pitfall 2). Validation: grep workflow log for warning. |
+| 2 | 401 from admin (token mismatch — secret valued with stale or wrong project's apiKey) | Callback step logs `HTTP 401`; warning annotation in summary. No row appears. | Verify secret matches `projects.apiKey` for that project in CRDB before bumping `@v1` → `@v2`. |
+| 3 | 400 from admin (payload schema mismatch — camelCase vs snake_case) | Admin response body `{"error":"Missing required field(s): commit_sha"}`. Logged but masked by `continue-on-error`. | Layer 2 offline payload test catches this before push. Failure modes 2-3 require explicit response-body capture in the callback step (`-w "%{http_code}"` already in pattern). |
+| 4 | FAH rollout fails (deploy step fails before callback) | Deploy step fails non-zero (per `35871945` fix). Job fails. Callback step does NOT execute (no `if: always()`). No false-positive admin row. | Callback step ordering MUST come AFTER deploy step (research §Pitfall 1). Do NOT add `if: always()` — that would record failed deploys as successes. |
+| 5 | Network failure (callback timeout to admin) | `curl --max-time 10` returns exit code 28; HTTP code captured as `000`; warning annotation written. | Acceptable — admin's reconciliation handles drift (D-04). Validation: grep for `HTTP 000` in run logs to monitor frequency. |
+| 6 | FAH branch URL malformed (slashes in subdomain) | Sanitization step `tr '/' '-'` produces invalid char in `metadata->>'previewUrl'`. Phase 5 UI link broken. | Layer 2 schema test asserts `previewUrl` matches regex `^https://[a-z0-9-]+--[a-z0-9-]+\.[a-z0-9-]+\.hosted\.app$`. |
+| 7 | Workflow `v1` accidentally moved instead of new `v2` tag | Existing consumers pinned to `@v1` start hitting the new code unexpectedly. | Use `git tag v2 <sha>` (annotated, never `-f`); verify `gh api repos/MyAlterLego/shared-workflows/tags` shows both `v1` and `v2` separately before any consumer ref bump. |
+| 8 | `deploy-prod.yml` file fails to materialize (creation oversight) | `gh api .../contents/.github/workflows/deploy-prod.yml` returns 404 after Phase 2 commits land. | Layer 1 includes file-existence check before tagging `v2`. |
+
+### Per-Requirement Validation Mapping
+
+- **WORKFLOW-01 (dev deploy callback):** After a `deploy-firebase.yml@v2` run completes against a sandbox push, query `release_logs` for a row with `(project, version, env='dev', commit_sha=<github.sha>)`. Workflow log must contain `HTTP 201` line from the dev callback step. Validation = DB row check + log grep.
+
+- **WORKFLOW-02 (prod deploy callback):** After a `deploy-prod.yml@v2` run completes against a tagged push, query `release_logs` for `(project, version, env='prod', status='promoted')` AND verify the matching `env='dev'` row's status flipped from `'dev'` → `'promoted'`. Re-POSTing the same payload returns HTTP 200 (idempotent), not 201. Validation = two DB row checks + idempotency curl.
+
+- **WORKFLOW-03 (branch preview):** Push a non-main branch with `git_branch: feat/test-preview`; verify the workflow runs the non-main rollout step (log shows `firebase apphosting:rollouts:create <backend> --git-branch feat/test-preview`); query `release_logs` for `branch='feat/test-preview'` AND `metadata->>'previewUrl'` matching `^https://feat-test-preview--<backend>\.us-central1\.hosted\.app$`. Validation = workflow log step assertion + DB row check + regex on stored URL.
+
