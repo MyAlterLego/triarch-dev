@@ -20,9 +20,11 @@ Already operational at v1.14.6: foundation, DB-backed staff/membership roles, pr
 
 **v2.0 Phase 06 (promoteAndAudit Rewrite) shipped 2026-05-05:** `promoteAndAudit` now dispatches `promote-branch.yml + {branch}` (replacing `deploy-prod.yml + {tag}`); persists `metadata.dispatch.{slackChannelId, slackMessageTs, dispatchedAt}` via `sql\`jsonb_set(...)\`` (preserves Phase 5 `metadata.previewUrl`); `notifyReleaseApproved` includes branch in OttoBot approval header (`{branch} {version} approved by {approverEmail}`); `/api/platform/promote-callback` looks up release by `(project, branch)` and posts threaded Slack reply for conflict (`:warning:` + capped file list + rebase hint), merged (`:white_check_mark:` + sha), and ci_failed (`:no_entry:` + run URL); D-11 graceful skip when metadata missing; D-15 best-effort try/catch always returns 201. New 3-test concurrent-approval suite proves D-16 per-row UUID isolation. `docs/onboarding-projects.md` Step 9 documents consumer's `promote-branch.yml@v3` stub + `ADMIN_API_TOKEN`. 105/105 tests GREEN. Four HUMAN-UAT items batched with Phase 8 Truth+Treason pilot.
 
+**v2.0 Phase 07 (OttoBot Dispatcher Hardening) shipped 2026-05-05:** New `src/lib/slack-audit.ts` (`recordSlackAudit` + `hashSlackPayload`) wraps `slack_action_audit` insert in best-effort try/catch (D-08); fire-and-forget `void recordSlackAudit(...)` wired at 15 return paths in `/api/slack/interact`. New `POST /api/slack/commands` route handles `/triarch deploy <project> <version>` (staff-only, dispatches `promote-branch.yml`), `/triarch status <project>` (Block Kit response), and empty `/triarch` (help text). New `POST /api/slack/events` route handles `app_mention` (status mirrored via shared `slack-status.ts` Block Kit builder), with `url_verification` BEFORE HMAC (D-19) and `Map<string, number>` FIFO event-id dedup (D-20). New staff-only `/admin/platform/slack-audit` page (server component + `SlackAuditClient.tsx` + load-more API endpoint): 4 URL-mirrored filters (action_id, actor_email, date from/to), PAGE_SIZE=50, color-coded status badges, click-to-expand row detail. `scripts/seed-slack-audit-nav.sql` adds the staff-only nav entry to `menu_pages`. `docs/onboarding-projects.md` Step 10 documents Slack App scope upgrade procedure (3 scopes: chat:write.public, app_mentions:read, commands; slash command URL; Events API URL; OAuth reinstall). 126/126 tests GREEN. Three HUMAN-UAT items pending (SQL seed application, Slack App scope upgrade, E2E smoke test) — Mike completes post-deploy.
+
 **Active milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain** (in progress)
 - Headline: customer-gated parallel release candidates with auto-rebase-and-merge promotion, unified credential storage, and OttoBot as the canonical Slack control plane.
-- Phases 01, 02, 03, 04, 05, 06 complete — Phase 07+ continues.
+- Phases 01, 02, 03, 04, 05, 06, 07 complete — Phase 7.5 (dev cluster) next, then Phase 08 (Truth+Treason pilot).
 
 ## Current Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
@@ -118,4 +120,4 @@ These are characteristics of the existing codebase that this milestone respects 
 - **URL pattern**: existing admin pages live under `/admin/*`; gating UI introduces customer-facing `/projects/{slug}/*`
 
 ---
-*Last updated: 2026-05-05 — Phase 06 (promoteAndAudit Rewrite) complete*
+*Last updated: 2026-05-05 — Phase 07 (OttoBot Dispatcher Hardening) complete*
