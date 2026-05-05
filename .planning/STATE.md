@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
-status: executing
-stopped_at: Completed 07.5-03-PLAN.md — apphosting.yaml dev-base + apphosting.prod.yaml prod-overlay split (ENV-02, ENV-04)
-last_updated: "2026-05-05T19:32:57.411Z"
+status: verifying
+stopped_at: Completed 07.5-05-PLAN.md — Phase 4 UAT closure runbook + HUMAN-UAT mirror (ENV-05)
+last_updated: "2026-05-05T19:38:09.020Z"
 progress:
   total_phases: 9
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 37
-  completed_plans: 35
+  completed_plans: 36
 ---
 
 # Triarch Dev Admin — Project State
@@ -31,7 +31,7 @@ Plan: 5 of 5
 **Goal:** Three intertwined initiatives — multi-branch parallel RCs with auto-rebase-and-merge promotion, central credential vault on GCP Secret Manager, OttoBot dispatcher hardening with expanded Slack scopes.
 **Phases:** 8 (reset to Phase 1 for v2.0)
 **Requirements:** 31 mapped (VAULT ×7, SCHEMA ×3, WORKFLOW ×5, RC ×8, OTTOBOT ×6, PILOT ×2)
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 
 ## Performance Metrics
 
@@ -106,6 +106,7 @@ Active decisions from v1.14.0 that carry forward into v2.0:
 - [Phase 07.5-dev-cluster-admin-dev-backend]: Step 11 uses detailed sub-section format (11a-11e) from PLAN.md with YAML examples rather than compact RESEARCH.md version
 - [Phase 07.5-03]: apphosting.prod.yaml must be complete config (not partial diff) per Firebase --config wholesale selection; NODE_AUTH_TOKEN with availability:[BUILD] preserved in both files (RESEARCH §Pitfall 1)
 - [Phase 07.5-03]: NEXTAUTH_URL in apphosting.yaml set to placeholder https://admin-dev.triarch.dev; Mike updates to actual FAH hosted.app URL during RUNBOOK B-1 (RESEARCH §Pitfall 4)
+- [Phase 07.5-05]: SQL queries in UAT closure runbook use actual promote_attempts column names (rebase_error not error_message); 04-HUMAN-UAT.md closure targets status: partial not deferred
 
 ### Pending Todos
 
@@ -119,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T19:32:57.410Z
-Stopped at: Completed 07.5-03-PLAN.md — apphosting.yaml dev-base + apphosting.prod.yaml prod-overlay split (ENV-02, ENV-04)
+Last session: 2026-05-05T19:38:09.019Z
+Stopped at: Completed 07.5-05-PLAN.md — Phase 4 UAT closure runbook + HUMAN-UAT mirror (ENV-05)
 Resume file: None

@@ -158,7 +158,7 @@
 - [x] 07.5-02-PLAN.md — shared-workflows v4: deploy-firebase.yml environment input + new db-migrate.yml (ENV-03)
 - [x] 07.5-03-PLAN.md — admin apphosting.yaml + apphosting.prod.yaml overlay split (ENV-02, ENV-04)
 - [x] 07.5-04-PLAN.md — docs/onboarding-projects.md Step 11 — Dev Environment overlay + db-migrate.yml usage (ENV-04)
-- [ ] 07.5-05-PLAN.md — 07.5-PHASE-4-UAT-CLOSURE.md + 07.5-HUMAN-UAT.md fillable runbooks (ENV-05)
+- [x] 07.5-05-PLAN.md — 07.5-PHASE-4-UAT-CLOSURE.md + 07.5-HUMAN-UAT.md fillable runbooks (ENV-05)
 
 ### Phase 8: Truth+Treason E2E Pilot
 **Goal**: The full multi-branch RC flow is validated against a real project with real customer interaction — single-branch path first, then parallel concurrent RC promotion with no work reverted; **plus** a one-time naming-convention triage and rename of GitHub repos / Firebase projects / DB cluster + DB names to a centralized standard before the pilot ships
@@ -190,5 +190,5 @@
 | 5. Customer Page RC UI | v2.0 | 0/5 | Planned | - |
 | 6. promoteAndAudit Rewrite | v2.0 | 4/4 | Complete   | 2026-05-05 |
 | 7. OttoBot Dispatcher Hardening | v2.0 | 5/6 | In Progress|  |
-| 7.5. Dev Cluster + Admin Dev Backend | v2.0 | 4/5 | In Progress|  |
+| 7.5. Dev Cluster + Admin Dev Backend | v2.0 | 5/5 | Complete   | 2026-05-05 |
 | 8. Truth+Treason E2E Pilot | v2.0 | 0/TBD | Not started | - |
