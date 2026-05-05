@@ -105,7 +105,7 @@
   4. A branch with an unresolved conflict shows a `Conflict — needs manual rebase` status badge; its approve button is disabled and the row remains queryable
 **Plans**: 5 plans
 - [x] 05-01-PLAN.md — Wave 0 test infrastructure: install RTL/jsdom devDeps, vitest jsdom env switch, 4 red test stubs + shared fixtures (RC-01, RC-02, RC-03, RC-07)
-- [ ] 05-02-PLAN.md — Server-side branch grouping: extend types.ts + groupIntoSections() helper + page.tsx fetches deployedUrl + promote_attempts + load-more API surfaces branch/metadata (RC-01, RC-07)
+- [x] 05-02-PLAN.md — Server-side branch grouping: extend types.ts + groupIntoSections() helper + page.tsx fetches deployedUrl + promote_attempts + load-more API surfaces branch/metadata (RC-01, RC-07)
 - [ ] 05-03-PLAN.md — PreviewLink component (anchor + disabled-button states) (RC-02)
 - [ ] 05-04-PLAN.md — BranchSection component + ReleasesClient accordion restructure + conflict badge + hide approve on conflict (RC-01, RC-07)
 - [ ] 05-05-PLAN.md — Per-RC confirm label includes branch + version (D-10) + cross-branch isolation green test (RC-03)
@@ -167,7 +167,7 @@
 | 2. Customer Releases Page | v1.14.0 | 4/4 | Complete   | 2026-05-05 |
 | 3. Slack Interactive Approval | v1.14.0 | 3/3 | Complete    | 2026-05-04 |
 | 4. GitHub App Promotion | v1.14.0 | 3/4 | In Progress|  |
-| 5. Round-trip + shared-workflows + Pilot | v1.14.0 | 1/5 | In Progress|  |
+| 5. Round-trip + shared-workflows + Pilot | v1.14.0 | 2/5 | In Progress|  |
 | 1. Central Secrets Vault | v2.0 | 0/6 | Planned | - |
 | 2. shared-workflows Hardening | v2.0 | 0/4 | Planned | - |
 | 3. Schema + GitHub App Permissions | v2.0 | 0/TBD | Not started | - |

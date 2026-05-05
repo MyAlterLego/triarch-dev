@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
 status: executing
-stopped_at: Completed Phase 05 Plan 01 (05-01-PLAN.md)
-last_updated: "2026-05-05T16:20:16.629Z"
+stopped_at: Completed Phase 05 Plan 02 (05-02-PLAN.md)
+last_updated: "2026-05-05T16:25:09.480Z"
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 22
-  completed_plans: 17
+  completed_plans: 18
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-04 — v2.0 milestone started)
 ## Current Position
 
 Phase: 05 (Customer Page RC UI) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 
 ## Active Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
@@ -76,6 +76,8 @@ Active decisions from v1.14.0 that carry forward into v2.0:
 - [Phase 04]: conflict_files defaults to [] (not null) when wire payload omits it — matches jsonb DEFAULT column default
 - [Phase 05-01]: environmentMatchGlobs over workspace config — simpler single-file approach for jsdom/node env split
 - [Phase 05-01]: vitest.setup.ts at repo root imports jest-dom matchers — required for toBeDisabled/toHaveAttribute in Wave 0 stubs
+- [Phase 05-02]: Transitional stub in ReleasesClient flattens initialSections to preserve flat table render until Plan 05-04 accordion UI lands
+- [Phase 05-02]: conflict auto-clear (D-16) implemented in groupIntoSections pure helper — reused server+client
 
 ### Pending Todos
 
@@ -89,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T16:20:16.627Z
-Stopped at: Completed Phase 05 Plan 01 (05-01-PLAN.md)
+Last session: 2026-05-05T16:25:09.478Z
+Stopped at: Completed Phase 05 Plan 02 (05-02-PLAN.md)
 Resume file: None
