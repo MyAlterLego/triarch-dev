@@ -22,9 +22,11 @@ Already operational at v1.14.6: foundation, DB-backed staff/membership roles, pr
 
 **v2.0 Phase 07 (OttoBot Dispatcher Hardening) shipped 2026-05-05:** New `src/lib/slack-audit.ts` (`recordSlackAudit` + `hashSlackPayload`) wraps `slack_action_audit` insert in best-effort try/catch (D-08); fire-and-forget `void recordSlackAudit(...)` wired at 15 return paths in `/api/slack/interact`. New `POST /api/slack/commands` route handles `/triarch deploy <project> <version>` (staff-only, dispatches `promote-branch.yml`), `/triarch status <project>` (Block Kit response), and empty `/triarch` (help text). New `POST /api/slack/events` route handles `app_mention` (status mirrored via shared `slack-status.ts` Block Kit builder), with `url_verification` BEFORE HMAC (D-19) and `Map<string, number>` FIFO event-id dedup (D-20). New staff-only `/admin/platform/slack-audit` page (server component + `SlackAuditClient.tsx` + load-more API endpoint): 4 URL-mirrored filters (action_id, actor_email, date from/to), PAGE_SIZE=50, color-coded status badges, click-to-expand row detail. `scripts/seed-slack-audit-nav.sql` adds the staff-only nav entry to `menu_pages`. `docs/onboarding-projects.md` Step 10 documents Slack App scope upgrade procedure (3 scopes: chat:write.public, app_mentions:read, commands; slash command URL; Events API URL; OAuth reinstall). 126/126 tests GREEN. Three HUMAN-UAT items pending (SQL seed application, Slack App scope upgrade, E2E smoke test) — Mike completes post-deploy.
 
+**v2.0 Phase 7.5 (Dev Cluster + Admin Dev Backend) — code complete 2026-05-05; HUMAN runbook pending:** Code deliverables (`scripts/provision-dev-dbs.sql` with 6 idempotent CREATE DATABASE IF NOT EXISTS for admin_dev/portal_dev/darksouls_dev/tmi_dev/truthtreason_dev/www_dev; shared-workflows v4 changes on `feat/v4-environment-input` branch — `deploy-firebase.yml` adds `environment: dev|prod` input with backwards-compat default `prod`, NEW reusable `db-migrate.yml` reads env-specific DATABASE_URL secret + runs `drizzle-kit push`; admin `apphosting.yaml`/`apphosting.prod.yaml` overlay split per Pitfall-1 guard (prod COMPLETE config preserves `NODE_AUTH_TOKEN`); `docs/onboarding-projects.md` Step 11 generalizes the convention; `07.5-PHASE-4-UAT-CLOSURE.md` template + `07.5-HUMAN-UAT.md` mirror both committed) all verified. 126/126 tests still GREEN. **17 HUMAN runbook items in `07.5-RUNBOOK.html` pending Mike's hands-on action**: provision new CRDB Cloud cluster (A-1, A-2), create `<app>-dev` FAH backends across 6 projects with `DATABASE_URL_DEV` secrets (B-1..B-6), tag shared-workflows@v4 after admin canary verifies and bump consumer ci-cd.yml refs (C-1..C-3), exercise Phase 4 deferred UAT scenarios against admin-dev (D-1..D-4) and mark `04-HUMAN-UAT.md` resolved (D-5).
+
 **Active milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain** (in progress)
 - Headline: customer-gated parallel release candidates with auto-rebase-and-merge promotion, unified credential storage, and OttoBot as the canonical Slack control plane.
-- Phases 01, 02, 03, 04, 05, 06, 07 complete — Phase 7.5 (dev cluster) next, then Phase 08 (Truth+Treason pilot).
+- Phases 01, 02, 03, 04, 05, 06, 07, 7.5 (code) complete — Phase 8 (Truth+Treason pilot) gated on Mike completing the 7.5 runbook.
 
 ## Current Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
@@ -120,4 +122,4 @@ These are characteristics of the existing codebase that this milestone respects 
 - **URL pattern**: existing admin pages live under `/admin/*`; gating UI introduces customer-facing `/projects/{slug}/*`
 
 ---
-*Last updated: 2026-05-05 — Phase 07 (OttoBot Dispatcher Hardening) complete*
+*Last updated: 2026-05-05 — Phase 7.5 (Dev Cluster) code complete, HUMAN runbook pending*
