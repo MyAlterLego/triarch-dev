@@ -34,6 +34,7 @@ describe('BranchSection conflict state (RC-07)', () => {
     onDeleteFeedback: noopHandler,
     approveConfirmRef: () => {},
     rejectButtonRef: () => {},
+    renderExpandedPanel: (_release: unknown, _isConflict: unknown) => null,
   };
 
   it('shows "Conflict — N file(s)" badge when section.conflict is populated', () => {
