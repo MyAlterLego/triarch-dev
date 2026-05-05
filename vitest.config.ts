@@ -9,5 +9,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    environmentMatchGlobs: [
+      ['**/*.test.tsx', 'jsdom'],
+    ],
+    setupFiles: ['./vitest.setup.ts'],
   },
 });
