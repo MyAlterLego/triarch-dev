@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
 status: executing
-stopped_at: Completed 07.5-04-PLAN.md — onboarding Step 11 dev environment overlay + db-migrate.yml docs (ENV-04)
-last_updated: "2026-05-05T19:32:15.001Z"
+stopped_at: Completed 07.5-03-PLAN.md — apphosting.yaml dev-base + apphosting.prod.yaml prod-overlay split (ENV-02, ENV-04)
+last_updated: "2026-05-05T19:32:57.411Z"
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 37
-  completed_plans: 34
+  completed_plans: 35
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-04 — v2.0 milestone started)
 ## Current Position
 
 Phase: 07.5 (Dev Cluster + Admin Dev Backend) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 
 ## Active Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
@@ -104,6 +104,8 @@ Active decisions from v1.14.0 that carry forward into v2.0:
 - [Phase 07.5-dev-cluster-admin-dev-backend]: environment input default prod — backwards compat: callers omitting input get v3 behavior identical (D-21)
 - [Phase 07.5-dev-cluster-admin-dev-backend]: JOB_STATUS lifted to env: block in db-migrate.yml summary step — Phase 02-02 actionlint rule; tr -d newline on firebase secrets:access stdout — Pitfall 7 CRDB URI integrity; v4 NOT tagged in code plan — Mike tags after admin canary (RUNBOOK C-2)
 - [Phase 07.5-dev-cluster-admin-dev-backend]: Step 11 uses detailed sub-section format (11a-11e) from PLAN.md with YAML examples rather than compact RESEARCH.md version
+- [Phase 07.5-03]: apphosting.prod.yaml must be complete config (not partial diff) per Firebase --config wholesale selection; NODE_AUTH_TOKEN with availability:[BUILD] preserved in both files (RESEARCH §Pitfall 1)
+- [Phase 07.5-03]: NEXTAUTH_URL in apphosting.yaml set to placeholder https://admin-dev.triarch.dev; Mike updates to actual FAH hosted.app URL during RUNBOOK B-1 (RESEARCH §Pitfall 4)
 
 ### Pending Todos
 
@@ -117,6 +119,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T19:32:14.999Z
-Stopped at: Completed 07.5-04-PLAN.md — onboarding Step 11 dev environment overlay + db-migrate.yml docs (ENV-04)
+Last session: 2026-05-05T19:32:57.410Z
+Stopped at: Completed 07.5-03-PLAN.md — apphosting.yaml dev-base + apphosting.prod.yaml prod-overlay split (ENV-02, ENV-04)
 Resume file: None
