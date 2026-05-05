@@ -16,9 +16,11 @@ Already operational at v1.14.6: foundation, DB-backed staff/membership roles, pr
 
 **v2.0 Phase 01 (Central Secrets Vault) shipped 2026-05-04:** `triarch-vault` GCP project with 7 shared secrets, `@myalterlego/secrets@0.1.0` npm package (cache + env fallback), per-secret IAM grants for admin + CRM runtime SAs, admin app and CRM both reading from vault, staff-only `/api/platform/health/secrets` endpoint, onboarding docs Step 7.
 
+**v2.0 Phase 05 (Customer Page RC UI) shipped 2026-05-05:** `/projects/{slug}/releases` restructured into collapsible per-branch sections (main pinned first, feature branches by recency); inline `<PreviewLink>` ExternalLink icon with disabled fallback for missing `metadata.previewUrl`; per-RC two-step approve UX with branch+version in confirm label and full cross-branch state isolation; conflict badge in section header + per row driven by `promote_attempts` query, approve hidden with "Resolve conflict to enable approval" helper, auto-clears when newer release lands. Test infra: RTL + jsdom installed, 11 new tests across 4 test files, 85/85 GREEN. Five HUMAN-UAT items deferred to Phase 7.5/8 pilot (need live multi-branch + conflict data).
+
 **Active milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain** (in progress)
 - Headline: customer-gated parallel release candidates with auto-rebase-and-merge promotion, unified credential storage, and OttoBot as the canonical Slack control plane.
-- Phase 01 (Central Secrets Vault) complete — Phases 02+ continue.
+- Phases 01, 02, 03, 04, 05 complete — Phase 06+ continues.
 
 ## Current Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
@@ -114,4 +116,4 @@ These are characteristics of the existing codebase that this milestone respects 
 - **URL pattern**: existing admin pages live under `/admin/*`; gating UI introduces customer-facing `/projects/{slug}/*`
 
 ---
-*Last updated: 2026-05-03 — scope reset post-audit; milestone v1.14.0 defined for Customer Release Gating*
+*Last updated: 2026-05-05 — Phase 05 (Customer Page RC UI) complete*
