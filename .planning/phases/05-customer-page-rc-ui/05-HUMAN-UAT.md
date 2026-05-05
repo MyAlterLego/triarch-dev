@@ -1,14 +1,16 @@
 ---
-status: partial
+status: deferred
 phase: 05-customer-page-rc-ui
 source: [05-VERIFICATION.md]
 started: 2026-05-05T16:00:00Z
-updated: 2026-05-05T16:00:00Z
+updated: 2026-05-05T16:05:00Z
+deferred_to: Phase 7.5 (dev cluster) / Phase 8 (Truth+Treason pilot)
+deferred_reason: Items 2 and 4 require live data (metadata.previewUrl on a feature branch deploy; promote_attempts conflict row) that does not exist until Phase 6 wires dispatch + a real conflict occurs. Items 1, 3, 5 are exercisable today on main-only data but provide limited multi-branch signal. Batch with the Phase 8 pilot UAT.
 ---
 
 ## Current Test
 
-[awaiting human testing]
+[deferred — see deferred_reason above]
 
 ## Tests
 
