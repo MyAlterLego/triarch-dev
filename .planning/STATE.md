@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
-status: planning
-stopped_at: Completed 03-02-PLAN.md — slackActionAudit table + migration 0011
-last_updated: "2026-05-05T00:47:00.620Z"
+status: executing
+stopped_at: Completed 02-02-PLAN.md — deploy-prod.yml with admin promoted callback
+last_updated: "2026-05-05T02:17:00.662Z"
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 13
+  completed_plans: 11
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,19 +19,19 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-04 — v2.0 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 01 — central-secrets-vault
+**Current focus:** Phase 02 — shared-workflows-hardening
 
 ## Current Position
 
-Phase: 03
-Plan: Not started
+Phase: 02 (shared-workflows-hardening) — EXECUTING
+Plan: 2 of 4
 
 ## Active Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
 **Goal:** Three intertwined initiatives — multi-branch parallel RCs with auto-rebase-and-merge promotion, central credential vault on GCP Secret Manager, OttoBot dispatcher hardening with expanded Slack scopes.
 **Phases:** 8 (reset to Phase 1 for v2.0)
 **Requirements:** 31 mapped (VAULT ×7, SCHEMA ×3, WORKFLOW ×5, RC ×8, OTTOBOT ×6, PILOT ×2)
-**Status:** Ready to plan
+**Status:** Ready to execute
 
 ## Performance Metrics
 
@@ -58,6 +58,8 @@ Active decisions from v1.14.0 that carry forward into v2.0:
 - [Phase 03-01]: DB push deferred to Mike post-merge — DATABASE_URL is Firebase App Hosting secret; same precedent as v1.14 Phase 02-01/04-01
 - [Phase 03]: actor_email nullable in slack_action_audit — unmapped Slack users have null email; actor_slack_id always present
 - [Phase 03]: No relations() block for slackActionAudit — audit logs are immutable standalone; no FK to any other table
+- [Phase 02-02]: All ${{ }} expressions moved to env: blocks in run: steps — required for actionlint/shellcheck compliance; standard pattern for shared-workflows steps
+- [Phase 02-02]: snake_case payload enforced (commit_sha, deployed_at, deployed_by) in deploy-prod.yml — /api/releases/promoted requires snake_case (different from dev endpoint camelCase)
 
 ### Pending Todos
 
@@ -71,6 +73,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-04T22:16:56.786Z
-Stopped at: Completed 03-02-PLAN.md — slackActionAudit table + migration 0011
+Last session: 2026-05-05T02:17:00.660Z
+Stopped at: Completed 02-02-PLAN.md — deploy-prod.yml with admin promoted callback
 Resume file: None
