@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
 status: executing
-stopped_at: Completed 02-01-PLAN.md — deploy-firebase.yml git_branch input + admin dev callback
-last_updated: "2026-05-05T02:17:34.770Z"
+stopped_at: Completed 02-03-PLAN.md — shared-workflows v2 tagged, admin canary live, release_logs E2E verified
+last_updated: "2026-05-05T02:51:59.198Z"
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-04 — v2.0 milestone started)
 ## Current Position
 
 Phase: 02 (shared-workflows-hardening) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 
 ## Active Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
@@ -62,6 +62,9 @@ Active decisions from v1.14.0 that carry forward into v2.0:
 - [Phase 02-02]: snake_case payload enforced (commit_sha, deployed_at, deployed_by) in deploy-prod.yml — /api/releases/promoted requires snake_case (different from dev endpoint camelCase)
 - [Phase 02-01]: previewUrl stored in metadata JSONB (not new column) — keeps Phase 2 schema-free per D-13
 - [Phase 02-01]: Two mutually-exclusive FAH deploy steps in deploy-firebase.yml: main vs branch-preview, driven by git_branch input
+- [Phase 02-03]: v2 tag moved from merge commit to fix commit after canary exposed version extraction bug — acceptable since v2 had no consumers at initial tag time
+- [Phase 02-03]: branch column added via ALTER TABLE (not drizzle-kit push) because drizzle-kit hung on CockroachDB — direct SQL is reliable fallback for schema changes
+- [Phase 02-03]: notify.yml@v1 coexists with deploy-firebase.yml@v2 with no conflicts — confirmed by admin canary; CRM can safely bump deploy ref without touching notify ref
 
 ### Pending Todos
 
@@ -75,6 +78,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T02:17:34.769Z
-Stopped at: Completed 02-01-PLAN.md — deploy-firebase.yml git_branch input + admin dev callback
+Last session: 2026-05-05T02:51:59.197Z
+Stopped at: Completed 02-03-PLAN.md — shared-workflows v2 tagged, admin canary live, release_logs E2E verified
 Resume file: None
