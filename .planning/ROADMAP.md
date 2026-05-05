@@ -122,7 +122,7 @@
 **Plans**: 4 plans
 - [x] 06-01-PLAN.md — promoteAndAudit dispatches promote-branch.yml + writes Slack thread metadata via jsonb_set (RC-04)
 - [x] 06-02-PLAN.md — notifyReleaseApproved branch + approve route call site + slack-notify.test.ts (RC-05)
-- [ ] 06-03-PLAN.md — promote-callback Slack threaded reply (conflict / merged / ci_failed / missing-meta) (RC-06)
+- [x] 06-03-PLAN.md — promote-callback Slack threaded reply (conflict / merged / ci_failed / missing-meta) (RC-06)
 - [ ] 06-04-PLAN.md — RC-08 concurrent integration test + onboarding-projects.md promote-branch.yml stub doc (RC-08)
 
 ### Phase 7: OttoBot Dispatcher Hardening
@@ -177,7 +177,7 @@
 | 3. Schema + GitHub App Permissions | v2.0 | 0/TBD | Not started | - |
 | 4. promote-branch Workflow | v2.0 | 4/4 | Complete (UAT deferred to 7.5) | 2026-05-05 |
 | 5. Customer Page RC UI | v2.0 | 0/5 | Planned | - |
-| 6. promoteAndAudit Rewrite | v2.0 | 2/4 | In Progress|  |
+| 6. promoteAndAudit Rewrite | v2.0 | 3/4 | In Progress|  |
 | 7. OttoBot Dispatcher Hardening | v2.0 | 0/TBD | Not started | - |
 | 7.5. Dev Cluster + Admin Dev Backend | v2.0 | 0/TBD | Not started | - |
 | 8. Truth+Treason E2E Pilot | v2.0 | 0/TBD | Not started | - |

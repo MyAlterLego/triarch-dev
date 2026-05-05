@@ -40,7 +40,7 @@
 - [x] **RC-03**: Each RC has its own admin-only "Approve for Production" button; multiple RCs can be in `dev → approved` state simultaneously
 - [x] **RC-04**: `promoteAndAudit` orchestrator dispatches `promote-branch.yml` with `branch` input (replaces v1.14's `deploy-prod.yml` with `tag` dispatch)
 - [x] **RC-05**: OttoBot Slack message includes the branch name in the body (e.g. "feat/change-font v0.15.0-rc.1 approved by mike@triarchsecurity.com")
-- [ ] **RC-06**: When `promote-branch.yml` emits a conflict result, admin posts to OttoBot threaded reply: `:warning: Cannot promote {branch} — conflicts with main: {file list}. Rebase manually and redeploy as a fresh RC.`
+- [x] **RC-06**: When `promote-branch.yml` emits a conflict result, admin posts to OttoBot threaded reply: `:warning: Cannot promote {branch} — conflicts with main: {file list}. Rebase manually and redeploy as a fresh RC.`
 - [x] **RC-07**: Customer page shows a `Conflict — needs manual rebase` status badge for branches with unresolved conflicts; releases stay queryable but cannot be re-approved until a new RC deploy lands
 - [ ] **RC-08**: Concurrent RCs work without interference — approving feat/change-font then approving feat/add-audio results in main containing both feature commits, with no work reverted from the first promotion
 
@@ -110,7 +110,7 @@
 | RC-07 | Phase 5 | Complete |
 | RC-04 | Phase 6 | Complete |
 | RC-05 | Phase 6 | Complete |
-| RC-06 | Phase 6 | Pending |
+| RC-06 | Phase 6 | Complete |
 | RC-08 | Phase 6 | Pending |
 | OTTOBOT-01 | Phase 7 | Pending |
 | OTTOBOT-02 | Phase 7 | Pending |

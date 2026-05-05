@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
 status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-05-05T17:27:00.673Z"
+stopped_at: Completed 06-03-PLAN.md
+last_updated: "2026-05-05T17:31:07.683Z"
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 26
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-04 — v2.0 milestone started)
 ## Current Position
 
 Phase: 06 (promoteAndAudit Rewrite) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 
 ## Active Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
@@ -87,6 +87,7 @@ Active decisions from v1.14.0 that carry forward into v2.0:
 - [Phase 06-01]: D-08/D-09: sql jsonb_set COALESCE merge writes metadata.dispatch.{slackChannelId,slackMessageTs,dispatchedAt} without destroying metadata.previewUrl (Pitfall 1 guard)
 - [Phase 06-02]: Option A (RESEARCH §2): signPayload unchanged — branch travels through DB row, not Slack button value
 - [Phase 06-02]: null branch falls back to literal 'main' via branchDisplay = input.branch ?? 'main'
+- [Phase 06]: buildPromoteReplyText exported at module scope; release lookup runs AFTER insert (promote_attempts is source of truth per D-15)
 
 ### Pending Todos
 
@@ -100,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T17:27:00.671Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-05-05T17:31:07.682Z
+Stopped at: Completed 06-03-PLAN.md
 Resume file: None
