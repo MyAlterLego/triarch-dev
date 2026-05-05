@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
-status: verifying
+status: planning
 stopped_at: Completed 07.5-05-PLAN.md — Phase 4 UAT closure runbook + HUMAN-UAT mirror (ENV-05)
-last_updated: "2026-05-05T19:38:09.020Z"
+last_updated: "2026-05-05T19:43:07.861Z"
 progress:
   total_phases: 9
   completed_phases: 7
@@ -23,15 +23,15 @@ See: `.planning/PROJECT.md` (last updated 2026-05-04 — v2.0 milestone started)
 
 ## Current Position
 
-Phase: 07.5 (Dev Cluster + Admin Dev Backend) — EXECUTING
-Plan: 5 of 5
+Phase: 8
+Plan: Not started
 
 ## Active Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
 **Goal:** Three intertwined initiatives — multi-branch parallel RCs with auto-rebase-and-merge promotion, central credential vault on GCP Secret Manager, OttoBot dispatcher hardening with expanded Slack scopes.
 **Phases:** 8 (reset to Phase 1 for v2.0)
 **Requirements:** 31 mapped (VAULT ×7, SCHEMA ×3, WORKFLOW ×5, RC ×8, OTTOBOT ×6, PILOT ×2)
-**Status:** Phase complete — ready for verification
+**Status:** Ready to plan
 
 ## Performance Metrics
 
