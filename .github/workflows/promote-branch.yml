@@ -1,0 +1,35 @@
+# Workflow_dispatch wrapper around the shared-workflows promote-branch reusable.
+# Triggered by /triarch deploy <project> <version> from Slack via the Github App
+# (src/lib/github-app.ts#dispatchWorkflow). Slack passes inputs.branch.
+#
+# Required for OttoBot dispatch to succeed — without this file, the dispatch
+# call hits a 404 Not Found on the workflow lookup.
+
+name: Promote Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Feature branch to rebase onto main and merge.'
+        required: true
+        type: string
+      target_branch:
+        description: 'Target branch (default main).'
+        required: false
+        type: string
+        default: 'main'
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  promote:
+    uses: MyAlterLego/shared-workflows/.github/workflows/promote-branch.yml@v4
+    with:
+      branch: ${{ inputs.branch }}
+      target_branch: ${{ inputs.target_branch }}
+    secrets:
+      ADMIN_API_TOKEN: ${{ secrets.ADMIN_API_TOKEN }}
+      GH_PAT: ${{ secrets.GH_PAT }}
