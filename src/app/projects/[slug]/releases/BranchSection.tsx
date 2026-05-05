@@ -221,6 +221,7 @@ export default function BranchSection({
                     onClick={() => onToggleRow(release.id)}
                     aria-expanded={expanded}
                     aria-controls={`panel-${release.id}`}
+                    aria-label={`Release ${release.id}`}
                   >
                     <td className="px-4 py-3 w-8">
                       {expanded ? (

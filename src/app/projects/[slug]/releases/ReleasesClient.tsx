@@ -738,7 +738,7 @@ function ExpandedPanel({
           {approveStep === 'idle' ? (
             <button
               onClick={onApproveStep1}
-              aria-label={`Approve release ${release.version} for production`}
+              aria-label="Approve for Production"
               className="flex items-center gap-1.5 px-3 py-2 text-sm bg-teal-600 text-white rounded-md hover:bg-teal-500"
             >
               <CheckCircle size={14} /> Approve for Production
@@ -747,10 +747,16 @@ function ExpandedPanel({
             <button
               ref={approveConfirmRef}
               onClick={onApproveConfirm}
-              aria-label="Confirm release approval"
-              className="flex items-center gap-1.5 px-3 py-2 text-sm bg-teal-700 text-white rounded-md border border-teal-500 min-w-[160px] justify-center"
+              aria-label={`Confirm promotion of ${release.branch ?? 'main'} ${release.version}`}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm bg-teal-700 text-white rounded-md border border-teal-500 min-w-[320px] justify-center whitespace-nowrap"
+              title={`Click to confirm — promote ${release.branch ?? 'main'} ${release.version}`}
             >
-              <span aria-live="polite">Click to confirm ({countdown}s left)</span>
+              <span>
+                Click to confirm — promote{' '}
+                <span className="font-mono">{release.branch ?? 'main'}</span>{' '}
+                <span className="font-mono">{release.version}</span>{' '}
+                (<span aria-live="polite">{countdown}s</span>)
+              </span>
             </button>
           )}
 
