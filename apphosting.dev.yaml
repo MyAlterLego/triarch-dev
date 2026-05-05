@@ -1,0 +1,20 @@
+# apphosting.dev.yaml — dev environment overlay
+# Auto-loaded by Firebase App Hosting when a backend's "Environment Name" is set to "dev"
+# (Console: Backend → Settings → Environment). Merged on top of apphosting.yaml — only
+# the variables that differ from prod need to be listed here.
+# https://firebase.google.com/docs/app-hosting/multiple-environments
+
+env:
+  - variable: NEXTAUTH_URL
+    value: https://admin-dev--triarch-dev-website.us-central1.hosted.app
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: DEPLOY_WEBHOOK_URL
+    value: https://admin-dev--triarch-dev-website.us-central1.hosted.app/api/webhooks/github-deploy
+    availability:
+      - RUNTIME
+
+  - variable: DATABASE_URL
+    secret: DATABASE_URL_DEV
