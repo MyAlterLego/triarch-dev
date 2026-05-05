@@ -337,6 +337,77 @@ The package caches each value in-process for 300 seconds and falls back to `proc
 
 ---
 
+## Step 8 — Admin Callback Token (shared-workflows@v2)
+
+Projects using `shared-workflows@v2` (`deploy-firebase.yml` or `deploy-prod.yml`) must provide an
+`ADMIN_API_TOKEN` GitHub Actions secret so the workflow can POST deploy notifications back to
+admin's control plane.
+
+### What it is
+
+The token is the project's `api_key` from admin's `projects` table — the same Bearer token that
+admin's `requireApiKey` middleware (`src/lib/api-key-auth.ts`) validates. Each project has its own
+`api_key`; this is **not** a vault secret.
+
+### How to get it
+
+1. Query admin's CRDB for the project's `api_key` (replace `<project-key>` with the project's
+   `key` column value, e.g. `triarch-dev`):
+
+   ```bash
+   DATABASE_URL=$(firebase apphosting:secrets:access DATABASE_URL --project triarch-dev-website)
+   psql "$DATABASE_URL" -c "SELECT api_key FROM projects WHERE key='<project-key>'"
+   ```
+
+2. If no row exists, create the project entry first (see Step 1 of this runbook).
+
+### How to set it
+
+```bash
+gh secret set ADMIN_API_TOKEN --repo MyAlterLego/<repo-name>
+# Paste the api_key value when prompted.
+```
+
+Or pipe it non-interactively (avoid printing the value to stdout):
+
+```bash
+printf '%s' "$API_KEY" | gh secret set ADMIN_API_TOKEN --repo MyAlterLego/<repo-name>
+```
+
+### Verification
+
+After setting the secret, push to main and watch the deploy run:
+
+```bash
+RUN_ID=$(gh run list --workflow ci-cd.yml --branch main --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run view "$RUN_ID" --log | grep "Admin dev callback succeeded"
+# Expected: "Admin dev callback succeeded (HTTP 201). release_logs row created for main v<X.Y.Z>."
+```
+
+Then confirm the row in admin's CRDB:
+
+```bash
+DATABASE_URL=$(firebase apphosting:secrets:access DATABASE_URL --project triarch-dev-website)
+psql "$DATABASE_URL" -c "SELECT version, env, branch FROM release_logs WHERE project='<project-key>' ORDER BY created_at DESC LIMIT 1"
+```
+
+Expected: one row with `env='dev'`, `branch='main'`, `version` matching your package.json version.
+
+### What if the secret is missing?
+
+The workflow runs an empty-token guard (`[ -z "$ADMIN_API_TOKEN" ]`) and emits a
+`::warning::ADMIN_API_TOKEN not set` annotation. The deploy still completes — admin just won't see
+the release row. Set the secret and re-deploy to register the next push.
+
+### Related
+
+- WORKFLOW-01: `deploy-firebase.yml` dev callback to `/api/platform/ingest/release-logs`
+- WORKFLOW-02: `deploy-prod.yml` prod callback to `/api/releases/promoted`
+- See also: [secrets-vault.md](secrets-vault.md) for the seven shared vault secrets (different
+  concern — vault is for shared credentials, `ADMIN_API_TOKEN` is a per-project token).
+
+---
+
 ## Verification Checklist
 
 - [ ] Project record created; `apiKey` saved to a secure location (password manager)
