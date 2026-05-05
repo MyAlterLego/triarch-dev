@@ -579,6 +579,118 @@ Expected: one row with `branch='main'`, `result='merged'`.
 
 ---
 
+## Step 11 — Dev Environment (apphosting.yaml overlay + db-migrate.yml)
+
+Every Triarch project has two Firebase App Hosting configs:
+
+| File | Used by | FAH backend | DB secret |
+|------|---------|------------|----------|
+| `apphosting.yaml` | `deploy-firebase.yml@v4` with `environment: dev` | `<app>-dev` | `DATABASE_URL_DEV` |
+| `apphosting.prod.yaml` | `deploy-firebase.yml@v4` with `environment: prod` (default) | `<app>` | `DATABASE_URL` |
+
+The convention generalizes the pattern first established in `truthtreason/apphosting.yaml` + `truthtreason/apphosting.prod.yaml` and now used in admin (see `apphosting.yaml` + `apphosting.prod.yaml` at the admin repo root for a working reference).
+
+### 11a. Create `apphosting.yaml` (dev base)
+
+Copy the project's existing `apphosting.yaml`. Make these changes:
+
+1. Switch the `DATABASE_URL` secret reference from `DATABASE_URL` to `DATABASE_URL_DEV`.
+2. Adjust `NEXTAUTH_URL` to the dev FAH URL (`<app-name>-dev.<region>.hosted.app` pattern, captured at backend creation time).
+3. Adjust any other URL-bearing env values (`DEPLOY_WEBHOOK_URL`, etc.) to point at the dev host.
+4. Lower `runConfig` to dev sizing if desired (e.g. `concurrency: 10`, `minInstances: 0`).
+
+Example (admin):
+
+```yaml
+runConfig:
+  runtime: nodejs22
+  concurrency: 10
+  cpu: 1
+  memoryMiB: 512
+  minInstances: 0
+  maxInstances: 2
+
+env:
+  - variable: NEXTAUTH_URL
+    value: https://admin-dev.triarch.dev
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: DATABASE_URL
+    secret: DATABASE_URL_DEV
+
+  - variable: NODE_AUTH_TOKEN
+    secret: GITHUB_PACKAGES_TOKEN
+    availability:
+      - BUILD
+  # ... all other secrets identical to apphosting.prod.yaml ...
+```
+
+### 11b. Create `apphosting.prod.yaml` (prod overrides)
+
+Duplicate the FINAL prod config (every field from the original `apphosting.yaml`). Keep `DATABASE_URL` secret name. Keep prod `NEXTAUTH_URL`. Set prod `runConfig` (e.g. `concurrency: 20`, `minInstances: 1` for warm starts if needed).
+
+> **Critical (RESEARCH §Pitfall 1):** `apphosting.prod.yaml` must be a COMPLETE config, not a partial diff. The Firebase CLI uses the `--config` file EXCLUSIVELY when specified — it does NOT merge with `apphosting.yaml`. Omitting `NODE_AUTH_TOKEN` (with `availability: [BUILD]`) from the prod file will break `npm ci` on prod builds with `E401 Unauthorized` against GitHub Packages. Every secret declared in `apphosting.yaml` must also appear in `apphosting.prod.yaml`.
+
+### 11c. Verify the overlay convention
+
+```bash
+# Dry-run: check both files parse as valid YAML
+yamllint -d "{rules: {line-length: disable, document-start: disable, truthy: disable}}" \
+  apphosting.yaml apphosting.prod.yaml
+
+# Quick sanity diff: only DATABASE_URL secret name + NEXTAUTH_URL should differ
+diff <(grep "secret:" apphosting.yaml | sort) <(grep "secret:" apphosting.prod.yaml | sort)
+# Expect: ONE difference — DATABASE_URL_DEV in dev vs DATABASE_URL in prod
+```
+
+### 11d. Wire `db-migrate.yml` in `ci-cd.yml` (optional — run manually first)
+
+To run schema migrations against the dev DB without touching prod, use the new reusable workflow:
+
+```yaml
+# In .github/workflows/ci-cd.yml, add a dispatch-only job:
+  db-migrate-dev:
+    uses: MyAlterLego/shared-workflows/.github/workflows/db-migrate.yml@v4
+    with:
+      environment: dev
+      firebase_project_id: <your-firebase-project-id>
+      consumer_repo: ${{ github.repository }}
+    secrets:
+      FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SA_KEY }}
+      GH_PAT: ${{ secrets.GH_PAT }}
+```
+
+Or trigger it manually via the GitHub Actions UI: navigate to **Actions → DB Migrate → Run workflow**, select `dev` for `environment`, paste the Firebase project ID and consumer repo, then dispatch.
+
+**When to use:** After merging any PR that changes `src/db/schema.ts` to the `dev` branch, run `db-migrate.yml@v4` with `environment: dev` BEFORE testing anything that reads/writes the new columns or tables. This replaces the manual `firebase apphosting:secrets:access DATABASE_URL --project X | psql -f` ritual that previously appeared in Step 8.
+
+**Caveat (RESEARCH §Pitfall 6):** `db-migrate.yml` is for repos that use Drizzle ORM only. The workflow runs `npx drizzle-kit push` and requires a `drizzle.config.ts` at the consumer repo root. Static-site repos (e.g. `www`) without Drizzle should NOT call this workflow.
+
+### 11e. Set `DATABASE_URL_DEV` secret on the dev backend
+
+After Mike has provisioned the dev cluster + per-app database (per `07.5-RUNBOOK.html` step A-2), set the connection string as a Firebase secret on the dev FAH backend:
+
+```bash
+firebase apphosting:secrets:set DATABASE_URL_DEV --project <your-firebase-project-id>
+# Paste the dev cluster connection URL for <app>_dev database
+# Example: postgresql://<user>:<password>@<dev-cluster-host>:26257/<app>_dev?sslmode=require
+```
+
+Set `DATABASE_URL` separately on the prod backend (this likely already exists from project bring-up):
+
+```bash
+firebase apphosting:secrets:set DATABASE_URL --project <your-firebase-project-id>
+# Paste the PROD cluster connection URL for <app> database (unchanged from Step 8)
+```
+
+### Cost note
+
+Standing up a dev cluster + per-app dev backends adds approximately $50–100/month across all Triarch projects (smallest CRDB Cloud tier + minimal FAH minInstances). Document this on customer-managed projects so the marginal cost is understood before adoption.
+
+---
+
 ## Verification Checklist
 
 - [ ] Project record created; `apiKey` saved to a secure location (password manager)
