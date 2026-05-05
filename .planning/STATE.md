@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Branch RC + Central Vault + OttoBot Brain
-status: planning
-stopped_at: Phase 6 context gathered (auto)
-last_updated: "2026-05-05T17:01:47.106Z"
+status: executing
+stopped_at: Completed 06-promoteandaudit-rewrite/06-01-PLAN.md
+last_updated: "2026-05-05T17:26:21.394Z"
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 22
-  completed_plans: 21
+  total_plans: 26
+  completed_plans: 22
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,19 +19,19 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-04 — v2.0 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 05 — Customer Page RC UI
+**Current focus:** Phase 06 — promoteAndAudit Rewrite
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 06 (promoteAndAudit Rewrite) — EXECUTING
+Plan: 2 of 4
 
 ## Active Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
 
 **Goal:** Three intertwined initiatives — multi-branch parallel RCs with auto-rebase-and-merge promotion, central credential vault on GCP Secret Manager, OttoBot dispatcher hardening with expanded Slack scopes.
 **Phases:** 8 (reset to Phase 1 for v2.0)
 **Requirements:** 31 mapped (VAULT ×7, SCHEMA ×3, WORKFLOW ×5, RC ×8, OTTOBOT ×6, PILOT ×2)
-**Status:** Ready to plan
+**Status:** Ready to execute
 
 ## Performance Metrics
 
@@ -83,6 +83,8 @@ Active decisions from v1.14.0 that carry forward into v2.0:
 - [Phase Phase 05-04]: RTL v16 auto-cleanup requires afterEach global; vitest uses explicit imports — vitest.setup.ts registers afterEach(cleanup) explicitly
 - [Phase 05-05]: Idle Approve aria-label simplified to 'Approve for Production' — prior value had version in middle of string, breaking /approve for production/i regex used by RC-03 test
 - [Phase 05-05]: BranchSection <tr> rows get aria-label='Release {id}' — enables unique row identification when both sections expanded with same version string (RC-03 test requirement)
+- [Phase 06-01]: D-01/D-02: workflowFile='promote-branch.yml', inputs={branch: release.branch ?? 'main'} — tag input removed
+- [Phase 06-01]: D-08/D-09: sql jsonb_set COALESCE merge writes metadata.dispatch.{slackChannelId,slackMessageTs,dispatchedAt} without destroying metadata.previewUrl (Pitfall 1 guard)
 
 ### Pending Todos
 
@@ -96,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T17:01:47.102Z
-Stopped at: Phase 6 context gathered (auto)
-Resume file: .planning/phases/06-promoteandaudit-rewrite/06-CONTEXT.md
+Last session: 2026-05-05T17:26:21.392Z
+Stopped at: Completed 06-promoteandaudit-rewrite/06-01-PLAN.md
+Resume file: None

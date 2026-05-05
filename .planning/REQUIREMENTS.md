@@ -38,7 +38,7 @@
 - [x] **RC-01**: `/projects/{slug}/releases` page groups releases by branch — one collapsible section per active feature branch, plus a "main" section. Each section shows the most recent release(s) for that branch
 - [x] **RC-02**: Each RC row displays the preview URL (e.g. `https://feat-change-font--triarch-dev-truthtreason.us-central1.hosted.app`) with an external-link icon; clicking opens the preview in a new tab
 - [x] **RC-03**: Each RC has its own admin-only "Approve for Production" button; multiple RCs can be in `dev → approved` state simultaneously
-- [ ] **RC-04**: `promoteAndAudit` orchestrator dispatches `promote-branch.yml` with `branch` input (replaces v1.14's `deploy-prod.yml` with `tag` dispatch)
+- [x] **RC-04**: `promoteAndAudit` orchestrator dispatches `promote-branch.yml` with `branch` input (replaces v1.14's `deploy-prod.yml` with `tag` dispatch)
 - [ ] **RC-05**: OttoBot Slack message includes the branch name in the body (e.g. "feat/change-font v0.15.0-rc.1 approved by mike@triarchsecurity.com")
 - [ ] **RC-06**: When `promote-branch.yml` emits a conflict result, admin posts to OttoBot threaded reply: `:warning: Cannot promote {branch} — conflicts with main: {file list}. Rebase manually and redeploy as a fresh RC.`
 - [x] **RC-07**: Customer page shows a `Conflict — needs manual rebase` status badge for branches with unresolved conflicts; releases stay queryable but cannot be re-approved until a new RC deploy lands
@@ -108,7 +108,7 @@
 | RC-02 | Phase 5 | Complete |
 | RC-03 | Phase 5 | Complete |
 | RC-07 | Phase 5 | Complete |
-| RC-04 | Phase 6 | Pending |
+| RC-04 | Phase 6 | Complete |
 | RC-05 | Phase 6 | Pending |
 | RC-06 | Phase 6 | Pending |
 | RC-08 | Phase 6 | Pending |
