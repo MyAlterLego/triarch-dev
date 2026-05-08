@@ -356,6 +356,7 @@ export async function POST(req: NextRequest) {
     release,
     approverEmail: email,
     reason: 'Rejected via Slack',
+    actorSource: 'slack',
     ipAddress,
     userAgent,
   });

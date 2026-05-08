@@ -48,7 +48,7 @@
 - [x] **PREV-03**: Branch swap calls Firebase App Hosting programmatic rollout API to deploy the selected branch onto the project's existing dev backend (e.g. `truthtreason-dev`, `tmi-dev`, `darksouls-dev`, etc.)
 - [x] **PREV-04**: While swap is in flight, all RC rows on the page show "branch X currently previewing — set N minutes ago by user@email" banner; competing Preview buttons disabled with tooltip
 - [x] **PREV-05**: System polls rollout state via SWR at 5-second interval until terminal (SUCCEEDED / FAILED); 8-minute hard timeout
-- [ ] **PREV-06**: Preview lock auto-clears on rollout terminal state (success or failure); FAILED state surfaces error inline with link to FAH console
+- [x] **PREV-06**: Preview lock auto-clears on rollout terminal state (success or failure); FAILED state surfaces error inline with link to FAH console
 
 ### Customer Page Integration (CUST)
 
