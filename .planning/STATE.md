@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
-status: planning
-stopped_at: Completed 13-03-PLAN.md — BranchPreviewClient + ReleasesClient integration + v2.7.0
-last_updated: "2026-05-08T06:35:51.430Z"
+status: executing
+stopped_at: Completed 14-01-PLAN.md — server-side entry counts + WhatsComing lib + page.tsx wiring
+last_updated: "2026-05-08T06:51:57.877Z"
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 20
-  completed_plans: 20
+  total_plans: 23
+  completed_plans: 21
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,12 +19,12 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-07 — v2.1 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 13 — Branch Preview Swap
+**Current focus:** Phase 14 — Customer Page Integration
 
 ## Current Position
 
-Phase: 14
-Plan: Not started
+Phase: 14 (Customer Page Integration) — EXECUTING
+Plan: 2 of 3
 
 ## Active Milestone: v2.1 — Pipeline UI
 
@@ -43,7 +43,7 @@ Plan: Not started
 | 14 — Customer Page Integration | Filter chips, what's-changed card, branch swap in section headers | CUST-01..03, DIFF-02 | Not started |
 
 **Requirements:** 29 total, all mapped
-**Status:** Ready to plan
+**Status:** Ready to execute
 
 ## Performance Metrics
 
@@ -123,6 +123,9 @@ v2.1 decisions captured at roadmap creation:
 - [Phase 13]: Banner uses violet-400 spinner + bg-violet-500/10 halo per DESIGN-REFERENCE.md active/in-flight pattern (overrides plan's amber suggestion)
 - [Phase 13]: refreshInterval as function form ensures terminal pause applies immediately after first terminal response
 - [Phase 13]: branchPreviewEnabled optional with default false — additive prop, existing ReleasesClient tests unchanged
+- [Phase 14-customer-page-integration]: release-as-unit bucketing with fixes-take-precedence: a release with both bug+feature links counts as ONE fix — keeps totalEntries = total releases on page
+- [Phase 14-customer-page-integration]: Map->Record conversion in page.tsx: Object.fromEntries before passing to ReleasesClient — Next.js cannot serialize ES6 Maps across server/client boundary
+- [Phase 14-customer-page-integration]: external links excluded from typed counts: linkType=external does not increment fixes/features/total; Map entry created with zeros to distinguish all-external from no-links
 
 ### Pending Todos
 
@@ -137,7 +140,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T06:31:26.550Z
-Stopped at: Completed 13-03-PLAN.md — BranchPreviewClient + ReleasesClient integration + v2.7.0
+Last session: 2026-05-08T06:51:57.875Z
+Stopped at: Completed 14-01-PLAN.md — server-side entry counts + WhatsComing lib + page.tsx wiring
 Resume file: None
 Next action: `/gsd:plan-phase 8`

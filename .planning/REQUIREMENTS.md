@@ -29,7 +29,7 @@
 ### What's-Changed Views (DIFF)
 
 - [x] **DIFF-01**: Admin user sees expanded "What's changed" entry-by-entry view on per-project pipeline page (typed table: Type pill, Title, Author, Date, bug/feature link)
-- [ ] **DIFF-02**: Customer admin sees "What's coming to prod" summary card at top of `/projects/<slug>/releases` (collapsed by default; counts visible in collapsed state)
+- [x] **DIFF-02**: Customer admin sees "What's coming to prod" summary card at top of `/projects/<slug>/releases` (collapsed by default; counts visible in collapsed state)
 
 ### Tracker ↔ Release Linkage (LINK)
 
@@ -52,8 +52,8 @@
 
 ### Customer Page Integration (CUST)
 
-- [ ] **CUST-01**: Customer admin can filter `/projects/<slug>/releases` by entry type (chips: Bug fixes / Features / Other) with URL-mirrored state
-- [ ] **CUST-02**: Filter chips show counts ("Bug fixes (4)", "Features (2)") and follow the established `SlackAuditClient.tsx` URL-params pattern
+- [x] **CUST-01**: Customer admin can filter `/projects/<slug>/releases` by entry type (chips: Bug fixes / Features / Other) with URL-mirrored state
+- [x] **CUST-02**: Filter chips show counts ("Bug fixes (4)", "Features (2)") and follow the established `SlackAuditClient.tsx` URL-params pattern
 - [ ] **CUST-03**: Branch swap UI from PREV-02 is integrated into branch section headers on the customer release page
 
 ---
@@ -124,10 +124,10 @@ Populated by `gsd-roadmapper` 2026-05-07.
 | PREV-04 | Phase 13 — Branch Preview Swap | Complete |
 | PREV-05 | Phase 13 — Branch Preview Swap | Complete |
 | PREV-06 | Phase 13 — Branch Preview Swap | Pending |
-| CUST-01 | Phase 14 — Customer Page Integration | Pending |
-| CUST-02 | Phase 14 — Customer Page Integration | Pending |
+| CUST-01 | Phase 14 — Customer Page Integration | Complete |
+| CUST-02 | Phase 14 — Customer Page Integration | Complete |
 | CUST-03 | Phase 14 — Customer Page Integration | Pending |
-| DIFF-02 | Phase 14 — Customer Page Integration | Pending |
+| DIFF-02 | Phase 14 — Customer Page Integration | Complete |
 
 **Coverage:**
 - v2.1 requirements: 29 total (enumerated: PIPE×6, PROM×5, DIFF×2, LINK×7, PREV×6, CUST×3)
