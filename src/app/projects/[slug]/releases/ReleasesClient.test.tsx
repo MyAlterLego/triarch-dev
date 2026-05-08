@@ -15,6 +15,13 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/projects/test/releases',
 }));
 
+// Mock BranchPreviewClient named exports so ReleasesClient tests don't depend on SWR
+vi.mock('./BranchPreviewClient', () => ({
+  BranchPreviewBanner: () => <div data-testid="preview-banner" />,
+  BranchPreviewButton: () => <div data-testid="preview-btn" />,
+  default: () => null,
+}));
+
 beforeEach(() => {
   mockReplace.mockClear();
 });
@@ -153,5 +160,66 @@ describe('ReleasesClient Phase 14: filter chips and WhatsComingCard integration'
     // URL-driven filter section hiding is tested via unit tests; integration verified via the
     // router.replace calls above
     expect(screen.getByText('All (3)')).toBeInTheDocument();
+  });
+});
+
+describe('ReleasesClient Phase 14: BranchPreviewBanner singleton', () => {
+  it('Test E: mounts BranchPreviewBanner exactly ONCE when branchPreviewEnabled=true', () => {
+    const section1 = makeBranchSection({
+      branch: 'main',
+      releases: [makeRelease({ id: 'r1', branch: 'main' })],
+    });
+    const section2 = makeBranchSection({
+      branch: 'feat/audio',
+      releases: [makeRelease({ id: 'r2', branch: 'feat/audio' })],
+    });
+    const section3 = makeBranchSection({
+      branch: 'feat/font',
+      releases: [makeRelease({ id: 'r3', branch: 'feat/font' })],
+    });
+
+    render(
+      <ReleasesClient
+        projectSlug="truthtreason"
+        projectName="Truth+Treason"
+        projectDeployedUrl={null}
+        userRole="admin"
+        currentUserEmail="mike@triarchsecurity.com"
+        initialSections={[section1, section2, section3]}
+        conflictsByBranch={{}}
+        total={3}
+        hasMore={false}
+        pageSize={20}
+        branchPreviewEnabled={true}
+        fahProjectId="triarch-dev-tmi"
+      />,
+    );
+
+    // Banner mounted exactly ONCE (singleton)
+    const banners = screen.queryAllByTestId('preview-banner');
+    expect(banners).toHaveLength(1);
+  });
+
+  it('Test F: BranchPreviewBanner NOT rendered when branchPreviewEnabled=false', () => {
+    const section = makeBranchSection({
+      branch: 'main',
+      releases: [makeRelease({ id: 'r1', branch: 'main' })],
+    });
+    render(
+      <ReleasesClient
+        projectSlug="truthtreason"
+        projectName="Truth+Treason"
+        projectDeployedUrl={null}
+        userRole="admin"
+        currentUserEmail="mike@triarchsecurity.com"
+        initialSections={[section]}
+        conflictsByBranch={{}}
+        total={1}
+        hasMore={false}
+        pageSize={20}
+        branchPreviewEnabled={false}
+      />,
+    );
+    expect(screen.queryByTestId('preview-banner')).not.toBeInTheDocument();
   });
 });

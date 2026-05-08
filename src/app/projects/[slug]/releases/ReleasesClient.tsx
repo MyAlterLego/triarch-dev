@@ -29,7 +29,7 @@ import { formatDeployedAt, formatRelativeTime } from './format';
 import Timeline from './Timeline';
 import { groupIntoSections } from './group-sections';
 import BranchSectionComponent from './BranchSection';
-import BranchPreviewClient from './BranchPreviewClient';
+import { BranchPreviewBanner } from './BranchPreviewClient';
 import FilterChips, { type FilterType } from './FilterChips';
 import WhatsComingCard from './WhatsComingCard';
 
@@ -523,14 +523,9 @@ export default function ReleasesClient({
           </div>
         </div>
 
-        {/* Branch preview swap slot (Phase 13) — top-of-list, only when project has FAH */}
+        {/* Branch preview banner (Phase 14) — singleton at top, informational for all roles */}
         {branchPreviewEnabled && (
-          <BranchPreviewClient
-            projectSlug={projectSlug}
-            userRole={userRole}
-            branches={Array.from(new Set(sections.map((s) => s.branch)))}
-            fahProjectId={fahProjectId}
-          />
+          <BranchPreviewBanner projectSlug={projectSlug} fahProjectId={fahProjectId} />
         )}
 
         {/* Phase 14: What's coming to prod summary card */}
@@ -558,6 +553,7 @@ export default function ReleasesClient({
                 userRole={userRole}
                 currentUserEmail={currentUserEmail}
                 projectSlug={projectSlug}
+                branchPreviewEnabled={branchPreviewEnabled}
                 onToggleSection={toggleSection}
                 onToggleRow={toggleExpanded}
                 approveStep={approveStep}
