@@ -16,8 +16,10 @@ vi.mock('@/lib/db', () => ({
     })),
     insert: vi.fn(() => ({
       values: (rows: unknown) => {
-        mockDbInsertValues(rows);
-        return Promise.resolve([]);
+        // mockDbInsertValues returns a promise; default is Promise.resolve([])
+        // tests can override with mockDbInsertValues.mockReturnValueOnce(Promise.reject(...))
+        const returnVal = mockDbInsertValues(rows);
+        return returnVal !== undefined ? returnVal : Promise.resolve([]);
       },
     })),
   },
@@ -119,8 +121,8 @@ describe('stampLinksFromCommit', () => {
   // ── Validation: feature refs ──────────────────────────────────────────────
 
   it('valid FEAT-{uuid} → 1 row with link_type="feature", feature_id=uuid', async () => {
-    // no bugs; feature lookup valid
-    setupSelectResponses({ 0: [], 1: [{ id: VALID_FEAT_UUID }] });
+    // no bugs in message → bug query skipped; feature is call index 0
+    setupSelectResponses({ 0: [{ id: VALID_FEAT_UUID }] });
 
     const result = await stampLinksFromCommit({
       releaseId: RELEASE_UUID,
@@ -136,7 +138,8 @@ describe('stampLinksFromCommit', () => {
   });
 
   it('invalid FEAT-{uuid} (not in feature_requests) → 0 links', async () => {
-    setupSelectResponses({ 0: [], 1: [] }); // feature lookup empty
+    // no bugs in message → bug query skipped; feature is call index 0 → empty
+    setupSelectResponses({ 0: [] }); // feature lookup empty
 
     const result = await stampLinksFromCommit({
       releaseId: RELEASE_UUID,
@@ -152,8 +155,8 @@ describe('stampLinksFromCommit', () => {
   // ── Validation: external #N refs ──────────────────────────────────────────
 
   it('commit "fixes #99" with project.github_repo="org/repo" → 1 row with link_type="external", externalUrl correct', async () => {
-    // no bugs; no features; project has github_repo
-    setupSelectResponses({ 0: [], 1: [], 2: [{ githubRepo: 'org/repo' }] });
+    // no BUG/FEAT refs → bug/feature queries skipped; project lookup is call index 0
+    setupSelectResponses({ 0: [{ githubRepo: 'org/repo' }] });
 
     const result = await stampLinksFromCommit({
       releaseId: RELEASE_UUID,
@@ -171,7 +174,8 @@ describe('stampLinksFromCommit', () => {
   });
 
   it('commit "fixes #99" with project.github_repo=null → 0 links (external ref silently dropped)', async () => {
-    setupSelectResponses({ 0: [], 1: [], 2: [{ githubRepo: null }] });
+    // no BUG/FEAT refs → bug/feature queries skipped; project lookup is call index 0
+    setupSelectResponses({ 0: [{ githubRepo: null }] });
 
     const result = await stampLinksFromCommit({
       releaseId: RELEASE_UUID,
@@ -185,10 +189,10 @@ describe('stampLinksFromCommit', () => {
   });
 
   it('commit with valid #N AND valid BUG → 2 rows (both kinds coexist)', async () => {
+    // Has BUG ref → bug query is call 0; no FEAT refs → feature query skipped; external → project is call 1
     setupSelectResponses({
-      0: [{ id: VALID_BUG_UUID }],  // bug lookup
-      1: [],                          // feature lookup
-      2: [{ githubRepo: 'org/repo' }], // project lookup for external
+      0: [{ id: VALID_BUG_UUID }],     // bug lookup
+      1: [{ githubRepo: 'org/repo' }], // project lookup for external (#N)
     });
 
     const result = await stampLinksFromCommit({
@@ -241,7 +245,8 @@ describe('stampLinksFromCommit', () => {
   });
 
   it('same external #N twice → 1 external row, not 2', async () => {
-    setupSelectResponses({ 0: [], 1: [], 2: [{ githubRepo: 'org/repo' }] });
+    // no BUG/FEAT refs → project lookup is call index 0
+    setupSelectResponses({ 0: [{ githubRepo: 'org/repo' }] });
 
     const result = await stampLinksFromCommit({
       releaseId: RELEASE_UUID,
@@ -274,8 +279,8 @@ describe('stampLinksFromCommit', () => {
   });
 
   it('single inArray call for all candidate feature IDs', async () => {
-    // No bugs; one feature
-    setupSelectResponses({ 0: [], 1: [{ id: VALID_FEAT_UUID }] });
+    // No bugs in message → bug query skipped; feature is call index 0
+    setupSelectResponses({ 0: [{ id: VALID_FEAT_UUID }] });
 
     await stampLinksFromCommit({
       releaseId: RELEASE_UUID,
@@ -288,7 +293,8 @@ describe('stampLinksFromCommit', () => {
   });
 
   it('single project lookup for github_repo (only when external refs present)', async () => {
-    setupSelectResponses({ 0: [], 1: [], 2: [{ githubRepo: 'org/repo' }] });
+    // no BUG/FEAT refs → project lookup is call index 0
+    setupSelectResponses({ 0: [{ githubRepo: 'org/repo' }] });
 
     await stampLinksFromCommit({
       releaseId: RELEASE_UUID,
@@ -326,11 +332,9 @@ describe('stampLinksFromCommit', () => {
   // ── Error handling ────────────────────────────────────────────────────────
 
   it('resolves successfully (does not throw) when DB INSERT throws — stamper is forgiving', async () => {
-    // DB responds to selects but INSERT throws
-    setupSelectResponses({ 0: [{ id: VALID_BUG_UUID }], 1: [] });
-    mockDbInsertValues.mockImplementationOnce(() => {
-      throw new Error('DB connection lost');
-    });
+    // DB responds to selects but INSERT rejects
+    setupSelectResponses({ 0: [{ id: VALID_BUG_UUID }] });
+    mockDbInsertValues.mockReturnValueOnce(Promise.reject(new Error('DB connection lost')));
 
     // Must resolve, not reject
     await expect(
@@ -343,8 +347,8 @@ describe('stampLinksFromCommit', () => {
   });
 
   it('returns 0 stamped on DB error path', async () => {
-    setupSelectResponses({ 0: [{ id: VALID_BUG_UUID }], 1: [] });
-    mockDbInsertValues.mockImplementationOnce(() => Promise.reject(new Error('timeout')));
+    setupSelectResponses({ 0: [{ id: VALID_BUG_UUID }] });
+    mockDbInsertValues.mockReturnValueOnce(Promise.reject(new Error('timeout')));
 
     const result = await stampLinksFromCommit({
       releaseId: RELEASE_UUID,
