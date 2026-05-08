@@ -278,7 +278,12 @@
   2. Customer admin clicking "Preview this branch" on portal swaps the FAH dev backend successfully via portal-owned `FAH_PROMOTER_SA_KEY`, with atomic lock acquisition, branch regex guard, 8-min timeout, and branch-guarded auto-clear all preserved from v2.1
   3. Slack notification of customer approval posts via `PORTAL_SLACK_BOT_TOKEN` (portal-owned credential) — admin's GitHub App key is never exposed to portal runtime
   4. Two-step approve UX, conflict badge with hidden approve button, and branch lock disable propagation behave identically to v2.1 admin behavior on the portal surface
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 22-01-PLAN.md — Shared internal-hmac module + admin /api/internal/dispatch endpoint + INTERNAL_HMAC_SECRET secret + admin v2.10.0 (WRITE-04 foundation)
+- [ ] 22-02-PLAN.md — Portal approve/reject/feedback (POST + DELETE) handlers with HMAC dispatch to admin + portal v0.3.1 (WRITE-01, WRITE-04)
+- [ ] 22-03-PLAN.md — Portal branch preview swap (POST + GET status) with portal-owned FAH_PROMOTER_SA_KEY + portal v0.3.2 (WRITE-02, WRITE-03)
+- [ ] 22-04-PLAN.md — Portal Slack notifications (PORTAL_SLACK_BOT_TOKEN) + un-stub ReleasesClient + BranchPreviewClient handlers + portal v0.3.3 (WRITE-04, WRITE-05)
+- [ ] 22-05-PLAN.md — WRITE-05 dedicated tests + mobile viewport + shared@0.3.0 publish + portal v0.4.0 phase close (WRITE-05)
 
 ### Phase 23: Bug + Feature Customer Surface
 **Goal**: Customers view and submit bugs and features on portal — list, detail, and new-submission forms — closing the two primitives that don't yet exist anywhere in the codebase.

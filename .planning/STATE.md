@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
-status: planning
+status: executing
 stopped_at: Completed 21-release-page-port-read 21-06-PLAN.md (Phase 21 closed)
-last_updated: "2026-05-08T20:14:18.010Z"
+last_updated: "2026-05-08T20:36:51.028Z"
 progress:
   total_phases: 19
   completed_phases: 13
-  total_plans: 49
+  total_plans: 54
   completed_plans: 48
 ---
 
@@ -19,12 +19,12 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 20 — url-centralization-admin
+**Current focus:** Phase 22 — release-page-port-write
 
 ## Current Position
 
-Phase: 22
-Plan: Not started
+Phase: 22 (release-page-port-write) — EXECUTING
+Plan: 1 of 5
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -48,7 +48,7 @@ Plan: Not started
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Ready to plan
+**Status:** Executing Phase 22
 
 ## Performance Metrics
 
