@@ -41,6 +41,13 @@ export const projects = pgTable('projects', {
   // API key for ingest endpoints
   apiKey: varchar('api_key', { length: 128 }),
 
+  // Slack integration — channel for release-approvals notifications (project-scoped)
+  slackChannelId: varchar('slack_channel_id', { length: 64 }),
+
+  // ── v2.1 Phase 10: branch preview swap concurrency lock (PREV-01) ──
+  previewBranchLocked: text('preview_branch_locked'),                                       // branch name currently being deployed to dev backend; null = no lock
+  previewBranchLockedAt: timestamp('preview_branch_locked_at', { withTimezone: true }),     // when the lock was set; route-side 8-min timeout reads this
+
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -155,7 +162,13 @@ export const releaseLogs = pgTable('release_logs', {
   promotionDispatchedBy: varchar('promotion_dispatched_by', { length: 256 }),           // mapped staff email of the Slack actor who clicked Promote
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  index('release_logs_project_env_deployed_idx').on(
+    table.project,
+    table.env,
+    table.deployedAt.desc(),
+  ),
+]);
 
 // ── v1.14.0: Customer Release Gating (membership + audit) ─────────
 
@@ -186,8 +199,13 @@ export const releaseApprovals = pgTable('release_approvals', {
   ipAddress: varchar('ip_address', { length: 45 }),
   userAgent: varchar('user_agent', { length: 512 }),
   reason: text('reason'),  // rejection reason for REJECT-01; nullable (approve rows have NULL); 500-char limit enforced server-side
+  actorSource: varchar('actor_source', { length: 16 }),  // 'web' | 'slack' — nullable for legacy rows; PROM-04 / Pitfall 4 audit trail unification
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex('release_approvals_one_approved_per_release')
+    .on(table.releaseId)
+    .where(sql`${table.decision} = 'approved'`),
+]);
 
 // ── Plan 5: Report Generator ──────────────────────────────────────
 
@@ -397,6 +415,23 @@ export const promoteAttempts = pgTable('promote_attempts', {
   index('promote_attempts_created_at_idx').on(table.createdAt.desc()),
 ]);
 
+// ── v2.1 Phase 10: Tracker ↔ Release Linkage (LINK-01) ────────────
+
+export const releaseLogLinks = pgTable('release_log_links', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  releaseId: uuid('release_id').notNull().references(() => releaseLogs.id, { onDelete: 'cascade' }),
+  linkType: varchar('link_type', { length: 16 }).notNull(),                          // 'bug' | 'feature' | 'external' — validated via CHECK constraint in migration
+  bugId: uuid('bug_id').references(() => bugReports.id, { onDelete: 'cascade' }),     // populated when linkType='bug'; CASCADE so deleting a bug clears its link rows
+  featureId: uuid('feature_id').references(() => featureRequests.id, { onDelete: 'cascade' }),  // populated when linkType='feature'
+  externalUrl: text('external_url'),                                                  // populated when linkType='external'; freeform URL (GitHub issue, Jira, etc.)
+  source: varchar('source', { length: 16 }).notNull(),                                // 'commit' | 'manual' — provenance for Phase 11 auto-stamp vs UI authoring
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index('release_log_links_release_id_idx').on(table.releaseId),
+  index('release_log_links_bug_id_idx').on(table.bugId),
+  index('release_log_links_feature_id_idx').on(table.featureId),
+]);
+
 // ── Relations ─────────────────────────────────────────────────────
 
 export const menuSectionsRelations = relations(menuSections, ({ many }) => ({
@@ -421,6 +456,7 @@ export const menuSubpagesRelations = relations(menuSubpages, ({ one }) => ({
 export const releaseLogsRelations = relations(releaseLogs, ({ many }) => ({
   feedback: many(releaseFeedback),
   approvals: many(releaseApprovals),
+  links: many(releaseLogLinks),
 }));
 
 export const releaseFeedbackRelations = relations(releaseFeedback, ({ one }) => ({
@@ -434,5 +470,20 @@ export const releaseApprovalsRelations = relations(releaseApprovals, ({ one }) =
   release: one(releaseLogs, {
     fields: [releaseApprovals.releaseId],
     references: [releaseLogs.id],
+  }),
+}));
+
+export const releaseLogLinksRelations = relations(releaseLogLinks, ({ one }) => ({
+  release: one(releaseLogs, {
+    fields: [releaseLogLinks.releaseId],
+    references: [releaseLogs.id],
+  }),
+  bug: one(bugReports, {
+    fields: [releaseLogLinks.bugId],
+    references: [bugReports.id],
+  }),
+  feature: one(featureRequests, {
+    fields: [releaseLogLinks.featureId],
+    references: [featureRequests.id],
   }),
 }));

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { releaseLogs, releaseApprovals } from '@/db/schema';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { verifySlackSignature, verifyPayload } from '@/lib/slack-crypto';
 import { resolveSlackUserEmail } from '@/lib/slack-identity';
 import { rejectRelease } from '@/lib/release-actions';
@@ -286,6 +286,32 @@ export async function POST(req: NextRequest) {
         text: `Cannot promote: release status is "${release.status}", expected "approved". Customer must approve first on the releases page.`,
       });
     }
+    // Atomic race guard — same mechanism as POST /api/admin/releases/[id]/promote.
+    // Only the first concurrent caller (web or Slack) gets the UPDATE row back;
+    // the loser gets an empty array and MUST NOT call promoteAndAudit.
+    const [claimed] = await db
+      .update(releaseLogs)
+      .set({ promotionDispatchedAt: new Date(), promotionDispatchedBy: email })
+      .where(and(eq(releaseLogs.id, release.id), isNull(releaseLogs.promotionDispatchedAt)))
+      .returning({ id: releaseLogs.id });
+
+    if (!claimed) {
+      // Web (or another Slack click) won the race — skip dispatch entirely.
+      void recordSlackAudit({
+        actionId,
+        actorEmail: email,
+        actorSlackId: slackUserId ?? 'unknown',
+        rawBody,
+        responseStatus: 200,
+        latencyMs: Date.now() - requestReceivedAt,
+      });
+      return NextResponse.json({
+        response_type: 'ephemeral',
+        replace_original: false,
+        text: 'Already promoted by another route — no second dispatch fired',
+      });
+    }
+
     // Fire-and-forget promotion dispatch. Slack 3-second rule: respond before any GitHub API calls.
     if (payload.channel?.id && payload.message?.ts) {
       const channelId = payload.channel.id;
@@ -330,6 +356,7 @@ export async function POST(req: NextRequest) {
     release,
     approverEmail: email,
     reason: 'Rejected via Slack',
+    actorSource: 'slack',
     ipAddress,
     userAgent,
   });

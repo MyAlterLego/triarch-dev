@@ -1,0 +1,112 @@
+---
+phase: 09-per-project-pipeline-page-and-web-ui-promote
+plan: 01
+subsystem: database
+tags: [drizzle, cockroachdb, migrations, schema, unique-index, partial-index]
+
+# Dependency graph
+requires:
+  - phase: 08-admin-home-pipeline-visibility
+    provides: migration 0013 (release_logs pipeline index) — journal head at idx 13 before this plan
+provides:
+  - "actor_source column on release_approvals (varchar(16), nullable)"
+  - "partial unique index release_approvals_one_approved_per_release on (release_id) WHERE decision='approved'"
+  - "migration 0014_release_approvals_unique_approved.sql — ALTER TABLE + CREATE UNIQUE INDEX"
+  - "drizzle-kit snapshot 0014_snapshot.json reflecting new column + index"
+affects:
+  - "09-03 (web promote route — inserts into release_approvals with actor_source='web')"
+  - "09-04 (promote button client — reads actor_source from release_approvals for audit display)"
+  - "Slack OttoBot handler — should update actor_source='slack' on existing approval inserts"
+
+# Tech tracking
+tech-stack:
+  added: []
+  patterns:
+    - "pgTable second-arg array pattern for indexes (established in Phase 8-01 for releaseLogs, now applied to releaseApprovals)"
+    - "uniqueIndex().on(col).where(sql`...`) for partial unique indexes in Drizzle"
+    - "drizzle-kit generate + manual rename + journal tag update pattern"
+
+key-files:
+  created:
+    - src/db/migrations/0014_release_approvals_unique_approved.sql
+    - src/db/migrations/meta/0014_snapshot.json
+  modified:
+    - src/db/schema.ts
+    - src/db/migrations/meta/_journal.json
+
+key-decisions:
+  - "actor_source is nullable — legacy rows have NULL; new rows from web path set 'web', Slack path sets 'slack'"
+  - "Partial unique index enforces only one approved row per release at DB level — defense-in-depth for PROM-04 double-promote race"
+  - "Renamed drizzle-generated migration file from random name to canonical 0014_release_approvals_unique_approved; updated journal tag to match"
+  - "drizzle-kit check passes after rename — Drizzle matches on tag in journal to filename; rename + journal update keeps them in sync"
+
+patterns-established:
+  - "Migration rename pattern: drizzle-kit generate → rename SQL file → update journal tag → verify with drizzle-kit check"
+
+requirements-completed: [PROM-04]
+
+# Metrics
+duration: 12min
+completed: 2026-05-07
+---
+
+# Phase 9 Plan 01: Schema — actor_source Column + Partial Unique Approved Index Summary
+
+**Drizzle schema adds actor_source audit column and partial unique index preventing double-promote races, migration 0014 ships as the next sequential step after Phase 8's 0013**
+
+## Performance
+
+- **Duration:** 12 min
+- **Started:** 2026-05-07T22:35:00Z
+- **Completed:** 2026-05-07T22:47:00Z
+- **Tasks:** 2
+- **Files modified:** 4 (schema.ts, migration SQL, snapshot, journal)
+
+## Accomplishments
+
+- `releaseApprovals` table extended with `actorSource: varchar('actor_source', { length: 16 })` — nullable, captures `'web'` or `'slack'` origin for audit trail unification (Pitfall 4)
+- Partial unique index `release_approvals_one_approved_per_release` on `(release_id) WHERE decision='approved'` prevents double-promote races at the DB level (PROM-04 schema half)
+- Migration `0014_release_approvals_unique_approved.sql` generated, renamed to canonical tag, and verified with `drizzle-kit check` — "Everything's fine"
+- `releaseApprovals` converted from single-arg to second-arg `pgTable()` pattern matching the Phase 8 `releaseLogs` style
+
+## Task Commits
+
+Each task was committed atomically:
+
+1. **Task 1: Declare actor_source column and partial unique index in Drizzle schema** - `79181df` (feat)
+2. **Task 2: Generate 0014 migration with ALTER TABLE + CREATE UNIQUE INDEX, update journal and snapshot** - `c8e65d6` (feat)
+
+## Files Created/Modified
+
+- `src/db/schema.ts` — Added `actorSource` column and `uniqueIndex().where()` to `releaseApprovals` table declaration
+- `src/db/migrations/0014_release_approvals_unique_approved.sql` — ALTER TABLE adds `actor_source` varchar(16); CREATE UNIQUE INDEX with WHERE clause
+- `src/db/migrations/meta/0014_snapshot.json` — Drizzle snapshot reflecting new column + index
+- `src/db/migrations/meta/_journal.json` — Entry idx=14 with tag `0014_release_approvals_unique_approved` appended
+
+## Decisions Made
+
+- `actor_source` is nullable by design — legacy rows (all existing approval rows) have NULL; new rows from Plan 9-03 web route set `'web'`, Slack OttoBot handler can set `'slack'` when updated
+- The partial unique index only covers `decision='approved'` — rejection rows can stack (multiple rejections per release remain allowed), matching the existing customer approval flow intent
+- Renamed drizzle-generated SQL from `0014_big_typhoid_mary.sql` to `0014_release_approvals_unique_approved.sql` and updated the journal tag; `drizzle-kit check` passed because Drizzle matches journal tag to filename
+
+## Deviations from Plan
+
+None — plan executed exactly as written. The SQL generated by `drizzle-kit` matched the expected output including the `WHERE "release_approvals"."decision" = 'approved'` clause (no manual edit required).
+
+## Issues Encountered
+
+None. `drizzle-kit generate` produced the correct partial index SQL on the first run. Pre-existing test failures in `pipeline-summary.test.ts` (TDD RED scaffold from Plan 09-04) and `release-promotion.test.ts` (web-origin tests from Plan 09-02 awaiting implementation) are unrelated to this plan's changes.
+
+## User Setup Required
+
+None — no external service configuration required. Migration applies automatically via `db:push` at next deploy.
+
+## Next Phase Readiness
+
+- Schema foundation for PROM-04 is complete; Plan 09-03 can now implement `POST /api/admin/releases/[id]/promote` with `actor_source='web'` insert and 409 conflict handling on the unique constraint
+- Slack OttoBot handler (`/api/slack/interact`) can be updated (Plan 09-05 or standalone) to set `actor_source='slack'` on approval inserts
+- Migration 0014 is queued for deploy; it will apply before any Plan 09-03 code runs (same deploy wave per STATE.md standing decision)
+
+---
+*Phase: 09-per-project-pipeline-page-and-web-ui-promote*
+*Completed: 2026-05-07*

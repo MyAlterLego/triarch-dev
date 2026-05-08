@@ -1,3 +1,5 @@
+export type { EntryTypeCounts, WhatsComingSummary } from '@/lib/release-entry-summary';
+
 export type ReleaseStatus = 'dev' | 'pending_approval' | 'approved' | 'rejected' | 'promoted';
 export type ReleaseEnv = 'dev' | 'prod';
 export type UserRole = 'admin' | 'viewer';  // staff is treated as admin for action gating

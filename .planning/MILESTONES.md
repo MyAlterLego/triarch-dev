@@ -1,5 +1,36 @@
 # Milestones
 
+## v2.1 Pipeline UI (Shipped: 2026-05-08)
+
+**Phases completed:** 7 phases, 23 plans, 43 tasks
+
+**Key accomplishments:**
+
+- Composite index `(project, env, deployed_at DESC)` on `release_logs` declared in Drizzle schema and shipped as migration 0013 — satisfying Pitfall 8 guard that index must deploy with the dashboard query
+- Testable `getProjectPipelineSummaries()` server helper with DISTINCT ON query, COALESCE null handling, and what-changed one-liner derivation covering parity/dev-ahead/inverted pipeline states
+- Pipeline-aware project health tiles with prod/dev stacked rows, mono version font, relative timestamps, top-right amber pending-approval pill, and what-changed one-liner wired from getProjectPipelineSummaries — version 2.4.0
+- Drizzle schema adds actor_source audit column and partial unique index preventing double-promote races, migration 0014 ships as the next sequential step after Phase 8's 0013
+- promoteAndAudit signature widened with nullable channelId/messageTs/slackUserName; web-origin path posts fresh Slack channel message via new postSlackChannelMessage helper; 12 Vitest tests green
+- Staff-only POST /api/admin/releases/[id]/promote with UPDATE-with-WHERE-IS-NULL atomic dispatch guard mirrored in Slack handler; approveRelease/rejectRelease write actor_source='web' to release_approvals
+- One-liner:
+- One-liner:
+- One-liner:
+- Pure regex commit message parser with 27 Vitest tests — extracts BUG/FEAT UUID refs and external #N GitHub issues via 3-pattern approach with full UUID format validation, dedup, and verb-prefix double-count guard
+- Pure Slack mrkdwn injection and Unicode trickery sanitizers (sanitizeForSlack + sanitizeForRender) with 27-case Vitest coverage — LINK-07 delivered alongside the commit parser per roadmap lock decision
+- DB-validated commit ref stamper using inArray batch queries writes release_log_links rows with source='commit', hooked non-blockingly into the CI release ingest route via try/catch after INSERT
+- Staff-only GET/POST/DELETE link API routes with requireStaff guards, LinksClient optimistic chip island with blue/teal gradient visual distinction per DESIGN-REFERENCE.md, and sanitizeForSlack applied at all three slack.ts post chokepoints — LINK-04 and LINK-07 fully delivered
+- useEffect mount-fetch added to LinksClient.tsx — existing release_log_links chips now hydrate from GET /api/admin/release-logs/[id]/links on every release row expand, closing the LINK-04 chip-visibility gap
+- Drizzle typed query helpers for bug/feature release history — getReleaseHistoryForBug + getReleaseHistoryForFeature with 7-test Vitest TDD suite (RED → GREEN, ISO timestamps)
+- Bug detail page at /admin/modules/bug-reports/[id] with staff auth, two-column layout, and ReleasedInSidebar (text-violet-300 version mono) wired to getReleaseHistoryForBug; list page row titles now Link to detail page
+- Feature detail page at /admin/modules/feature-requests/[id] with staff auth, two-column layout, and ReleasedInSidebar (reused from 12-02) wired to getReleaseHistoryForFeature; feature list row titles now Link to detail page — closes LINK-06 and completes Phase 12
+- One-liner:
+- SWR-driven BranchPreviewClient island with 5s polling/terminal pause, POST dispatch, in-flight banner (violet halo per DESIGN-REFERENCE), success/failed/timeout pills, toast surfaces for 400/409/502, and top-of-list integration into ReleasesClient — Phase 13 complete at v2.7.0.
+- Server-side data layer for Phase 14 customer page: per-release entry-type counts from release_log_links (one inArray batch query) and aggregated "what's coming to prod" summary using release-as-unit bucketing with fixes-take-precedence, wired into page.tsx and passed as optional back-compat props to ReleasesClient
+- Two new client component islands (FilterChips, WhatsComingCard) with full Vitest RTL coverage, wired into ReleasesClient via URL-mirrored filter state (router.replace shallow) and client-side useMemo filter math — delivers CUST-01, CUST-02, DIFF-02 visible surface
+- BranchPreviewClient split into BranchPreviewBanner (global singleton) + BranchPreviewButton (per-section, admin-only) sharing one SWR cache key; BranchSection header restructured to avoid button-in-button; ReleasesClient mounts singleton banner; v2.8.0 closes v2.1 Pipeline UI milestone
+
+---
+
 ## v1.14.0 Customer Release Gating (Shipped: 2026-05-04)
 
 **Phases completed:** 6 phases, 28 plans, 45 tasks

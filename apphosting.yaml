@@ -76,3 +76,8 @@ env:
 
   - variable: GITHUB_APP_INSTALLATION_ID
     secret: GITHUB_APP_INSTALLATION_ID
+
+  # FAH rollout dispatcher (Phase 13 — branch preview swap)
+  # JSON keyfile for release-promoter@triarch-vault.iam.gserviceaccount.com
+  - variable: FAH_PROMOTER_SA_KEY
+    secret: FAH_PROMOTER_SA_KEY

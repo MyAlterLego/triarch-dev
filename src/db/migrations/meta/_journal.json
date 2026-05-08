@@ -85,6 +85,41 @@
       "when": 1777932905565,
       "tag": "0011_thick_wallow",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1778207975581,
+      "tag": "0012_promote_attempts",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1778207977581,
+      "tag": "0013_release_logs_pipeline_idx",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1778211576492,
+      "tag": "0014_release_approvals_unique_approved",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1778211774000,
+      "tag": "0015_projects_slack_channel_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1778213865370,
+      "tag": "0016_release_log_links_and_preview_lock",
+      "breakpoints": true
     }
   ]
 }

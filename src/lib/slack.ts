@@ -1,5 +1,6 @@
 import { signPayload } from '@/lib/slack-crypto';
 import { getSecret } from '@myalterlego/secrets';
+import { sanitizeForSlack } from '@/lib/sanitize-commit';
 
 // Channel envs are NOT secrets — keep as process.env (apphosting.yaml plain values).
 const SLACK_BUG_CHANNEL = process.env.SLACK_BUG_CHANNEL ?? '#triarch-bugs';
@@ -12,6 +13,40 @@ async function getBotToken(): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Walk Block Kit blocks and sanitize any text fields via sanitizeForSlack.
+ * Handles: section.text.text, section.fields[].text.
+ * Returns undefined unchanged so callers can spread it safely.
+ *
+ * Sanitize-at-boundary: this runs inside the two public helpers (postSlackThreadedReply,
+ * postSlackChannelMessage) so future callers cannot forget to sanitize.
+ */
+function sanitizeBlockKitBlocks(blocks: unknown[] | undefined): unknown[] | undefined {
+  if (!blocks) return blocks;
+  return blocks.map((b) => {
+    if (typeof b !== 'object' || b === null) return b;
+    const block = b as Record<string, unknown>;
+    const out: Record<string, unknown> = { ...block };
+    // section text
+    if (out.text && typeof out.text === 'object' && out.text !== null) {
+      const t = out.text as Record<string, unknown>;
+      if (typeof t.text === 'string') {
+        out.text = { ...t, text: sanitizeForSlack(t.text) };
+      }
+    }
+    // section fields[].text
+    if (Array.isArray(out.fields)) {
+      out.fields = out.fields.map((f) => {
+        if (typeof f !== 'object' || f === null) return f;
+        const fd = f as Record<string, unknown>;
+        if (typeof fd.text === 'string') return { ...fd, text: sanitizeForSlack(fd.text) };
+        return fd;
+      });
+    }
+    return out;
+  });
 }
 
 interface SlackMessage {
@@ -54,6 +89,9 @@ export async function postSlackThreadedReply(input: {
     console.warn('[slack] SLACK_BOT_TOKEN not set - skipping threaded reply');
     return { ok: false, error: 'no_token' };
   }
+  // Sanitize at chokepoint — all commit-derived strings are neutralized here
+  // so future callers cannot bypass sanitization.
+  const safeText = sanitizeForSlack(input.text);
   const res = await fetch('https://slack.com/api/chat.postMessage', {
     method: 'POST',
     headers: {
@@ -63,12 +101,49 @@ export async function postSlackThreadedReply(input: {
     body: JSON.stringify({
       channel: input.channel,
       thread_ts: input.thread_ts,
-      text: input.text,
+      text: safeText,
     }),
   });
   const data = await res.json() as { ok: boolean; ts?: string; error?: string };
   if (!data.ok) {
     console.warn(`[slack] threaded reply failed: ${data.error}`);
+  }
+  return data;
+}
+
+/**
+ * Post a standalone (non-threaded) message to a Slack channel.
+ * Used for web-origin promotions that have no existing Slack thread to reply to.
+ * Graceful no-op when SLACK_BOT_TOKEN is missing.
+ */
+export async function postSlackChannelMessage(input: {
+  channel: string;
+  text: string;
+  blocks?: unknown[];
+}): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  const token = await getBotToken();
+  if (!token) {
+    console.warn('[slack] SLACK_BOT_TOKEN not set - skipping channel message');
+    return { ok: false, error: 'no_token' };
+  }
+  // Sanitize at chokepoint — neutralizes commit-derived injection before any chat.postMessage
+  const safeText = sanitizeForSlack(input.text);
+  const safeBlocks = sanitizeBlockKitBlocks(input.blocks);
+  const res = await fetch('https://slack.com/api/chat.postMessage', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      channel: input.channel,
+      text: safeText,
+      ...(safeBlocks ? { blocks: safeBlocks } : {}),
+    }),
+  });
+  const data = await res.json() as { ok: boolean; ts?: string; error?: string };
+  if (!data.ok) {
+    console.warn(`[slack] channel message failed: ${data.error}`);
   }
   return data;
 }
@@ -244,13 +319,19 @@ export async function notifyReleaseApproved(input: {
   feedbackOverflowCount: number; // 0 if no overflow
   branch: string | null;
 }) {
-  const branchDisplay = input.branch ?? 'main';
+  // Sanitize release-derived fields at composition — branch name and version may contain
+  // commit-derived strings; sanitizing here means postSlackMessage receives already-clean
+  // text (the chokepoint sanitization in postSlackChannelMessage is a no-op idempotent pass).
+  const branchDisplay = sanitizeForSlack(input.branch ?? 'main');
+  const safeVersion = sanitizeForSlack(input.version);
+  const safeFeedback = sanitizeForSlack(input.feedbackExcerpt);
+
   const blocks: unknown[] = [
     {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `:rocket: *${branchDisplay} ${input.version} approved by ${input.approverEmail}*\n*Project:* ${input.project}\n*Status:* ${input.status}`,
+        text: `:rocket: *${branchDisplay} ${safeVersion} approved by ${input.approverEmail}*\n*Project:* ${input.project}\n*Status:* ${input.status}`,
       },
     },
   ];
@@ -261,7 +342,7 @@ export async function notifyReleaseApproved(input: {
       text: {
         type: 'mrkdwn',
         text:
-          `> ${input.feedbackExcerpt}` +
+          `> ${safeFeedback}` +
           (input.feedbackOverflowCount > 0 ? `\n_(${input.feedbackOverflowCount} more comments)_` : ''),
       },
     });

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useProjectOptions } from '@/lib/use-projects';
+import LinksClient, { type ReleaseLogLink } from './LinksClient';
 import {
   FileText,
   Bug,
@@ -36,6 +37,7 @@ interface ReleaseLog {
   summary: string | null;
   entries: ReleaseEntry[];
   metadata: Record<string, unknown>;
+  links?: ReleaseLogLink[];
 }
 
 const ENTRY_TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -314,7 +316,7 @@ export default function ReleaseLogsPage() {
                   )}
                 </button>
 
-                {expanded && entries.length > 0 && (
+                {expanded && (
                   <div className="border-t border-zinc-800 px-4 py-3 space-y-1.5">
                     {entries.map((entry, i) => (
                       <div key={i} className="flex items-start gap-2 text-sm">
@@ -327,6 +329,11 @@ export default function ReleaseLogsPage() {
                         )}
                       </div>
                     ))}
+                    <LinksClient
+                      releaseId={release.id}
+                      initialLinks={release.links ?? []}
+                      project={release.project}
+                    />
                   </div>
                 )}
               </div>

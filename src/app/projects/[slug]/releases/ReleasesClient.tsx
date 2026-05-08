@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   CheckCircle,
   XCircle,
@@ -20,12 +21,17 @@ import type {
   UserRole,
   BranchSection,
   ConflictState,
+  EntryTypeCounts,
+  WhatsComingSummary,
 } from './types';
 import Toast, { type ToastKind } from '@/components/Toast';
 import { formatDeployedAt, formatRelativeTime } from './format';
 import Timeline from './Timeline';
 import { groupIntoSections } from './group-sections';
 import BranchSectionComponent from './BranchSection';
+import { BranchPreviewBanner } from './BranchPreviewClient';
+import FilterChips, { type FilterType } from './FilterChips';
+import WhatsComingCard from './WhatsComingCard';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -76,6 +82,10 @@ interface Props {
   total: number;
   hasMore: boolean;
   pageSize: number;
+  branchPreviewEnabled?: boolean;          // Phase 13: false when project has no firebaseProjectId
+  fahProjectId?: string | null;
+  entryCountsByRelease?: Record<string, EntryTypeCounts>; // Phase 14: per-release entry type counts (optional, default {} for back-compat)
+  whatsComing?: WhatsComingSummary | null;                 // Phase 14: what's coming to prod summary (optional)
 }
 
 // ---------------------------------------------------------------------------
@@ -151,7 +161,32 @@ export default function ReleasesClient({
   total,
   hasMore,
   pageSize,
+  branchPreviewEnabled = false,
+  fahProjectId = null,
+  entryCountsByRelease = {},
+  whatsComing = null,
 }: Props) {
+  // -- URL filter state (Phase 14) -----------------------------------------
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlType = searchParams.get('type');
+  const activeFilter: FilterType =
+    urlType === 'bug' ? 'fix'
+    : urlType === 'feature' ? 'feature'
+    : urlType === 'other' ? 'other'
+    : 'all';
+
+  function handleFilterChange(next: FilterType) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === 'all') {
+      params.delete('type');
+    } else {
+      params.set('type', next === 'fix' ? 'bug' : next);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : '?', { scroll: false });
+  }
+
   // -- Core state -----------------------------------------------------------
   const [sections, setSections] = useState<BranchSection[]>(initialSections);
   // SSR-safe: lazy initializer using server-computed isActive flag (pitfall 2)
@@ -179,6 +214,40 @@ export default function ReleasesClient({
   // -- Refs for focus management --------------------------------------------
   const approveConfirmRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
   const rejectButtonRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
+
+  // -- Phase 14: filter math (client-side, no re-fetch) --------------------
+
+  // Compute aggregate counts from per-release entry counts (release-as-unit bucketing)
+  const counts = useMemo(() => {
+    let fix = 0, feature = 0, other = 0, total = 0;
+    for (const section of sections) {
+      for (const release of section.releases) {
+        const c = entryCountsByRelease[release.id];
+        total++;
+        if (c && c.fixes > 0) fix++;
+        else if (c && c.features > 0) feature++;
+        else other++;
+      }
+    }
+    return { fix, feature, other, total };
+  }, [sections, entryCountsByRelease]);
+
+  // Derive filtered sections based on active filter
+  const filteredSections = useMemo(() => {
+    if (activeFilter === 'all') return sections;
+    return sections
+      .map((section) => ({
+        ...section,
+        releases: section.releases.filter((r) => {
+          const c = entryCountsByRelease[r.id];
+          if (activeFilter === 'fix') return c && c.fixes > 0;
+          if (activeFilter === 'feature') return c && c.features > 0 && (!c.fixes || c.fixes === 0);
+          // 'other'
+          return !c || (c.fixes === 0 && c.features === 0);
+        }),
+      }))
+      .filter((section) => section.releases.length > 0);
+  }, [sections, entryCountsByRelease, activeFilter]);
 
   // -- Toast auto-dismiss ---------------------------------------------------
   useEffect(() => {
@@ -454,14 +523,27 @@ export default function ReleasesClient({
           </div>
         </div>
 
+        {/* Branch preview banner (Phase 14) — singleton at top, informational for all roles */}
+        {branchPreviewEnabled && (
+          <BranchPreviewBanner projectSlug={projectSlug} fahProjectId={fahProjectId} />
+        )}
+
+        {/* Phase 14: What's coming to prod summary card */}
+        <WhatsComingCard whatsComing={whatsComing} entries={[]} />
+
+        {/* Phase 14: Entry-type filter chips */}
+        <div className="mb-4">
+          <FilterChips active={activeFilter} counts={counts} onChange={handleFilterChange} />
+        </div>
+
         {/* Branch sections (Phase 05-04) */}
-        {sections.length === 0 ? (
+        {filteredSections.length === 0 ? (
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
             <EmptyState projectName={projectName} />
           </div>
         ) : (
           <div className="space-y-4">
-            {sections.map((section) => (
+            {filteredSections.map((section) => (
               <BranchSectionComponent
                 key={section.branch}
                 section={section}
@@ -471,6 +553,7 @@ export default function ReleasesClient({
                 userRole={userRole}
                 currentUserEmail={currentUserEmail}
                 projectSlug={projectSlug}
+                branchPreviewEnabled={branchPreviewEnabled}
                 onToggleSection={toggleSection}
                 onToggleRow={toggleExpanded}
                 approveStep={approveStep}

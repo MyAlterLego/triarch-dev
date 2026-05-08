@@ -1,0 +1,2 @@
+ALTER TABLE "release_approvals" ADD COLUMN "actor_source" varchar(16);--> statement-breakpoint
+CREATE UNIQUE INDEX "release_approvals_one_approved_per_release" ON "release_approvals" USING btree ("release_id") WHERE "release_approvals"."decision" = 'approved';

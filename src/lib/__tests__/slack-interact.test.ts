@@ -44,6 +44,9 @@ vi.mock('@/lib/release-promotion', () => ({
 let dbSelectResult: unknown[] = [];
 let dbStaleResult: unknown[] = [];
 let dbCallCount = 0;
+// Default to race won ([{ id: ... }]) — most slack_promote tests expect promoteAndAudit to fire.
+// Override per-test by reassigning dbUpdateResult before the test action.
+let dbUpdateResult: unknown[] = [{ id: 'rel-uuid' }];
 
 vi.mock('@/lib/db', () => {
   const makeChain = (result: () => unknown[]) => ({
@@ -70,6 +73,13 @@ vi.mock('@/lib/db', () => {
         // Second select: stale-guard approval lookup
         return makeChain(() => dbStaleResult);
       },
+      update: () => ({
+        set: () => ({
+          where: () => ({
+            returning: () => Promise.resolve(dbUpdateResult),
+          }),
+        }),
+      }),
     },
   };
 });
@@ -149,6 +159,7 @@ beforeEach(() => {
   dbCallCount = 0;
   dbSelectResult = [fakeRelease];
   dbStaleResult = [];
+  dbUpdateResult = [{ id: 'rel-uuid' }]; // default: race won (Slack atomic guard passes)
 
   approveMock.mockReset();
   rejectMock.mockReset();

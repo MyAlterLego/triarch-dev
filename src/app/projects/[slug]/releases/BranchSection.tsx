@@ -11,6 +11,7 @@ import type {
 import PreviewLink from './PreviewLink';
 import { resolvePreviewUrl } from './group-sections';
 import { formatDeployedAt, formatRelativeTime } from './format';
+import { BranchPreviewButton } from './BranchPreviewClient';
 
 // ---------------------------------------------------------------------------
 // Constants — keep in sync with ReleasesClient.tsx
@@ -51,6 +52,9 @@ interface Props {
   onToggleSection: (branch: string) => void;
   onToggleRow: (id: string) => void;
 
+  // Phase 14: per-section branch preview button
+  branchPreviewEnabled?: boolean;
+
   // Per-row state passthrough (kept on parent ReleasesClient — branch grouping is structural, not stateful)
   approveStep: Record<string, 'idle' | 'confirm'>;
   countdownState: Record<string, number>;
@@ -87,9 +91,12 @@ export default function BranchSection({
   projectDeployedUrl,
   isExpanded,
   expandedRowIds,
+  userRole,
+  projectSlug,
   onToggleSection,
   onToggleRow,
   renderExpandedPanel,
+  branchPreviewEnabled = false,
 }: Props) {
   const branchId = sanitiseDomId(section.branch);
   const panelId = `branch-panel-${branchId}`;
@@ -103,28 +110,31 @@ export default function BranchSection({
 
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
-      {/* Section header */}
-      <button
-        type="button"
-        onClick={() => onToggleSection(section.branch)}
-        aria-expanded={isExpanded}
-        aria-controls={panelId}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-800/30 transition-colors"
-      >
-        <div className="flex items-center gap-2">
+      {/* Section header — restructured to avoid button-in-button (HTML invalidity + click bubbling)
+          Layout: outer flex div → toggle button (flex-1, left) + right-side badges+preview div */}
+      <div className="w-full flex items-center justify-between px-4 py-3 hover:bg-zinc-800/30 transition-colors">
+        <button
+          type="button"
+          onClick={() => onToggleSection(section.branch)}
+          aria-expanded={isExpanded}
+          aria-controls={panelId}
+          className="flex items-center gap-2 text-left flex-1 min-w-0"
+        >
           {isExpanded ? (
-            <ChevronDown size={14} className="text-zinc-500" />
+            <ChevronDown size={14} className="text-zinc-500 flex-shrink-0" />
           ) : (
-            <ChevronRight size={14} className="text-zinc-500" />
+            <ChevronRight size={14} className="text-zinc-500 flex-shrink-0" />
           )}
-          <span className="text-sm font-mono text-zinc-200">{section.branch}</span>
+          <span className="text-sm font-mono text-zinc-200 truncate">{section.branch}</span>
           {section.maxDeployedAt && (
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-zinc-500 flex-shrink-0">
               {formatRelativeTime(section.maxDeployedAt)}
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
+        </button>
+
+        {/* Right side: status badges + BranchPreviewButton (sibling to toggle, not nested in it) */}
+        <div className="flex items-center gap-1.5 flex-wrap ml-2">
           {section.aggregate.pending > 0 && (
             <span
               className={`px-1.5 py-0.5 rounded text-[10px] border ${STATUS_BADGE_COLORS.pending_approval}`}
@@ -147,8 +157,15 @@ export default function BranchSection({
               Conflict — {section.conflict.files.length} file(s)
             </span>
           )}
+          {branchPreviewEnabled && (
+            <BranchPreviewButton
+              projectSlug={projectSlug}
+              branch={section.branch}
+              userRole={userRole}
+            />
+          )}
         </div>
-      </button>
+      </div>
 
       {/* Section panel — `hidden` attribute, not display:none, per RESEARCH.md pitfall 5 */}
       <div id={panelId} hidden={!isExpanded}>

@@ -28,30 +28,47 @@ Already operational at v1.14.6: foundation, DB-backed staff/membership roles, pr
 - Headline: customer-gated parallel release candidates with auto-rebase-and-merge promotion, unified credential storage, and OttoBot as the canonical Slack control plane.
 - Phases 01, 02, 03, 04, 05, 06, 07, 7.5 (code) complete — Phase 8 (Truth+Treason pilot) gated on Mike completing the 7.5 runbook.
 
-## Current Milestone: v2.0 — Multi-Branch RC + Central Vault + OttoBot Brain
+## Current Milestone: v2.1 — Pipeline UI
 
-**Goal:** Three architectural initiatives that unblock the deferred v1.14 cross-repo work and add the parallel-RC pattern for customer-driven release management:
-1. Multi-branch parallel RCs — customer reviews each feature branch independently, approval triggers auto-rebase-and-merge so prior work isn't reverted
-2. Central credential vault (GCP Secret Manager) — single source of truth for shared creds (Slack, GitHub Apps), end the OttoBot-token-in-2-places drift
-3. OttoBot dispatcher hardening — finish the shared-workflows changes v1.14 deferred (deploy-prod.yml, ci-cd notify steps), expand OttoBot scopes (slash commands, app mentions), add audit table for Slack actions
+**Goal:** Make the dev→prod CI/CD pipeline that v2.0 built **legible and operable from the admin/customer web surfaces**. Today the cluster, dev backends, customer release-gating page, GitHub App, OttoBot dispatcher, and promote-branch workflow all work — but the visualization and control loop runs through Slack and tribal knowledge. v2.1 closes that loop: per-project prod-vs-dev at a glance, on-demand branch previews customers can drive themselves, web-UI promotion (Slack alongside, not replaced), bidirectional bug/feature ↔ release linkage with filterable views, and "what's changed between dev and prod" surfaced on both admin and customer pages.
 
 **Target features:**
-- `release_logs.branch` column + branch-keyed RC tracking
-- Branch preview deploys via FAH `--git-branch <branch>`
-- Customer page groups RCs by branch with per-RC Approve buttons
-- New `promote-branch.yml` workflow: rebase → CI → merge → conflict-detect
-- Slack conflict notification path
-- `triarch-vault` GCP project as canonical Secret Manager
-- `@myalterlego/secrets` npm package wrapping GCP Secret Manager
-- `slack_action_audit` table for OttoBot click compliance trail
-- Slack slash commands (`/triarch deploy ...`) + app mentions (`@OttoBot status ...`)
-- Truth+Treason E2E pilot of multi-branch flow with parallel font + audio RCs
+- Admin home: per-project prod/dev versions side-by-side, pending-approval count, last-deploy timestamp, link straight to release page
+- Per-project admin pipeline page (consolidated view: env state, branch RCs, deploy history)
+- Customer release page: branch selector — customer admin clicks "Preview this branch" on any RC to swap dev backend's deploy
+- Branch swap concurrency: while one swap is in flight, other RCs disabled with "branch X currently previewing"
+- Web-UI **Promote to prod** button on approved RCs (admin role); calls same `dispatchWorkflow` as Slack — both paths post Slack notifications
+- Bug/feature ↔ release linkage: release entries link to bug/feature IDs (clickable); bug/feature detail pages show "Released in vX.Y dev / vA.B prod"
+- Auto-detect bug/feature IDs from commit messages (parses `#BUG-123`, `closes FEAT-45`, `fixes #99`); authoring UI shows detected IDs with manual add/remove
+- Customer page filterable by entry type: bug fixes, feature releases, other
+- "What's changed between dev and prod" view: compact on admin pipeline-at-a-glance + expanded on per-project page + summary section atop customer release page
+- Discoverability fixes: every admin project tile links to `/projects/<slug>/releases`; hosted dev URLs surfaced from the customer page
+
+**v2.0 status:** Multi-Branch RC + Central Vault + OttoBot Brain. Phase 7.5 (dev cluster + 5 dev backends + admin overlay architecture + Slack scope upgrade + Phase 7 schema migrations + hostname routing + custom-domain DNS for triarch.dev apex / tmiengine.com tmi-dev / triarch.dev darksouls-dev) shipped 2026-05-06. Phase 8 (Truth+Treason pilot of multi-branch flow) deferred — folded into v2.1 since the parallel-RC UX it would have validated is what v2.1 actually builds.
+
+**v2.1 Phase 14 (Customer Page Integration) shipped 2026-05-08:** Customer release page (`/projects/<slug>/releases`) integrates all preceding v2.1 work. New `FilterChips.tsx` client island (URL-mirrored `?type=bug|feature|other` via `router.replace` shallow, gradient outline on active chip, zero-count dimming, aria-pressed). New `WhatsComingCard.tsx` collapsed-by-default summary card at page top with violet→blue gradient KPI count headline ("4 entries since prod: 2 fixes, 1 feature, 1 other"); hidden when in sync. New `src/lib/release-entry-summary.ts` exports `getEntryTypeSummaryForProject` + `getWhatsComingToProd` (release-as-unit bucketing: fix > feature > other precedence). BranchPreviewClient split into named exports `BranchPreviewBanner` (singleton at top of ReleasesClient) + `BranchPreviewButton` (per-section in BranchSection headers); shared `usePreviewStatus` private hook ensures one SWR poll regardless of mount count. Default export retained as composition shim. 324/324 Vitest tests GREEN. `next build` clean. Version 2.8.0. **WhatsComingCard expanded view ships as placeholder — full entry table is a v2.1.x followup**. v2.1 milestone complete.
+
+**v2.1 Phase 13 (Branch Preview Swap) shipped 2026-05-08:** Customer admins can click "Preview this branch" on any RC to swap their project's dev backend deploy. New `src/lib/fah-rollout.ts` (jose-signed JWT → access token → REST POST against `firebaseapphosting.googleapis.com/v1beta/.../rollouts`; mirrors github-app.ts pattern; 50-min token cache + single-flight latch; branch regex guard). New `POST /api/projects/[slug]/branch/preview` (atomic UPDATE-with-WHERE-IS-NULL lock acquisition on `projects.preview_branch_locked`; releases lock on FAH error; 409 on race-lost; persists rollout name in `metadata` via jsonb_set). New `GET /api/projects/[slug]/branch/preview/status` (8-min hard-cap timeout BEFORE FAH poll; branch-guarded auto-clear on terminal SUCCEEDED/FAILED/CANCELLED state — prevents stale poll from clobbering newer lock). New `BranchPreviewClient.tsx` client island with SWR `refreshInterval: terminal ? 0 : 5000` polling, in-flight banner with violet halo, all-buttons-disabled while swap in flight, FAH console deep-link on FAILED. Added `swr@^2.4.1` + `jose@^5` to deps (jose promoted from transitive). Version 2.7.0. **Operational setup pending Mike** (post-deploy): create `release-promoter@triarch-vault.iam.gserviceaccount.com` SA, grant `firebaseapphosting.rollouts.create` + `.builds.get` + `.rollouts.get` on each project's FAH backend, store SA key as `FAH_PROMOTER_SA_KEY` Firebase secret in triarch-dev-website project. Code path verified via mocked tests; full E2E human-verify deferred.
+
+**v2.1 Phase 12 (Bug + Feature Detail Pages) shipped 2026-05-08:** New `/admin/modules/bug-reports/[id]/page.tsx` and `/admin/modules/feature-requests/[id]/page.tsx` server components — staff-only, two-column layout. Shared `<ReleasedInSidebar />` server component (101 lines, no `use client`) shows "Released in vX.Y dev / vA.B prod" with `text-violet-300` mono version Links, "Not released yet" empty state, both env states. New `src/lib/release-history.ts` exports `getReleaseHistoryForBug/Feature` and batch variants (Drizzle inner join, COALESCE ordering). List pages got `Link` wrap on row titles with `stopPropagation` so existing expand-on-click still works. 242/242 tests GREEN.
+
+**v2.1 Phase 11 (Commit Parser + Tracker Linkage Authoring) shipped 2026-05-08:** Auto-stamp pipeline (`src/lib/commit-parser.ts` + `src/lib/link-stamper.ts`) detects `#BUG-{uuid}` / `closes FEAT-{uuid}` / `fixes #N` patterns in commit messages, validates against `bug_reports.id` / `feature_requests.id` via batched `inArray`, writes `release_log_links` rows with `source='commit'`. Non-blocking integration into `/api/platform/ingest/release-logs` route (try/catch wrap — release ingest never fails on linkage error). Manual override UI: new staff-only `GET/POST/DELETE /api/admin/release-logs/[id]/links` routes + `LinksClient.tsx` optimistic chip island with mount-fetch hydration (gap closure 11-05). Source-based gradient distinction: blue for `commit` (auto), teal for `manual` (staff override). Sanitization helpers (`src/lib/sanitize-commit.ts`) strip Slack mrkdwn injection vectors (`<!channel>`, `<!here>`, `<@U…>`, RTL/zero-width chars, Slack `<url|text>` link control chars) — applied at all 3 Slack post chokepoints. 235/235 tests GREEN. Version 2.6.2. Plan 10 (schema gate) shipped earlier the same day with `release_log_links` table + `projects.preview_branch_locked` columns. **Known limitation:** typeahead picker is a stub (UUID-paste only); typeahead search endpoints deferred to v2.1.x.
+
+**v2.1 Phase 10 (Schema Gate) shipped 2026-05-08:** Single migration 0016 — `release_log_links` table (8 cols, 4 indexes, multi-discriminant CHECK constraint, cascade FKs to release_logs/bug_reports/feature_requests) + `projects.preview_branch_locked` (text) + `preview_branch_locked_at` (timestamptz) lock columns. Drizzle schema synced; migration applied to admin_dev cluster (with backfill of missing 0000-0015 base schema, deviation auto-fixed during execution). `drizzle-kit check` clean. Phase 11–13 unblocked. Version 2.5.1.
+
+**v2.1 Phase 9 (Per-Project Pipeline Page + Web-UI Promote) shipped 2026-05-08:** New `/admin/modules/pipeline/<slug>` staff-only page (server component, 297 lines) with consolidated header (prod/dev versions w/ violet gradient), branch RC list (6 cells per row), expanded "What's changed" table (Type/Title/Branch/Author/Date with red-rose Bug fix / teal-emerald Feature / zinc Other gradient pills), deploy history. New `PromoteButton.tsx` client island (184 lines) — five-phase state machine (idle → confirming → dispatching → dispatched/failed) with two-step inline confirm pattern (no modal), exact label "Promote {branch} {version} to production", violet-400 spinner halo, teal Dispatched terminal pill, red Failed pill linking to GHA run URL. New `POST /api/admin/releases/[id]/promote` route (staff-only) calls `promoteAndAudit({ channelId: null, messageTs: null, slackUserName: null })` reusing the same dispatch path as Slack OttoBot. Atomic UPDATE-with-WHERE-IS-NULL race guard on `release_logs.promotion_dispatched_at` — both web and Slack handlers use it; loser gets 409 with `{ error: 'already_promoted', dispatched_by, dispatched_at }`. Schema additions: `release_approvals.actor_source` column (web/slack) + partial unique index `release_approvals_one_approved_per_release WHERE decision='approved'`. `projects.slack_channel_id` column added (uncovered during 09-02 execution). Admin home Project Health tile retargeted from `/projects/<slug>/releases` to `/admin/modules/pipeline/<slug>`. 159/159 tests GREEN. Version 2.5.0. PROM-05 merged/conflict terminal states deferred to future SWR-polling phase per CONTEXT.md (architecturally correct — async round-trip data unavailable at dispatch time).
+
+**v2.1 Phase 8 (Admin Home Pipeline Visibility) shipped 2026-05-08:** `/admin` Project Health tile redesigned end-to-end. New `src/lib/pipeline-summary.ts` exports `getProjectPipelineSummaries()` — DISTINCT ON query with composite index `release_logs_project_env_deployed_idx` (Pitfall 8 guard, migration 0013), COALESCE(deployed_at, released_at) ordering, null-env exclusion, JS-side what-changed bucketing. Tile is now a Next.js Link to `/projects/<slug>/releases` with stacked prod/dev rows (mono version + relative timestamps), top-right amber pending-approval pill (absent when 0), and a what-changed one-liner ("4 entries since prod: 2 fixes, 1 feature, 1 other") that hides on parity and shows "dev behind prod" on inversion. Existing bug count, feature count, and status pill all preserved. 10-test Vitest TDD suite for pipeline-summary covers parity / dev-ahead / inversion / null-env / what-changed bucketing. 136/136 tests GREEN. `next build` passes. Version 2.4.0.
 
 ## Requirements
 
-### v2.0 (Active)
+### v2.1 (Active)
 
-To be defined via `/gsd:new-milestone` — see source draft at `.planning/v1.15-MILESTONE-DRAFT.md`.
+See `REQUIREMENTS.md` — defined 2026-05-07.
+
+### v2.0 (Shipped 2026-05-06, pending milestone-close audit)
+
+Multi-Branch RC + Central Vault + OttoBot Brain. 8 phases (01–07.5). See MILESTONES.md once `/gsd:complete-milestone` runs.
 
 ### Already Shipped (v1.14.6 → v1.13.1)
 
@@ -121,5 +138,22 @@ These are characteristics of the existing codebase that this milestone respects 
 - **Shell**: AdminSidebar + admin layout, dark theme, golden accent (post-v1.7.0 rebrand)
 - **URL pattern**: existing admin pages live under `/admin/*`; gating UI introduces customer-facing `/projects/{slug}/*`
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd:transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-05-05 — Phase 7.5 (Dev Cluster) code complete, HUMAN runbook pending*
+*Last updated: 2026-05-08 — v2.1 milestone (Pipeline UI) complete; all 7 phases shipped*

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useProjectOptions } from '@/lib/use-projects';
 import { Lightbulb, ChevronDown, ChevronRight, ThumbsUp } from 'lucide-react';
 
@@ -114,7 +115,13 @@ export default function FeatureRequestsPage() {
                   className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-zinc-800/30 transition-colors"
                 >
                   {expanded ? <ChevronDown size={14} className="text-zinc-500" /> : <ChevronRight size={14} className="text-zinc-500" />}
-                  <span className="text-sm text-zinc-200 flex-1 truncate">{feat.title}</span>
+                  <Link
+                    href={`/admin/modules/feature-requests/${feat.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-sm text-zinc-200 flex-1 truncate hover:text-violet-300 transition-colors cursor-pointer"
+                  >
+                    {feat.title}
+                  </Link>
                   <span className={`px-1.5 py-0.5 rounded text-[10px] ${STATUS_COLORS[feat.status] ?? 'bg-zinc-700 text-zinc-400'}`}>
                     {feat.status.replace('_', ' ')}
                   </span>

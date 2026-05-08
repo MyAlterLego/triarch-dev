@@ -8,7 +8,8 @@ import { eq, desc, sql, and, inArray } from 'drizzle-orm';
 import CustomerHeader from '@/app/projects/CustomerHeader';
 import ReleasesClient from './ReleasesClient';
 import { groupIntoSections } from './group-sections';
-import type { ReleaseRow, UserRole, ConflictState, BranchSection } from './types';
+import type { ReleaseRow, UserRole, ConflictState, BranchSection, EntryTypeCounts } from './types';
+import { getEntryTypeSummaryForProject, getWhatsComingToProd } from '@/lib/release-entry-summary';
 
 const PAGE_SIZE = 20;
 
@@ -25,7 +26,12 @@ export default async function ReleasesPage({
 
   // Look up project by slug = projects.key
   const [project] = await db
-    .select({ key: projects.key, name: projects.name, deployedUrl: projects.deployedUrl })
+    .select({
+      key: projects.key,
+      name: projects.name,
+      deployedUrl: projects.deployedUrl,
+      firebaseProjectId: projects.firebaseProjectId,
+    })
     .from(projects)
     .where(eq(projects.key, slug));
 
@@ -53,6 +59,15 @@ export default async function ReleasesPage({
 
   const hasMore = rows.length > PAGE_SIZE;
   const pageRows = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
+
+  // Fetch entry type counts + what's-coming summary in parallel (Phase 14 data layer)
+  const releaseIds = pageRows.map((r) => r.id);
+  const [entryCountsByRelease, whatsComing] = await Promise.all([
+    getEntryTypeSummaryForProject(project.key, releaseIds),
+    getWhatsComingToProd(project.key),
+  ]);
+  // Convert Map → Record for Next.js prop serialization (plain objects cross the server/client boundary)
+  const entryCountsRecord: Record<string, EntryTypeCounts> = Object.fromEntries(entryCountsByRelease);
 
   // Fetch paired prod rows for dev releases — one query covers all versions on the page
   const versions = pageRows.map((r) => r.version);
@@ -183,6 +198,10 @@ export default async function ReleasesPage({
           total={Number(total)}
           hasMore={hasMore}
           pageSize={PAGE_SIZE}
+          branchPreviewEnabled={!!project.firebaseProjectId}
+          fahProjectId={project.firebaseProjectId ?? null}
+          entryCountsByRelease={entryCountsRecord}
+          whatsComing={whatsComing}
         />
       </main>
     </>

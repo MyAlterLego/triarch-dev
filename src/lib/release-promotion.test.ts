@@ -7,6 +7,7 @@ vi.mock('@/lib/github-app', () => ({
 vi.mock('@/lib/slack', () => ({
   postSlackThreadedReply: vi.fn().mockResolvedValue({ ok: true }),
   updateSlackMessage: vi.fn().mockResolvedValue({ ok: true }),
+  postSlackChannelMessage: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
 // db mock - chainable select/update/where with .set() args capture
@@ -27,7 +28,7 @@ vi.mock('@/lib/db', () => ({
 
 import { promoteAndAudit } from '@/lib/release-promotion';
 import { dispatchWorkflow } from '@/lib/github-app';
-import { postSlackThreadedReply, updateSlackMessage } from '@/lib/slack';
+import { postSlackThreadedReply, updateSlackMessage, postSlackChannelMessage } from '@/lib/slack';
 
 const baseRelease = {
   id: 'rel-1',
@@ -50,7 +51,7 @@ beforeEach(() => {
 
 describe('promoteAndAudit', () => {
   it('success path: dispatches, audits, posts :rocket: threaded reply, no chat.update', async () => {
-    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
+    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg', slackChannelId: 'C-RELEASE' }]);
     mockUpdateWhere.mockResolvedValue(undefined);
     (dispatchWorkflow as any).mockResolvedValue({ ok: true, status: 204 });
 
@@ -118,7 +119,7 @@ describe('promoteAndAudit', () => {
   });
 
   it('dispatch throws (e.g. 404 from GitHub): audit columns STILL update, threaded reply + chat.update fire', async () => {
-    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
+    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg', slackChannelId: 'C-RELEASE' }]);
     mockUpdateWhere.mockResolvedValue(undefined);
     (dispatchWorkflow as any).mockRejectedValue(new Error('[github-app] dispatch failed for MyAlterLego/darksouls-rpg promote-branch.yml ref=main: 404 {"message":"Workflow not found"}'));
 
@@ -139,7 +140,7 @@ describe('promoteAndAudit', () => {
   });
 
   it('dispatch error message truncated to 200 chars in threaded reply', async () => {
-    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
+    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg', slackChannelId: 'C-RELEASE' }]);
     mockUpdateWhere.mockResolvedValue(undefined);
     const longError = 'X'.repeat(500);
     (dispatchWorkflow as any).mockRejectedValue(new Error(longError));
@@ -153,7 +154,7 @@ describe('promoteAndAudit', () => {
   });
 
   it('never throws - even when DB update fails', async () => {
-    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
+    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg', slackChannelId: 'C-RELEASE' }]);
     mockUpdateWhere.mockRejectedValue(new Error('DB connection lost'));
     (dispatchWorkflow as any).mockResolvedValue({ ok: true, status: 204 });
 
@@ -165,7 +166,7 @@ describe('promoteAndAudit', () => {
 
   it('null branch falls back to "main" in dispatch inputs', async () => {
     const releaseNoBranch = { ...baseRelease, branch: null };
-    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
+    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg', slackChannelId: 'C-RELEASE' }]);
     mockUpdateWhere.mockResolvedValue(undefined);
     (dispatchWorkflow as any).mockResolvedValue({ ok: true, status: 204 });
 
@@ -179,7 +180,7 @@ describe('promoteAndAudit', () => {
   });
 
   it('writes Slack metadata via jsonb_set (preserves existing metadata fields)', async () => {
-    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
+    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg', slackChannelId: 'C-RELEASE' }]);
     mockUpdateWhere.mockResolvedValue(undefined);
     (dispatchWorkflow as any).mockResolvedValue({ ok: true, status: 204 });
 
@@ -205,7 +206,7 @@ describe('promoteAndAudit', () => {
   });
 
   it('dispatch failure path STILL writes metadata + audit columns (Pitfall 1 guard on failure path)', async () => {
-    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg' }]);
+    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg', slackChannelId: 'C-RELEASE' }]);
     mockUpdateWhere.mockResolvedValue(undefined);
     (dispatchWorkflow as any).mockRejectedValue(new Error('boom 500'));
 
@@ -217,5 +218,59 @@ describe('promoteAndAudit', () => {
     const setArgs = mockSetCapture.mock.calls[0][0] as Record<string, unknown>;
     expect(setArgs.promotionDispatchedAt).toBeInstanceOf(Date);
     expect(setArgs.metadata).toBeDefined();
+  });
+
+  it('web-origin success: dispatches, audits, posts fresh Slack message, no threaded reply, no chat.update', async () => {
+    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg', slackChannelId: 'C-RELEASE' }]);
+    mockUpdateWhere.mockResolvedValue(undefined);
+    (dispatchWorkflow as any).mockResolvedValue({ ok: true, status: 204 });
+
+    const webInput = { ...baseInput, channelId: null, messageTs: null, slackUserName: null };
+    const result = await promoteAndAudit(webInput);
+    expect(result.ok).toBe(true);
+
+    // dispatchWorkflow called once
+    expect(dispatchWorkflow).toHaveBeenCalledTimes(1);
+
+    // Audit update was called
+    expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
+
+    // No threaded reply (no thread to reply on)
+    expect(postSlackThreadedReply).not.toHaveBeenCalled();
+
+    // No chat.update (no original Slack message to update)
+    expect(updateSlackMessage).not.toHaveBeenCalled();
+
+    // Fresh Slack channel message IS posted to project's slackChannelId
+    expect(postSlackChannelMessage).toHaveBeenCalledTimes(1);
+    const channelMsgCall = (postSlackChannelMessage as any).mock.calls[0][0];
+    expect(channelMsgCall.channel).toBe('C-RELEASE');
+    expect(channelMsgCall.text).toContain(':rocket:');
+  });
+
+  it('web-origin dispatch failure: audits failure, posts fresh Slack failure message, no threaded reply', async () => {
+    mockSelect.mockResolvedValue([{ githubRepo: 'MyAlterLego/darksouls-rpg', slackChannelId: 'C-RELEASE' }]);
+    mockUpdateWhere.mockResolvedValue(undefined);
+    (dispatchWorkflow as any).mockRejectedValue(new Error('GitHub 404 workflow not found'));
+
+    const webInput = { ...baseInput, channelId: null, messageTs: null, slackUserName: null };
+    const result = await promoteAndAudit(webInput);
+    expect(result.ok).toBe(false);
+    expect(result.error).toBeDefined();
+
+    // Audit IS updated even on dispatch failure
+    expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
+
+    // No threaded reply
+    expect(postSlackThreadedReply).not.toHaveBeenCalled();
+
+    // No chat.update
+    expect(updateSlackMessage).not.toHaveBeenCalled();
+
+    // Fresh Slack failure message IS posted
+    expect(postSlackChannelMessage).toHaveBeenCalledTimes(1);
+    const channelMsgCall = (postSlackChannelMessage as any).mock.calls[0][0];
+    expect(channelMsgCall.channel).toBe('C-RELEASE');
+    expect(channelMsgCall.text).toContain(':warning:');
   });
 });
