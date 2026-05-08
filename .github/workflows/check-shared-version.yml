@@ -1,0 +1,102 @@
+name: Check shared package version bump
+
+# Fires on PRs that touch packages/triarch-shared/**
+# Fails the check if source files (src/**) changed since the latest `shared/v*` tag
+# without a corresponding bump in packages/triarch-shared/package.json version field.
+
+on:
+  pull_request:
+    paths:
+      - 'packages/triarch-shared/**'
+
+permissions:
+  contents: read
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history + tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Determine latest published shared version
+        id: latest
+        run: |
+          # Find the most recent shared/v* tag by version. If none exists yet,
+          # this is the first publish — gate is informational only.
+          LATEST_TAG=$(git tag --list 'shared/v*' --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No shared/v* tags exist yet — pre-first-publish, skipping drift check"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          LATEST_VERSION="${LATEST_TAG#shared/v}"
+          echo "Latest published version: $LATEST_VERSION (tag: $LATEST_TAG)"
+          echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          echo "skip=false" >> $GITHUB_OUTPUT
+
+      - name: Detect source changes since latest tag
+        if: steps.latest.outputs.skip != 'true'
+        id: changes
+        run: |
+          LATEST_TAG="${{ steps.latest.outputs.tag }}"
+          # Source files that constitute "the package" — anything under src/, plus exports field changes
+          CHANGED_SOURCE=$(git diff --name-only "$LATEST_TAG" HEAD -- 'packages/triarch-shared/src/' 'packages/triarch-shared/tsconfig.json' || true)
+          if [ -z "$CHANGED_SOURCE" ]; then
+            echo "No source changes since $LATEST_TAG — gate passes regardless of version"
+            echo "source_changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "Source files changed since $LATEST_TAG:"
+            echo "$CHANGED_SOURCE"
+            echo "source_changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Verify version was bumped
+        if: steps.latest.outputs.skip != 'true' && steps.changes.outputs.source_changed == 'true'
+        run: |
+          LATEST_VERSION="${{ steps.latest.outputs.version }}"
+          CURRENT_VERSION=$(node -p "require('./packages/triarch-shared/package.json').version")
+          echo "Latest published version: $LATEST_VERSION"
+          echo "Current package.json version: $CURRENT_VERSION"
+
+          if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+            echo "::error::packages/triarch-shared/src/ changed since $LATEST_VERSION but package.json version was not bumped."
+            echo "::error::Bump packages/triarch-shared/package.json version (semver: patch for fixes, minor for additions, major for breaking) and push the tag shared/v<new-version> after merge."
+            exit 1
+          fi
+
+          # Sanity check: new version must be greater than published version (semver compare)
+          HIGHER=$(node -e "
+            const semver = (v) => v.split('.').map(Number);
+            const [a1,a2,a3] = semver('$CURRENT_VERSION');
+            const [b1,b2,b3] = semver('$LATEST_VERSION');
+            if (a1 > b1) process.exit(0);
+            if (a1 < b1) process.exit(1);
+            if (a2 > b2) process.exit(0);
+            if (a2 < b2) process.exit(1);
+            if (a3 > b3) process.exit(0);
+            process.exit(1);
+          " && echo "ok" || echo "fail")
+
+          if [ "$HIGHER" != "ok" ]; then
+            echo "::error::Version $CURRENT_VERSION is not greater than published version $LATEST_VERSION"
+            exit 1
+          fi
+
+          echo "::notice::Version bumped $LATEST_VERSION -> $CURRENT_VERSION (gate passes)"
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ steps.latest.outputs.skip }}" = "true" ]; then
+            echo "## Pre-first-publish — drift gate skipped" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.changes.outputs.source_changed }}" = "false" ]; then
+            echo "## No source changes since ${{ steps.latest.outputs.tag }} — gate passes" >> $GITHUB_STEP_SUMMARY
+          else
+            CURRENT=$(node -p "require('./packages/triarch-shared/package.json').version")
+            echo "## Source changed; version is $CURRENT (was ${{ steps.latest.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          fi
