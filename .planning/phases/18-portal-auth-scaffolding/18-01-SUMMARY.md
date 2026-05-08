@@ -186,6 +186,10 @@ HUMAN-UAT: after Mike sets the 2 secrets above and merges any commit, the full p
 
 Blocker: OPS-04 (Google OAuth redirect URIs) still pending Mike's Console action before end-to-end auth can be tested.
 
+## Self-Check: PASSED
+
+All 15 portal source files FOUND. Summary FOUND at `.planning/phases/18-portal-auth-scaffolding/18-01-SUMMARY.md`. Portal commits verified: fcd6b2b (scaffold), cd2f550 (main merge), 486e5d4 (ci fix), c695e0e (ci fix 2). Quality-gate CI passing (run 25571416108).
+
 ---
 *Phase: 18-portal-auth-scaffolding*
 *Completed: 2026-05-08*
