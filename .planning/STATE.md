@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
 status: executing
-stopped_at: Completed 14-01-PLAN.md — server-side entry counts + WhatsComing lib + page.tsx wiring
-last_updated: "2026-05-08T06:51:57.877Z"
+stopped_at: Completed 14-02-PLAN.md — FilterChips + WhatsComingCard client islands + ReleasesClient URL-state filter math
+last_updated: "2026-05-08T06:59:48.135Z"
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 23
-  completed_plans: 21
+  completed_plans: 22
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-07 — v2.1 milestone started)
 ## Current Position
 
 Phase: 14 (Customer Page Integration) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Active Milestone: v2.1 — Pipeline UI
 
@@ -126,6 +126,9 @@ v2.1 decisions captured at roadmap creation:
 - [Phase 14-customer-page-integration]: release-as-unit bucketing with fixes-take-precedence: a release with both bug+feature links counts as ONE fix — keeps totalEntries = total releases on page
 - [Phase 14-customer-page-integration]: Map->Record conversion in page.tsx: Object.fromEntries before passing to ReleasesClient — Next.js cannot serialize ES6 Maps across server/client boundary
 - [Phase 14-customer-page-integration]: external links excluded from typed counts: linkType=external does not increment fixes/features/total; Map entry created with zeros to distinguish all-external from no-links
+- [Phase 14-customer-page-integration]: URL param uses 'bug' (CUST-02 spec) but internal FilterType uses 'fix' — mapping at URL boundary only in handleFilterChange
+- [Phase 14-customer-page-integration]: router.replace with {scroll:false} not router.push — prevents history stack pollution from chip toggling; quality gate requirement enforced
+- [Phase 14-customer-page-integration]: WhatsComingCard ships with expanded-view placeholder for v2.1 — full WhatChangedEntry[] table deferred to follow-up plan; oneliner + collapse toggle is the must-have
 
 ### Pending Todos
 
@@ -140,7 +143,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T06:51:57.875Z
-Stopped at: Completed 14-01-PLAN.md — server-side entry counts + WhatsComing lib + page.tsx wiring
+Last session: 2026-05-08T06:59:48.133Z
+Stopped at: Completed 14-02-PLAN.md — FilterChips + WhatsComingCard client islands + ReleasesClient URL-state filter math
 Resume file: None
 Next action: `/gsd:plan-phase 8`
