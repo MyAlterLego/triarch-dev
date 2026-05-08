@@ -14,7 +14,7 @@
 - [x] **PIPE-01**: Admin user sees per-project prod version and dev version side-by-side on `/admin` home (replaces single `currentVersion` column)
 - [x] **PIPE-02**: Admin user sees pending-approval count badge per project tile (count of RCs with `status='pending_approval'`)
 - [x] **PIPE-03**: Admin user sees last-deploy timestamp per project per environment ("dev: 12 min ago / prod: 3 days ago")
-- [ ] **PIPE-04**: Admin user can click any project tile to navigate directly to `/projects/<slug>/releases`
+- [x] **PIPE-04**: Admin user can click any project tile to navigate directly to `/projects/<slug>/releases`
 - [ ] **PIPE-05**: Staff user can open a per-project pipeline page at `/admin/modules/pipeline/<slug>` showing consolidated env state, branch RC list, deploy history, and embedded what-changed view
 - [x] **PIPE-06**: Admin home tile shows compact one-liner what-changed summary ("4 entries since prod: 2 bug fixes, 1 feature, 1 other")
 
@@ -102,7 +102,7 @@ Populated by `gsd-roadmapper` 2026-05-07.
 | PIPE-01 | Phase 8 — Admin Home Pipeline Visibility | Complete |
 | PIPE-02 | Phase 8 — Admin Home Pipeline Visibility | Complete |
 | PIPE-03 | Phase 8 — Admin Home Pipeline Visibility | Complete |
-| PIPE-04 | Phase 8 — Admin Home Pipeline Visibility | Pending |
+| PIPE-04 | Phase 8 — Admin Home Pipeline Visibility | Complete |
 | PIPE-06 | Phase 8 — Admin Home Pipeline Visibility | Complete |
 | PIPE-05 | Phase 9 — Per-Project Pipeline Page and Web-UI Promote | Pending |
 | PROM-01 | Phase 9 — Per-Project Pipeline Page and Web-UI Promote | Pending |

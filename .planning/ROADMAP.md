@@ -38,7 +38,7 @@
 
 **Milestone Goal:** Make the dev→prod CI/CD pipeline that v2.0 built legible and operable from the admin/customer web surfaces — per-project prod-vs-dev at a glance, on-demand branch previews customers can drive themselves, web-UI promotion, bidirectional bug/feature ↔ release linkage, and what-changed views on both admin and customer pages.
 
-- [ ] **Phase 8: Admin Home Pipeline Visibility** - Per-project prod/dev versions, pending-approval count, last-deploy timestamp, clickable tiles, compact what-changed summary
+- [x] **Phase 8: Admin Home Pipeline Visibility** - Per-project prod/dev versions, pending-approval count, last-deploy timestamp, clickable tiles, compact what-changed summary (completed 2026-05-08)
 - [ ] **Phase 9: Per-Project Pipeline Page and Web-UI Promote** - `/admin/modules/pipeline/[slug]`, PromoteButton island, promote API route, expanded what-changed view, double-promote guard
 - [ ] **Phase 10: Schema Gate** - `release_log_links` join table, `projects` branch-preview lock columns, Drizzle schema + migration verified
 - [ ] **Phase 11: Commit Parser and Tracker Linkage Authoring** - `commit-parser.ts`, ingest auto-stamp, manual add/remove UI in release-logs
@@ -61,7 +61,7 @@
 **Plans**: 3 plans
 - [x] 08-01-PLAN.md — Composite index migration on release_logs (project, env, deployed_at DESC) — Pitfall 8 guard
 - [x] 08-02-PLAN.md — getProjectPipelineSummaries helper with DISTINCT ON query, type bucketing, parity/inversion logic, Vitest suite
-- [ ] 08-03-PLAN.md — Admin page tile rendering: Link wrap, prod/dev rows, pending pill, what-changed oneliner, version bump
+- [x] 08-03-PLAN.md — Admin page tile rendering: Link wrap, prod/dev rows, pending pill, what-changed oneliner, version bump
 
 ### Phase 9: Per-Project Pipeline Page and Web-UI Promote
 **Goal**: Staff have a consolidated per-project view showing env state, all branch RCs, deploy history, and what's changed — and can initiate a production promotion from that page without touching Slack
@@ -153,7 +153,7 @@
 | 6. promoteAndAudit Rewrite | v2.0 | 4/4 | Complete | 2026-05-05 |
 | 7. OttoBot Dispatcher Hardening | v2.0 | 6/6 | Complete | 2026-05-05 |
 | 7.5. Dev Cluster + Admin Dev Backend | v2.0 | 5/5 | Complete | 2026-05-05 |
-| 8. Admin Home Pipeline Visibility | v2.1 | 2/3 | In Progress|  |
+| 8. Admin Home Pipeline Visibility | v2.1 | 3/3 | Complete   | 2026-05-08 |
 | 9. Per-Project Pipeline Page and Web-UI Promote | v2.1 | 0/TBD | Not started | - |
 | 10. Schema Gate | v2.1 | 0/TBD | Not started | - |
 | 11. Commit Parser and Tracker Linkage Authoring | v2.1 | 0/TBD | Not started | - |

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
-status: executing
-stopped_at: Completed 08-02-PLAN.md — getProjectPipelineSummaries helper with 10/10 tests GREEN
-last_updated: "2026-05-08T02:43:39.782Z"
+status: verifying
+stopped_at: Completed 08-03-PLAN.md — pipeline-aware admin home tiles with prod/dev rows, amber pill, and what-changed one-liner; version 2.4.0
+last_updated: "2026-05-08T02:49:59.299Z"
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Triarch Dev Admin — Project State
@@ -43,7 +43,7 @@ Plan: 3 of 3
 | 14 — Customer Page Integration | Filter chips, what's-changed card, branch swap in section headers | CUST-01..03, DIFF-02 | Not started |
 
 **Requirements:** 29 total, all mapped
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 
 ## Performance Metrics
 
@@ -81,6 +81,9 @@ v2.1 decisions captured at roadmap creation:
 - [Phase 08]: Raw SQL (db.execute) required for DISTINCT ON query — Drizzle typed builder lacks native DISTINCT ON support per Pitfall 8
 - [Phase 08]: parity vs inverted state uses version comparison: same version = parity (just promoted), different version AND prod newer = inverted (hotfix)
 - [Phase 08]: What-changed uses JS-side filter (safer alt): fetch all dev rows via Drizzle typed builder, filter by per-project prod cutoff in JS
+- [Phase 08]: formatRelativeTime reused from @/app/projects/[slug]/releases/format — no new utility file needed
+- [Phase 08]: Legacy ProjectHealth.version field kept on interface per CONTEXT.md — not rendered on tile but preserved for other potential consumers
+- [Phase 08]: Pipeline tile hover border zinc-800 to zinc-600 (two-step lift) — one-step zinc-707 too subtle on dark background
 
 ### Pending Todos
 
@@ -95,7 +98,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T02:43:39.780Z
-Stopped at: Completed 08-02-PLAN.md — getProjectPipelineSummaries helper with 10/10 tests GREEN
+Last session: 2026-05-08T02:49:59.297Z
+Stopped at: Completed 08-03-PLAN.md — pipeline-aware admin home tiles with prod/dev rows, amber pill, and what-changed one-liner; version 2.4.0
 Resume file: None
 Next action: `/gsd:plan-phase 8`
