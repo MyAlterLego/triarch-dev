@@ -20,6 +20,8 @@ import type {
   UserRole,
   BranchSection,
   ConflictState,
+  EntryTypeCounts,
+  WhatsComingSummary,
 } from './types';
 import Toast, { type ToastKind } from '@/components/Toast';
 import { formatDeployedAt, formatRelativeTime } from './format';
@@ -79,6 +81,8 @@ interface Props {
   pageSize: number;
   branchPreviewEnabled?: boolean;          // Phase 13: false when project has no firebaseProjectId
   fahProjectId?: string | null;
+  entryCountsByRelease?: Record<string, EntryTypeCounts>; // Phase 14: per-release entry type counts (optional, default {} for back-compat)
+  whatsComing?: WhatsComingSummary | null;                 // Phase 14: what's coming to prod summary (optional)
 }
 
 // ---------------------------------------------------------------------------
@@ -156,6 +160,8 @@ export default function ReleasesClient({
   pageSize,
   branchPreviewEnabled = false,
   fahProjectId = null,
+  entryCountsByRelease = {},
+  whatsComing = null,
 }: Props) {
   // -- Core state -----------------------------------------------------------
   const [sections, setSections] = useState<BranchSection[]>(initialSections);
