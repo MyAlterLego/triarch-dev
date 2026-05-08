@@ -26,6 +26,7 @@ import { formatDeployedAt, formatRelativeTime } from './format';
 import Timeline from './Timeline';
 import { groupIntoSections } from './group-sections';
 import BranchSectionComponent from './BranchSection';
+import BranchPreviewClient from './BranchPreviewClient';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -76,6 +77,8 @@ interface Props {
   total: number;
   hasMore: boolean;
   pageSize: number;
+  branchPreviewEnabled?: boolean;          // Phase 13: false when project has no firebaseProjectId
+  fahProjectId?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -151,6 +154,8 @@ export default function ReleasesClient({
   total,
   hasMore,
   pageSize,
+  branchPreviewEnabled = false,
+  fahProjectId = null,
 }: Props) {
   // -- Core state -----------------------------------------------------------
   const [sections, setSections] = useState<BranchSection[]>(initialSections);
@@ -453,6 +458,16 @@ export default function ReleasesClient({
             </p>
           </div>
         </div>
+
+        {/* Branch preview swap slot (Phase 13) — top-of-list, only when project has FAH */}
+        {branchPreviewEnabled && (
+          <BranchPreviewClient
+            projectSlug={projectSlug}
+            userRole={userRole}
+            branches={Array.from(new Set(sections.map((s) => s.branch)))}
+            fahProjectId={fahProjectId}
+          />
+        )}
 
         {/* Branch sections (Phase 05-04) */}
         {sections.length === 0 ? (

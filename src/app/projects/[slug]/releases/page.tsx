@@ -25,7 +25,12 @@ export default async function ReleasesPage({
 
   // Look up project by slug = projects.key
   const [project] = await db
-    .select({ key: projects.key, name: projects.name, deployedUrl: projects.deployedUrl })
+    .select({
+      key: projects.key,
+      name: projects.name,
+      deployedUrl: projects.deployedUrl,
+      firebaseProjectId: projects.firebaseProjectId,
+    })
     .from(projects)
     .where(eq(projects.key, slug));
 
@@ -183,6 +188,8 @@ export default async function ReleasesPage({
           total={Number(total)}
           hasMore={hasMore}
           pageSize={PAGE_SIZE}
+          branchPreviewEnabled={!!project.firebaseProjectId}
+          fahProjectId={project.firebaseProjectId ?? null}
         />
       </main>
     </>
