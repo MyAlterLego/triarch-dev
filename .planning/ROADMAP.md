@@ -282,7 +282,7 @@
 - [x] 22-01-PLAN.md — Shared internal-hmac module + admin /api/internal/dispatch endpoint + INTERNAL_HMAC_SECRET secret + admin v2.10.0 (WRITE-04 foundation)
 - [x] 22-02-PLAN.md — Portal approve/reject/feedback (POST + DELETE) handlers with HMAC dispatch to admin + portal v0.3.1 (WRITE-01, WRITE-04)
 - [x] 22-03-PLAN.md — Portal branch preview swap (POST + GET status) with portal-owned FAH_PROMOTER_SA_KEY + portal v0.3.2 (WRITE-02, WRITE-03)
-- [ ] 22-04-PLAN.md — Portal Slack notifications (PORTAL_SLACK_BOT_TOKEN) + un-stub ReleasesClient + BranchPreviewClient handlers + portal v0.3.3 (WRITE-04, WRITE-05)
+- [x] 22-04-PLAN.md — Portal Slack notifications (PORTAL_SLACK_BOT_TOKEN) + un-stub ReleasesClient + BranchPreviewClient handlers + portal v0.3.3 (WRITE-04, WRITE-05)
 - [ ] 22-05-PLAN.md — WRITE-05 dedicated tests + mobile viewport + shared@0.3.0 publish + portal v0.4.0 phase close (WRITE-05)
 
 ### Phase 23: Bug + Feature Customer Surface
@@ -366,7 +366,7 @@
 | 19. Database Connectivity | v2.2 | 2/2 | Complete    | 2026-05-08 |
 | 20. URL Centralization | v2.2 | 2/2 | Complete    | 2026-05-08 |
 | 21. Release Page Port (Read) | v2.2 | 4/6 | Complete    | 2026-05-08 |
-| 22. Release Page Port (Write) | v2.2 | 3/5 | In Progress|  |
+| 22. Release Page Port (Write) | v2.2 | 4/5 | In Progress|  |
 | 23. Bug + Feature Customer Surface | v2.2 | 0/0 | Not started | - |
 | 24. CI/CD Deploy Safety | v2.2 | 0/0 | Not started | - |
 | 25. Cutover | v2.2 | 0/0 | Not started | - |

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
 status: executing
-stopped_at: Completed 22-release-page-port-write 22-03-PLAN.md (PRs open, awaiting Mike's review)
-last_updated: "2026-05-08T22:35:00.000Z"
+stopped_at: Completed 22-release-page-port-write 22-04-PLAN.md (PRs to be opened, awaiting Mike's review + GCP secret provisioning for PORTAL_SLACK_BOT_TOKEN)
+last_updated: "2026-05-08T23:30:36.752Z"
 progress:
   total_phases: 19
   completed_phases: 13
   total_plans: 54
-  completed_plans: 51
+  completed_plans: 52
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 ## Current Position
 
 Phase: 22 (release-page-port-write) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -145,6 +145,11 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 22-03]: WRITE-02 + WRITE-03 — portal-owned FAH_PROMOTER_SA_KEY end-to-end (no admin proxy on branch swap path) per CONTEXT.md D-04 lower-latency / lower-blast-radius verdict
 - [Phase 22-03]: Verbatim port + auth swap — fah-rollout.ts copied from admin with zero logic deltas; preview routes copied with only getServerSession→getPortalSession + getCurrentUserContext({user:{email}}) substitution
 - [Phase 22-03]: FAH_PROMOTER_SA_KEY explicitly re-bound on apphosting.dev.yaml (not relying on overlay inheritance) so grep finds the binding in both files
+- [Phase 22-04]: WRITE-04 — Slack post fires BEFORE HMAC dispatch in approve route (3-sec customer feedback budget); both fire-and-forget; neither failure rolls back the approval
+- [Phase 22-04]: No double-Slack-posting: portal posts approval to SLACK_RELEASE_APPROVAL_CHANNEL; admin's promoteAndAudit posts dispatch confirmation to project.slackChannelId. Different channels, different messages, different purposes (verified against admin/src/lib/release-promotion.ts).
+- [Phase 22-04]: Portal Block Kit posts plain section blocks only — no slack_promote/slack_reject action_ids (those use SLACK_PAYLOAD_SECRET admin-only). 'via portal' headline marker so #release-approvals distinguishes origin.
+- [Phase 22-04]: WRITE-05 preserved verbatim: two-step approve UX, conflict badge propagation (helper text in BOTH BranchSection action cell AND ExpandedPanel), branch lock disable propagation (singleton-by-cache-key SWR across all BranchPreviewButton mounts)
+- [Phase 22-04]: handleLoadMore stays stubbed in ReleasesClient — portal lacks GET releases list endpoint. Deferred to 22-05 or beyond. hasMoreState=false hides the button.
 
 ### Pending Todos
 
@@ -162,7 +167,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-08T22:35:00.000Z
-Stopped at: Completed 22-release-page-port-write 22-03-PLAN.md (PRs open, awaiting Mike's review)
+Last session: 2026-05-08T23:30:18.668Z
+Stopped at: Completed 22-release-page-port-write 22-04-PLAN.md (PRs to be opened, awaiting Mike's review + GCP secret provisioning for PORTAL_SLACK_BOT_TOKEN)
 Resume file: None
 Next action: Execute 22-04 (Portal Slack notifications + un-stub ReleasesClient + BranchPreviewClient handlers) once 22-03 PRs merged and portal-dev redeploys

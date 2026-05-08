@@ -80,7 +80,7 @@ Customer write paths: approve, reject, feedback, branch preview swap, plus Slack
 - [x] **WRITE-02**: Portal API route `POST /api/projects/[slug]/branch/preview` and `GET /status` mirror the v2.1 admin endpoints (atomic lock, branch regex guard, 8-min timeout, branch-guarded auto-clear)
 - [x] **WRITE-03**: Portal binding for `FAH_PROMOTER_SA_KEY` secret in its apphosting.yaml; FAH compute SA + service-agent IAM bindings on the secret (matches admin's pattern)
 - [x] **WRITE-04**: Portal posts customer-side Slack notifications via `PORTAL_SLACK_BOT_TOKEN` directly; for GitHub workflow dispatch (promote-branch.yml), portal calls admin via internal HMAC-signed POST `/api/internal/dispatch` (admin retains GitHub App key custody)
-- [ ] **WRITE-05**: Two-step approve UX, conflict badge, branch lock disable propagation — all preserved from v2.1
+- [x] **WRITE-05**: Two-step approve UX, conflict badge, branch lock disable propagation — all preserved from v2.1
 
 ### Bug + Feature Customer Surface
 
@@ -200,7 +200,7 @@ Updated by roadmapper during phase mapping.
 | WRITE-02 | Phase 22 | Complete |
 | WRITE-03 | Phase 22 | Complete |
 | WRITE-04 | Phase 22 | Complete |
-| WRITE-05 | Phase 22 | Pending |
+| WRITE-05 | Phase 22 | Complete |
 | BUG-01 | Phase 23 | Pending |
 | BUG-02 | Phase 23 | Pending |
 | BUG-03 | Phase 23 | Pending |
