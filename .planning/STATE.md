@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
-status: planning
-stopped_at: Completed 17-02-PLAN.md — proxy.ts hardened fail-closed, 332/332 tests GREEN, v2.9.1 bumped; Phase 17 complete
-last_updated: "2026-05-08T17:38:13.832Z"
+status: executing
+stopped_at: Completed 18-01-PLAN.md — portal scaffold committed fcd6b2b, merged to main cd2f550, CI run 25571081224 queued
+last_updated: "2026-05-08T17:59:44.676Z"
 progress:
   total_phases: 19
   completed_phases: 10
-  total_plans: 34
-  completed_plans: 34
+  total_plans: 39
+  completed_plans: 35
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,12 +19,12 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 17 — hostname-guard-inventory
+**Current focus:** Phase 18 — portal-auth-scaffolding
 
 ## Current Position
 
-Phase: 18
-Plan: Not started
+Phase: 18 (portal-auth-scaffolding) — EXECUTING
+Plan: 2 of 5
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -48,7 +48,7 @@ Plan: Not started
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Ready to plan
+**Status:** Ready to execute
 
 ## Performance Metrics
 
@@ -109,6 +109,9 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 17-hostname-guard-inventory]: KNOWN_EXACT_HOSTS Set with exact match in proxy.ts prevents prefix-bypass attacks like admin-dev.triarch.dev.evil.com
 - [Phase 17-hostname-guard-inventory]: Cloud Run *.run.app hostname accepted only when x-forwarded-host independently validates to known admin host
 - [Phase 17-hostname-guard-inventory]: new NextResponse(null, {status: 404}) chosen for fail-closed response — no HTML body, lowest overhead
+- [Phase 18]: feat/portal-scaffold branch + squash-merge PR strategy to land first commit on main (satisfies workspace no-direct-to-main rule)
+- [Phase 18]: passWithNoTests: true in vitest.config.ts so zero-test portal scaffold exits 0
+- [Phase 18]: Portal vitest.config.ts omits packageTestRedirectPlugin — uses published triarch-shared from GitHub Packages, not file: dep
 
 ### Pending Todos
 
@@ -126,7 +129,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-08T17:36:05.442Z
-Stopped at: Completed 17-02-PLAN.md — proxy.ts hardened fail-closed, 332/332 tests GREEN, v2.9.1 bumped; Phase 17 complete
+Last session: 2026-05-08T17:59:44.674Z
+Stopped at: Completed 18-01-PLAN.md — portal scaffold committed fcd6b2b, merged to main cd2f550, CI run 25571081224 queued
 Resume file: None
 Next action: `/gsd:execute-phase 15-05` (Google OAuth redirect URIs)
