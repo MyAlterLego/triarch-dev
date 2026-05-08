@@ -295,10 +295,6 @@ describe('GET /api/projects/[slug]/branch/preview/status', () => {
       state: 'SUCCEEDED',
     });
 
-    // Capture the where argument passed to the update chain
-    let capturedWhere: unknown;
-    vi.mocked(db as any)?.update;
-
     const res = await GET(buildReq(), params);
 
     expect(res.status).toBe(200);
