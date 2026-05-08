@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
-status: verifying
+status: planning
 stopped_at: Completed 16-04-PLAN.md — shared/v0.1.0 tagged and published to GitHub Packages; Phase 16 complete
-last_updated: "2026-05-08T17:15:47.448Z"
+last_updated: "2026-05-08T17:20:42.210Z"
 progress:
   total_phases: 19
   completed_phases: 9
@@ -23,8 +23,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 ## Current Position
 
-Phase: 16 (shared-package-extraction) — EXECUTING
-Plan: 4 of 4
+Phase: 17
+Plan: Not started
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -48,7 +48,7 @@ Plan: 4 of 4
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Phase complete — ready for verification
+**Status:** Ready to plan
 
 ## Performance Metrics
 
