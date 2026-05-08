@@ -44,6 +44,10 @@ export const projects = pgTable('projects', {
   // Slack integration — channel for release-approvals notifications (project-scoped)
   slackChannelId: varchar('slack_channel_id', { length: 64 }),
 
+  // ── v2.1 Phase 10: branch preview swap concurrency lock (PREV-01) ──
+  previewBranchLocked: text('preview_branch_locked'),                                       // branch name currently being deployed to dev backend; null = no lock
+  previewBranchLockedAt: timestamp('preview_branch_locked_at', { withTimezone: true }),     // when the lock was set; route-side 8-min timeout reads this
+
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -411,6 +415,23 @@ export const promoteAttempts = pgTable('promote_attempts', {
   index('promote_attempts_created_at_idx').on(table.createdAt.desc()),
 ]);
 
+// ── v2.1 Phase 10: Tracker ↔ Release Linkage (LINK-01) ────────────
+
+export const releaseLogLinks = pgTable('release_log_links', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  releaseId: uuid('release_id').notNull().references(() => releaseLogs.id, { onDelete: 'cascade' }),
+  linkType: varchar('link_type', { length: 16 }).notNull(),                          // 'bug' | 'feature' | 'external' — validated via CHECK constraint in migration
+  bugId: uuid('bug_id').references(() => bugReports.id, { onDelete: 'cascade' }),     // populated when linkType='bug'; CASCADE so deleting a bug clears its link rows
+  featureId: uuid('feature_id').references(() => featureRequests.id, { onDelete: 'cascade' }),  // populated when linkType='feature'
+  externalUrl: text('external_url'),                                                  // populated when linkType='external'; freeform URL (GitHub issue, Jira, etc.)
+  source: varchar('source', { length: 16 }).notNull(),                                // 'commit' | 'manual' — provenance for Phase 11 auto-stamp vs UI authoring
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index('release_log_links_release_id_idx').on(table.releaseId),
+  index('release_log_links_bug_id_idx').on(table.bugId),
+  index('release_log_links_feature_id_idx').on(table.featureId),
+]);
+
 // ── Relations ─────────────────────────────────────────────────────
 
 export const menuSectionsRelations = relations(menuSections, ({ many }) => ({
@@ -435,6 +456,7 @@ export const menuSubpagesRelations = relations(menuSubpages, ({ one }) => ({
 export const releaseLogsRelations = relations(releaseLogs, ({ many }) => ({
   feedback: many(releaseFeedback),
   approvals: many(releaseApprovals),
+  links: many(releaseLogLinks),
 }));
 
 export const releaseFeedbackRelations = relations(releaseFeedback, ({ one }) => ({
@@ -448,5 +470,20 @@ export const releaseApprovalsRelations = relations(releaseApprovals, ({ one }) =
   release: one(releaseLogs, {
     fields: [releaseApprovals.releaseId],
     references: [releaseLogs.id],
+  }),
+}));
+
+export const releaseLogLinksRelations = relations(releaseLogLinks, ({ one }) => ({
+  release: one(releaseLogs, {
+    fields: [releaseLogLinks.releaseId],
+    references: [releaseLogs.id],
+  }),
+  bug: one(bugReports, {
+    fields: [releaseLogLinks.bugId],
+    references: [bugReports.id],
+  }),
+  feature: one(featureRequests, {
+    fields: [releaseLogLinks.featureId],
+    references: [featureRequests.id],
   }),
 }));
