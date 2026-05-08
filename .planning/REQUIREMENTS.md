@@ -39,7 +39,7 @@
 - [ ] **LINK-04**: Authoring UI in `/admin/modules/release-logs` lets staff manually add or remove links per release entry (override auto-detection)
 - [ ] **LINK-05**: Bug detail page (`/admin/modules/bug-reports/<id>`) shows "Released in vX.Y dev / vA.B prod" sidebar section
 - [ ] **LINK-06**: Feature detail page (`/admin/modules/feature-requests/<id>`) shows same "Released in" sidebar section
-- [ ] **LINK-07**: Commit message content is sanitized before any render or Slack post (strip Slack mrkdwn control chars, zero-width / RTL-override chars)
+- [x] **LINK-07**: Commit message content is sanitized before any render or Slack post (strip Slack mrkdwn control chars, zero-width / RTL-override chars)
 
 ### Branch Preview (PREV)
 
@@ -116,7 +116,7 @@ Populated by `gsd-roadmapper` 2026-05-07.
 | LINK-02 | Phase 11 — Commit Parser and Tracker Linkage Authoring | Complete |
 | LINK-03 | Phase 11 — Commit Parser and Tracker Linkage Authoring | Complete |
 | LINK-04 | Phase 11 — Commit Parser and Tracker Linkage Authoring | Pending |
-| LINK-07 | Phase 11 — Commit Parser and Tracker Linkage Authoring | Pending |
+| LINK-07 | Phase 11 — Commit Parser and Tracker Linkage Authoring | Complete |
 | LINK-05 | Phase 12 — Bug and Feature Detail Pages | Pending |
 | LINK-06 | Phase 12 — Bug and Feature Detail Pages | Pending |
 | PREV-02 | Phase 13 — Branch Preview Swap | Pending |

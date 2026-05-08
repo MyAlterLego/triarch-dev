@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
 status: executing
-stopped_at: Completed 11-01-PLAN.md — commit-parser.ts GREEN, 27 tests pass, LINK-02/LINK-03 regex layer complete
-last_updated: "2026-05-08T04:43:31.330Z"
+stopped_at: Completed 11-02-PLAN.md — sanitize-commit helpers (LINK-07), 27 tests GREEN
+last_updated: "2026-05-08T04:44:38.373Z"
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-07 — v2.1 milestone started)
 ## Current Position
 
 Phase: 11 (Commit Parser and Tracker Linkage Authoring) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
 ## Active Milestone: v2.1 — Pipeline UI
 
@@ -101,6 +101,9 @@ v2.1 decisions captured at roadmap creation:
 - [Phase 11]: Pattern B (verb-prefixed UUID) fires before Pattern A; verb-prefix regions space-padded before Pattern A scan to prevent double-counting
 - [Phase 11]: ParsedRef is a discriminated union: bug/feature carry id, external carries ref — downstream switch on type field without field existence checks
 - [Phase 11]: Bare #N GitHub issue refs only match when preceded by verb (closes/fixes/resolves) — no verb = no match (Pitfall 5 false-positive guard)
+- [Phase 11-02]: Neutralize-not-delete strategy for Slack: <!channel> becomes ‹!channel› preserving audit readability while breaking the trigger
+- [Phase 11-02]: Link deception handled by URL extraction: <URL|label> becomes bare URL, deceptive label dropped
+- [Phase 11-02]: sanitizeForRender is defense-in-depth against Unicode RTL/zero-width trickery that HTML escaping doesn't cover
 
 ### Pending Todos
 
@@ -115,7 +118,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T04:43:31.328Z
-Stopped at: Completed 11-01-PLAN.md — commit-parser.ts GREEN, 27 tests pass, LINK-02/LINK-03 regex layer complete
+Last session: 2026-05-08T04:44:38.371Z
+Stopped at: Completed 11-02-PLAN.md — sanitize-commit helpers (LINK-07), 27 tests GREEN
 Resume file: None
 Next action: `/gsd:plan-phase 8`
