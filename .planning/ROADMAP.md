@@ -117,7 +117,7 @@
   3. The bug list page (`/admin/modules/bug-reports`) loads in under 500ms with 50 bugs — no N+1 query; release linkage is fetched via a single `inArray` batch query per page load
 **Plans**: 3 plans
 - [x] 12-01-PLAN.md — getReleaseHistoryForBug/Feature lib + Vitest suite (TDD; mocked db; happy/empty/multi-version/ordering)
-- [ ] 12-02-PLAN.md — ReleasedInSidebar shared component + bug detail page + bug list Link wrap (LINK-05)
+- [x] 12-02-PLAN.md — ReleasedInSidebar shared component + bug detail page + bug list Link wrap (LINK-05)
 - [ ] 12-03-PLAN.md — feature detail page (reuses sidebar) + feature list Link wrap (LINK-06)
 
 ### Phase 13: Branch Preview Swap
@@ -170,6 +170,6 @@
 | 9. Per-Project Pipeline Page and Web-UI Promote | v2.1 | 4/5 | In Progress|  |
 | 10. Schema Gate | v2.1 | 1/1 | Complete    | 2026-05-08 |
 | 11. Commit Parser and Tracker Linkage Authoring | v2.1 | 5/5 | Complete    | 2026-05-08 |
-| 12. Bug and Feature Detail Pages | v2.1 | 1/3 | In Progress|  |
+| 12. Bug and Feature Detail Pages | v2.1 | 2/3 | In Progress|  |
 | 13. Branch Preview Swap | v2.1 | 0/TBD | Not started | - |
 | 14. Customer Page Integration | v2.1 | 0/TBD | Not started | - |

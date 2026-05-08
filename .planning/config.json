@@ -15,6 +15,6 @@
     "ui_phase": true,
     "ui_safety_gate": true,
     "commit_docs": true,
-    "_auto_chain_active": true
+    "_auto_chain_active": false
   }
 }

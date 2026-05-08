@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
 status: executing
-stopped_at: Completed 12-01-PLAN.md — release-history lib + TDD tests (LINK-05, LINK-06 data layer)
-last_updated: "2026-05-08T05:34:39.447Z"
+stopped_at: Completed 12-02-PLAN.md — bug detail page + ReleasedInSidebar + list link wrap
+last_updated: "2026-05-08T05:39:31.011Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-07 — v2.1 milestone started)
 ## Current Position
 
 Phase: 12 (Bug and Feature Detail Pages) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Active Milestone: v2.1 — Pipeline UI
 
@@ -112,6 +112,9 @@ v2.1 decisions captured at roadmap creation:
 - [Phase 11]: Option A (useEffect) over Option B (platform route augment) for LinksClient mount-fetch — self-contained, per-row expand, no N+1 cost
 - [Phase 12-bug-and-feature-detail-pages]: Two separate query functions (getReleaseHistoryForBug, getReleaseHistoryForFeature) — not a shared internal — per pipeline-summary.ts precedent; simpler test mocking, clearer callsites
 - [Phase 12-bug-and-feature-detail-pages]: toIso helper local to release-history.ts (not re-exported) — self-contained pattern per codebase convention
+- [Phase 12]: ReleasedInSidebar.tsx is a shared server component with zero bug-specific logic — 12-03 imports it unchanged
+- [Phase 12]: Version links use ?release= query param to pipeline page — informational now, anchor-scroll wirable later
+- [Phase 12]: stopPropagation on Link title in bug list — navigates to detail page without triggering expand toggle
 
 ### Pending Todos
 
@@ -126,7 +129,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T05:34:39.445Z
-Stopped at: Completed 12-01-PLAN.md — release-history lib + TDD tests (LINK-05, LINK-06 data layer)
+Last session: 2026-05-08T05:39:31.009Z
+Stopped at: Completed 12-02-PLAN.md — bug detail page + ReleasedInSidebar + list link wrap
 Resume file: None
 Next action: `/gsd:plan-phase 8`
