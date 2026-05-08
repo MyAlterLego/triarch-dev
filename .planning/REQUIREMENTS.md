@@ -167,25 +167,64 @@ Updated by roadmapper during phase mapping.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OPS-01..05 | TBD | Pending |
-| PKG-01..04 | TBD | Pending |
-| HOST-01..02 | TBD | Pending |
-| AUTH-01..07 | TBD | Pending |
-| DB-01..04 | TBD | Pending |
-| URL-01..03 | TBD | Pending |
-| PORTAL-01..04 | TBD | Pending |
-| WRITE-01..05 | TBD | Pending |
-| BUG-01..03 | TBD | Pending |
-| FEAT-01..03 | TBD | Pending |
-| CI-01..04 | TBD | Pending |
-| CUT-01..05 | TBD | Pending |
-| SUN-01..03 | TBD | Pending |
+| OPS-01 | Phase 15 | Pending |
+| OPS-02 | Phase 15 | Pending |
+| OPS-03 | Phase 15 | Pending |
+| OPS-04 | Phase 15 | Pending |
+| OPS-05 | Phase 15 | Pending |
+| PKG-01 | Phase 16 | Pending |
+| PKG-02 | Phase 16 | Pending |
+| PKG-03 | Phase 16 | Pending |
+| PKG-04 | Phase 16 | Pending |
+| HOST-01 | Phase 17 | Pending |
+| HOST-02 | Phase 17 | Pending |
+| AUTH-01 | Phase 18 | Pending |
+| AUTH-02 | Phase 18 | Pending |
+| AUTH-03 | Phase 18 | Pending |
+| AUTH-04 | Phase 18 | Pending |
+| AUTH-05 | Phase 18 | Pending |
+| AUTH-06 | Phase 18 | Pending |
+| AUTH-07 | Phase 18 | Pending |
+| DB-01 | Phase 19 | Pending |
+| DB-02 | Phase 19 | Pending |
+| DB-03 | Phase 19 | Pending |
+| DB-04 | Phase 19 | Pending |
+| URL-01 | Phase 20 | Pending |
+| URL-02 | Phase 20 | Pending |
+| URL-03 | Phase 20 | Pending |
+| PORTAL-01 | Phase 21 | Pending |
+| PORTAL-02 | Phase 21 | Pending |
+| PORTAL-03 | Phase 21 | Pending |
+| PORTAL-04 | Phase 21 | Pending |
+| WRITE-01 | Phase 22 | Pending |
+| WRITE-02 | Phase 22 | Pending |
+| WRITE-03 | Phase 22 | Pending |
+| WRITE-04 | Phase 22 | Pending |
+| WRITE-05 | Phase 22 | Pending |
+| BUG-01 | Phase 23 | Pending |
+| BUG-02 | Phase 23 | Pending |
+| BUG-03 | Phase 23 | Pending |
+| FEAT-01 | Phase 23 | Pending |
+| FEAT-02 | Phase 23 | Pending |
+| FEAT-03 | Phase 23 | Pending |
+| CI-01 | Phase 24 | Pending |
+| CI-02 | Phase 24 | Pending |
+| CI-03 | Phase 24 | Pending |
+| CI-04 | Phase 24 | Pending |
+| CUT-01 | Phase 25 | Pending |
+| CUT-02 | Phase 25 | Pending |
+| CUT-03 | Phase 25 | Pending |
+| CUT-04 | Phase 25 | Pending |
+| CUT-05 | Phase 25 | Pending |
+| SUN-01 | Phase 26 | Pending |
+| SUN-02 | Phase 26 | Pending |
+| SUN-03 | Phase 26 | Pending |
 
 **Coverage:**
 - v2.2 requirements: 47 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 47 ⏳
+- Mapped to phases: 47 (100%)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-08*
-*Last updated: 2026-05-08 — initial v2.2 definition*
+*Last updated: 2026-05-08 — phase traceability mapped by roadmapper*

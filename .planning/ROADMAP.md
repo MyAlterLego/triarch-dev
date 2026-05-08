@@ -5,6 +5,7 @@
 - ✅ **v1.14.0 Customer Release Gating** — Phases 1–5 (shipped 2026-05-04) → [`milestones/v1.14.0-ROADMAP.md`](./milestones/v1.14.0-ROADMAP.md)
 - ✅ **v2.0 Multi-Branch RC + Central Vault + OttoBot Brain** — Phases 1–7.5 (shipped 2026-05-06)
 - ✅ **v2.1 Pipeline UI** — Phases 8–14 (shipped 2026-05-08) → [`milestones/v2.1-ROADMAP.md`](./milestones/v2.1-ROADMAP.md)
+- 🚧 **v2.2 Customer Portal Split** — Phases 15–26 (active, started 2026-05-08)
 
 ## Phases
 
@@ -47,6 +48,21 @@
 
 **Full archive:** [`milestones/v2.1-ROADMAP.md`](./milestones/v2.1-ROADMAP.md)
 </details>
+
+### v2.2 Customer Portal Split (Phases 15–26) — ACTIVE
+
+- [ ] **Phase 15: Operational Prework** — Repo, FAH backends, DNS, OAuth, secrets exist before app code ships
+- [ ] **Phase 16: Shared Package Extraction** — `@myalterlego/triarch-shared@0.1.0` published; admin re-exports; CI gate prevents schema drift
+- [ ] **Phase 17: Hostname Guard Inventory** — Catalog admin's hostname checks; fail-closed middleware before second valid host appears
+- [ ] **Phase 18: Portal Auth Scaffolding** — NextAuth v4 with `__Host-` cookies, distinct secret, customer-membership signIn, staff "Switch to admin" callout
+- [ ] **Phase 19: Database Connectivity** — Portal `pg.Pool` + `portal_runtime` DML-only role + DDL permission-denied smoke test
+- [ ] **Phase 20: URL Centralization (admin)** — `src/lib/urls.ts` + ESLint guard; refactor admin Slack/email/release-note URL emitters BEFORE cutover
+- [ ] **Phase 21: Release Page Port (Read)** — Lift-and-shift `/projects/[slug]/releases` + `/projects` list; 404 (not 403) for non-members; mobile-responsive read paths
+- [ ] **Phase 22: Release Page Port (Write)** — Approve/reject/feedback + branch preview swap; portal-owned `FAH_PROMOTER_SA_KEY`; HMAC-proxy to admin for GitHub dispatch
+- [ ] **Phase 23: Bug + Feature Customer Surface** — `/bugs/*` and `/features/*` list/detail/new routes (the two net-new primitives)
+- [ ] **Phase 24: CI/CD Deploy Safety** — `verify-deploy-target` job, per-repo deploy SAs, `assertEnv()`, `validate-apphosting.ts`
+- [ ] **Phase 25: Cutover** — Admin 301 → portal; customer email blast; Slack URL sweep; redirect telemetry; kill-switch
+- [ ] **Phase 26: Sunset (T+90)** — Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred 90 days)
 
 
 ## Phase Details
@@ -154,10 +170,145 @@
 - [x] 14-02-PLAN.md — FilterChips + WhatsComingCard client islands + ReleasesClient URL-state filter math (CUST-01, CUST-02, DIFF-02)
 - [x] 14-03-PLAN.md — BranchPreviewClient split (banner singleton + per-section buttons) + BranchSection header integration + human-verify checkpoint + v2.8.0 (CUST-03)
 
+### Phase 15: Operational Prework
+**Goal**: Repository, DNS, OAuth, and FAH backend prerequisites exist so deploy pipeline is provable on a skeleton before any app code lands.
+**Depends on**: Nothing (parallel-safe ops work — first phase of v2.2)
+**Requirements**: OPS-01, OPS-02, OPS-03, OPS-04, OPS-05
+**Success Criteria** (what must be TRUE):
+  1. `MyAlterLego/triarch-portal` repo exists with `.github/workflows/ci-cd.yml` calling shared-workflows@v4 — a no-op push to `main` reaches the deploy stage
+  2. Two new Firebase App Hosting backends `portal-prod` and `portal-dev` exist in `triarch-dev-website` and serve a 200-OK landing page
+  3. `https://portal.triarch.dev` resolves via GoDaddy DNS and returns 200-OK with valid TLS
+  4. Google OAuth client `Triarch Dev` accepts callbacks at both `portal.triarch.dev` and `localhost:3002` redirect URIs
+  5. `PORTAL_NEXTAUTH_SECRET` exists in `triarch-vault` with secretAccessor binding granted to both portal runtime SAs
+**Plans**: TBD
+
+### Phase 16: Shared Package Extraction
+**Goal**: Drizzle schema and shared helpers extracted into a private GitHub Packages npm module that both apps consume; admin remains migration authority.
+**Depends on**: Phase 15
+**Requirements**: PKG-01, PKG-02, PKG-03, PKG-04
+**Success Criteria** (what must be TRUE):
+  1. `packages/triarch-shared/` directory exists in admin repo with schema.ts + auth-context.ts + sanitize-commit.ts + slack-status.ts and a publish workflow firing on tag `shared/v*`
+  2. `@myalterlego/triarch-shared@0.1.0` is installable from GitHub Packages via `npm install` with `NODE_AUTH_TOKEN` set
+  3. Admin imports schema + helpers from `@myalterlego/triarch-shared`, version bumps to 2.9.0, all 324+ Vitest tests stay GREEN, `next build` clean
+  4. CI rejects an admin PR that touches `packages/triarch-shared/schema.ts` without bumping the shared package's version field
+**Plans**: TBD
+
+### Phase 17: Hostname Guard Inventory
+**Goal**: Audit every host-check in admin and harden the v2.1 hostname-aware routing so cutover has a known cleanup target and admin fails closed for unknown hosts.
+**Depends on**: Phase 15
+**Requirements**: HOST-01, HOST-02
+**Success Criteria** (what must be TRUE):
+  1. `.planning/host-guard-inventory.md` lists every `host ===`, `headers().get('host')`, and `x-forwarded-host` reference in admin codebase with file:line + current behavior
+  2. Curling admin with `Host: portal.triarch.dev` or any non-`admin.triarch.dev`/`localhost:300x` value returns 404 (not the marketing fallback)
+**Plans**: TBD
+
+### Phase 18: Portal Auth Scaffolding
+**Goal**: Customer-only Google OAuth on portal with brand-isolated cookies and a staff "Switch to admin.triarch.dev" callout instead of a 401.
+**Depends on**: Phase 16, Phase 17
+**Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06, AUTH-07
+**Success Criteria** (what must be TRUE):
+  1. Portal `Set-Cookie` for the session token uses `__Host-` prefix in production and contains no `Domain=` attribute (Vitest assertion, AUTH-05)
+  2. Portal JWTs signed with `PORTAL_NEXTAUTH_SECRET` cannot be validated by admin (and vice versa) — different secrets prove cross-replay impossible
+  3. A user with no `project_members` row attempting Google sign-in is rejected at signIn callback; a staff user is allowed in but sees the persistent "Switch to admin.triarch.dev" callout banner; a customer admin/viewer sees no banner
+  4. Vitest grep-test confirms no portal source file references the OAuth `sub` claim (everywhere keys on `email`, AUTH-06)
+  5. Unauthenticated visit to portal `/` redirects to `/login`; post-login, a 0-membership user lands on an empty state with "Contact your project admin" copy, a 1-membership user auto-redirects to that project, a 2+ membership user lands on `/projects`
+**Plans**: TBD
+
+### Phase 19: Database Connectivity
+**Goal**: Portal connects to the same CockroachDB cluster via `pg.Pool` using a DML-only role; admin remains sole migration authority and rogue schema writes from portal are blocked at the database.
+**Depends on**: Phase 16
+**Requirements**: DB-01, DB-02, DB-03, DB-04
+**Success Criteria** (what must be TRUE):
+  1. Portal `src/lib/db.ts` reuses `DATABASE_URL` (or `DATABASE_URL_DEV` on dev backend) and successfully reads `projects` rows
+  2. CRDB role `portal_runtime` exists with SELECT/INSERT/UPDATE/DELETE on v2.2 tables and zero DDL grants; portal connects with this role
+  3. Portal `package.json` contains no `db:push` or `db:generate` script — `grep -r "db:push" portal/package.json` returns no matches
+  4. From portal runtime, executing `ALTER TABLE projects ADD COLUMN test text` returns CockroachDB permission denied (DB-04 smoke test)
+**Plans**: TBD
+
+### Phase 20: URL Centralization (admin)
+**Goal**: Admin emits all customer-facing URLs through a single helper before portal ships, so the cutover redirect doesn't strand bookmarks in Slack messages or release notes.
+**Depends on**: Phase 15
+**Requirements**: URL-01, URL-02, URL-03
+**Success Criteria** (what must be TRUE):
+  1. `src/lib/urls.ts` in admin exports `customerProjectUrl`, `customerReleaseUrl`, `customerBugUrl`, `customerFeatureUrl` reading `PORTAL_BASE_URL` (default `https://portal.triarch.dev`)
+  2. All admin Slack message builders, OttoBot Block Kit constructors, GitHub release-note templates, and email templates call the helpers — `grep -r 'admin.triarch.dev/projects/' src/` returns matches only inside `src/lib/urls.ts`
+  3. ESLint `no-restricted-syntax` rule blocks raw `https://admin.triarch.dev/projects/` literals outside `src/lib/urls.ts`; CI fails on any new violation
+**Plans**: TBD
+
+### Phase 21: Release Page Port (Read)
+**Goal**: Customer release page and project list render on portal as a faithful lift-and-shift of v2.1, with non-member access returning 404 and read paths mobile-responsive.
+**Depends on**: Phase 18, Phase 19
+**Requirements**: PORTAL-01, PORTAL-02, PORTAL-03, PORTAL-04
+**Success Criteria** (what must be TRUE):
+  1. Portal `/projects/[slug]/releases` renders FilterChips, WhatsComingCard, BranchSection, ReleasesClient, and lifecycle timeline visually identical to admin's v2.1 surface (side-by-side screenshot match)
+  2. Portal `/projects` renders membership-filtered project tile list using `getProjectPipelineSummaries()` from the shared package — non-members of any project see an empty state, not a leak
+  3. Authenticated non-member requesting `/projects/<not-mine>/releases` (or any sub-route) receives HTTP 404, not 403 — no membership-existence leak
+  4. Portal release list, bug list, feature list, and project list render correctly on mobile viewport (375px width); approve/branch-swap controls remain desktop-optimized
+**Plans**: TBD
+
+### Phase 22: Release Page Port (Write)
+**Goal**: Customers approve, reject, leave feedback, and trigger branch preview swap from portal end-to-end, with portal owning Slack notification posting and admin retaining GitHub App custody via HMAC-signed dispatch.
+**Depends on**: Phase 21
+**Requirements**: WRITE-01, WRITE-02, WRITE-03, WRITE-04, WRITE-05
+**research_required**: true
+**Research question**: Operational mechanics of the HMAC-proxy pattern for portal→admin GitHub workflow dispatch — exact request/response contract, replay-window, key-rotation procedure, error-surface for portal client. Settled at SUMMARY level; operational details TBD before plan.
+**Success Criteria** (what must be TRUE):
+  1. Customer admin clicking Approve on portal hits `POST /api/projects/[slug]/releases/[releaseId]/approve` which writes `release_approvals.actor_source='portal'` and dispatches `promote-branch.yml` via admin HMAC proxy — release_logs gets the same dispatch metadata as a Slack-origin approve
+  2. Customer admin clicking "Preview this branch" on portal swaps the FAH dev backend successfully via portal-owned `FAH_PROMOTER_SA_KEY`, with atomic lock acquisition, branch regex guard, 8-min timeout, and branch-guarded auto-clear all preserved from v2.1
+  3. Slack notification of customer approval posts via `PORTAL_SLACK_BOT_TOKEN` (portal-owned credential) — admin's GitHub App key is never exposed to portal runtime
+  4. Two-step approve UX, conflict badge with hidden approve button, and branch lock disable propagation behave identically to v2.1 admin behavior on the portal surface
+**Plans**: TBD
+
+### Phase 23: Bug + Feature Customer Surface
+**Goal**: Customers view and submit bugs and features on portal — list, detail, and new-submission forms — closing the two primitives that don't yet exist anywhere in the codebase.
+**Depends on**: Phase 21
+**Requirements**: BUG-01, BUG-02, BUG-03, FEAT-01, FEAT-02, FEAT-03
+**Success Criteria** (what must be TRUE):
+  1. Portal `/projects/[slug]/bugs` and `/features` render membership-scoped lists with status pills; a customer cannot see another project's bugs or features even via direct URL probing
+  2. Portal `/projects/[slug]/bugs/[id]` and `/features/[id]` render detail pages with `ReleasedInSidebar` showing "Released in vX.Y dev / vA.B prod" — read-only customer view with no staff edit controls
+  3. Portal `/projects/[slug]/bugs/new` and `/features/new` accept customer submissions; POST creates `bug_reports`/`feature_requests` row with `reporter_email = session email` and `project_key` derived from URL slug
+  4. Cross-project POST attempt (e.g. submitting a bug to a project the user isn't a member of) returns 404, not 403, and creates no row
+**Plans**: TBD
+
+### Phase 24: CI/CD Deploy Safety
+**Goal**: Cross-app deploy disasters are impossible — wrong-repo-to-wrong-Firebase-project deploys fail at CI, missing env vars fail container start, and per-repo deploy SAs limit blast radius.
+**Depends on**: Phase 15, Phase 23
+**Requirements**: CI-01, CI-02, CI-03, CI-04
+**research_required**: true
+**Research question**: Whether `MyAlterLego/shared-workflows@v4` is immutable in practice or can accept the new `verify-deploy-target` job + `repo_name` input via v5 tag; resolve before planning to avoid a per-repo equivalent regression in the consumer.
+**Success Criteria** (what must be TRUE):
+  1. `verify-deploy-target` job in `MyAlterLego/shared-workflows` (or admin's per-repo equivalent) fails the pipeline when `${{ github.repository }}` doesn't match the expected `firebase_project_id` per a committed lookup table — proven by a deliberately wrong-target test branch that gets rejected
+  2. Portal deploys via `portal-deployer@triarch-vault.iam.gserviceaccount.com` and admin deploys via its own distinct deploy SA — neither SA has IAM on the other app's backend
+  3. Booting portal with a missing required env var (e.g. unset `PORTAL_NEXTAUTH_SECRET`) fails container start with a clear error message; container does not serve a partially-broken surface
+  4. CI step `validate-apphosting.ts` reads `apphosting.yaml` and `apphosting.dev.yaml` against an env-name TypeScript schema and fails the build on a missing or typo'd binding (proven by a deliberately broken test branch)
+**Plans**: TBD
+
+### Phase 25: Cutover
+**Goal**: Customers are routed from admin to portal — 301 redirect, email blast, Slack message URL refresh, telemetry on residual traffic, and a kill-switch in case portal regresses.
+**Depends on**: Phase 22, Phase 23, Phase 24, Phase 20
+**Requirements**: CUT-01, CUT-02, CUT-03, CUT-04, CUT-05
+**Success Criteria** (what must be TRUE):
+  1. Hitting `https://admin.triarch.dev/projects/<slug>/releases` returns HTTP 301 with `Location: https://portal.triarch.dev/projects/<slug>/releases` (path + query preserved); same for bug, feature, and any other `/projects/[slug]/*` route
+  2. Email blast sent to all `project_members` rows with `role IN ('admin','viewer')` notifying the URL change, 90-day grace period, and new login URL — send confirmed via mail provider receipts
+  3. Slack message URL update sweep run on last 30 days of `slack_action_audit` recreates active threads with portal URLs (sweep log committed to repo)
+  4. Admin's redirect middleware emits `redirect_hits` metric (count + path) visible in monitoring; metric decays as customers update bookmarks
+  5. Setting `PORTAL_REDIRECT_DISABLED=true` in admin env reverts admin to in-place serving without a code deploy — kill-switch verified by exercising it on dev backend
+**Plans**: TBD
+
+### Phase 26: Sunset (T+90)
+**Goal**: Final cleanup once telemetry shows minimal residual traffic — delete deprecated routes, dead hostname-guard branches, and bump admin to v3.0.0 to mark the major surface change.
+**Depends on**: Phase 25 (plus 90-day grace period)
+**Requirements**: SUN-01, SUN-02, SUN-03
+**Note**: Execution deferred until T+90 days after Phase 25 cutover lands. Reasonable to fold into a v2.3 milestone if grace period extends; included here so v2.2 requirement coverage is complete.
+**Success Criteria** (what must be TRUE):
+  1. Admin `/projects/[slug]/*` server components and API routes (the customer surface) are deleted from the admin repo — `git log --diff-filter=D` shows the removal commit
+  2. v2.1 hostname-aware route guards in admin (`page.tsx`, `admin/layout.tsx`, `projects/layout.tsx`, `login/layout.tsx`) are deleted; admin only serves `admin.triarch.dev` host paths now — host-guard inventory file from Phase 17 is updated to reflect deletions
+  3. Admin `package.json` bumped to v3.0.0 to mark the major surface-removal change; release notes call out the removed routes
+
 ## Progress
 
-**Execution Order:** 8 → 9 → 10 → 11 → 12 → 13 → 14
-(Phases 8 and 9 ship before any schema migration risk; Phase 10 is the schema gate; Phase 13 is gated on Firebase API research spike; Phase 14 last because it aggregates all preceding phases and includes navigation/discoverability audit)
+**Execution Order (v2.2):** 15 → (16, 17, 20 in parallel) → (18, 19) → 21 → (22, 23) → 24 → 25 → [T+90] → 26
+(Phase 15 ops first; 16/17/20 parallel-safe; 18 needs 16+17; 19 needs 16; 21 needs 18+19; 22+23 need 21; 24 needs 23; 25 needs 22+23+24+20; 26 deferred T+90 after 25)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -182,3 +333,15 @@
 | 12. Bug and Feature Detail Pages | v2.1 | 3/3 | Complete    | 2026-05-08 |
 | 13. Branch Preview Swap | v2.1 | 3/3 | Complete    | 2026-05-08 |
 | 14. Customer Page Integration | v2.1 | 3/3 | Complete    | 2026-05-08 |
+| 15. Operational Prework | v2.2 | 0/0 | Not started | - |
+| 16. Shared Package Extraction | v2.2 | 0/0 | Not started | - |
+| 17. Hostname Guard Inventory | v2.2 | 0/0 | Not started | - |
+| 18. Portal Auth Scaffolding | v2.2 | 0/0 | Not started | - |
+| 19. Database Connectivity | v2.2 | 0/0 | Not started | - |
+| 20. URL Centralization | v2.2 | 0/0 | Not started | - |
+| 21. Release Page Port (Read) | v2.2 | 0/0 | Not started | - |
+| 22. Release Page Port (Write) | v2.2 | 0/0 | Not started | - |
+| 23. Bug + Feature Customer Surface | v2.2 | 0/0 | Not started | - |
+| 24. CI/CD Deploy Safety | v2.2 | 0/0 | Not started | - |
+| 25. Cutover | v2.2 | 0/0 | Not started | - |
+| 26. Sunset (T+90) | v2.2 | 0/0 | Not started | - |
