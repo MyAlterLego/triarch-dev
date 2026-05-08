@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
-status: executing
-stopped_at: Completed 09-03-PLAN.md — web Promote route with atomic race guard, actor_source on approvals, Slack handler guard
-last_updated: "2026-05-08T03:55:55.908Z"
+status: verifying
+stopped_at: Completed 09-05-PLAN.md — PromoteButton interactive island, admin home tile retarget, v2.5.0
+last_updated: "2026-05-08T04:02:15.813Z"
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Triarch Dev Admin — Project State
@@ -43,7 +43,7 @@ Plan: 5 of 5
 | 14 — Customer Page Integration | Filter chips, what's-changed card, branch swap in section headers | CUST-01..03, DIFF-02 | Not started |
 
 **Requirements:** 29 total, all mapped
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 
 ## Performance Metrics
 
@@ -93,6 +93,8 @@ v2.1 decisions captured at roadmap creation:
 - [Phase 09]: Web route awaits promoteAndAudit (inline result for PROM-05); Slack route uses fire-and-forget (3-sec rule)
 - [Phase 09]: HTTP 200 with ok:false for dispatch failures — atomic UPDATE committed; client reads ok flag
 - [Phase 09]: actorSource optional with 'web' default in approveRelease/rejectRelease — existing callers unchanged
+- [Phase 09]: useState phase machine (idle/confirming/dispatching/dispatched/failed) preferred over useTransition for PromoteButton — cleaner multi-phase state isolation
+- [Phase 09]: Admin home Project Health tile Link href retargeted from /projects/<key>/releases to /admin/modules/pipeline/<key> (CONTEXT.md: 'Pipeline page is now linked from the /admin Project Health tile')
 
 ### Pending Todos
 
@@ -107,7 +109,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T03:55:55.906Z
-Stopped at: Completed 09-03-PLAN.md — web Promote route with atomic race guard, actor_source on approvals, Slack handler guard
+Last session: 2026-05-08T04:02:15.812Z
+Stopped at: Completed 09-05-PLAN.md — PromoteButton interactive island, admin home tile retarget, v2.5.0
 Resume file: None
 Next action: `/gsd:plan-phase 8`

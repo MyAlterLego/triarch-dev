@@ -79,7 +79,7 @@
 - [x] 09-02-PLAN.md — promoteAndAudit nullable Slack params + fresh-channel-message fallback (PROM-03)
 - [x] 09-03-PLAN.md — POST /api/admin/releases/[id]/promote with atomic dispatch race-guard + Slack handler parity (PROM-03/04/05)
 - [x] 09-04-PLAN.md — getProjectPipelineDetail helper + /admin/modules/pipeline/[slug] server component with what-changed table (PIPE-05, DIFF-01)
-- [ ] 09-05-PLAN.md — PromoteButton client island (two-step inline confirm + result pills) + admin home tile retarget + v2.5.0 (PROM-01/02/05)
+- [x] 09-05-PLAN.md — PromoteButton client island (two-step inline confirm + result pills) + admin home tile retarget + v2.5.0 (PROM-01/02/05)
 
 ### Phase 10: Schema Gate
 **Goal**: All schema changes required by Phases 11–13 land in one isolated migration — `release_log_links` join table and branch-preview lock columns — leaving downstream phases free to build without migration risk

@@ -20,8 +20,8 @@
 
 ### Web-UI Promote (PROM)
 
-- [ ] **PROM-01**: Staff user sees a Promote button next to any approved RC on the per-project pipeline page
-- [ ] **PROM-02**: Promote button uses two-step confirm modal with specific label ("Promote feat/audio v1.4.2 to production")
+- [x] **PROM-01**: Staff user sees a Promote button next to any approved RC on the per-project pipeline page
+- [x] **PROM-02**: Promote button uses two-step confirm modal with specific label ("Promote feat/audio v1.4.2 to production")
 - [x] **PROM-03**: Web Promote dispatches `promote-branch.yml` via the same `dispatchWorkflow` path as the Slack flow; Slack notification posted on every successful dispatch (web or Slack origin)
 - [x] **PROM-04**: System prevents double-promote race between web and Slack paths via unique constraint on `release_approvals (release_id, decision='approved')`
 - [x] **PROM-05**: After Promote click, button shows in-flight state then surfaces result (merged / conflict / ci_failed) inline; on terminal failure, error pill links to the GitHub Actions run
@@ -105,8 +105,8 @@ Populated by `gsd-roadmapper` 2026-05-07.
 | PIPE-04 | Phase 8 — Admin Home Pipeline Visibility | Complete |
 | PIPE-06 | Phase 8 — Admin Home Pipeline Visibility | Complete |
 | PIPE-05 | Phase 9 — Per-Project Pipeline Page and Web-UI Promote | Complete |
-| PROM-01 | Phase 9 — Per-Project Pipeline Page and Web-UI Promote | Pending |
-| PROM-02 | Phase 9 — Per-Project Pipeline Page and Web-UI Promote | Pending |
+| PROM-01 | Phase 9 — Per-Project Pipeline Page and Web-UI Promote | Complete |
+| PROM-02 | Phase 9 — Per-Project Pipeline Page and Web-UI Promote | Complete |
 | PROM-03 | Phase 9 — Per-Project Pipeline Page and Web-UI Promote | Complete |
 | PROM-04 | Phase 9 — Per-Project Pipeline Page and Web-UI Promote | Complete |
 | PROM-05 | Phase 9 — Per-Project Pipeline Page and Web-UI Promote | Complete |
