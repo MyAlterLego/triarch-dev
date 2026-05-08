@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
 status: planning
-stopped_at: Completed 20-url-centralization-admin 20-02-PLAN.md
-last_updated: "2026-05-08T19:16:02.652Z"
+stopped_at: Completed 21-release-page-port-read 21-01-PLAN.md
+last_updated: "2026-05-08T19:45:42.652Z"
 progress:
   total_phases: 19
   completed_phases: 13
-  total_plans: 43
-  completed_plans: 43
+  total_plans: 49
+  completed_plans: 44
 ---
 
 # Triarch Dev Admin — Project State
@@ -129,6 +129,8 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 20-url-centralization-admin]: No speculative helpers beyond four locked signatures — scout confirmed zero current customer-facing URL emission sites in admin
 - [Phase 20-url-centralization-admin]: Exempt eslint.config.mjs from no-restricted-syntax — selector strings contain the pattern as regex fragment causing false positives
 - [Phase 20-url-centralization-admin]: PORTAL_BASE_URL bound as plain value (not secret) in apphosting.yaml, RUNTIME-only availability
+- [Phase 21-release-page-port-read]: vitest.config.ts shimMap must include every new module added to packages/triarch-shared/src/ for vi.mock interception to work through re-export shim chain
+- [Phase 21-release-page-port-read]: Inline structural types in shared package group-sections.ts (ReleaseRow/ConflictState/BranchSection) — zero admin-relative imports; TypeScript structural typing preserves assignability
 
 ### Pending Todos
 
@@ -146,7 +148,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-08T19:13:24.721Z
-Stopped at: Completed 20-url-centralization-admin 20-02-PLAN.md
+Last session: 2026-05-08T19:45:42.650Z
+Stopped at: Completed 21-release-page-port-read 21-01-PLAN.md
 Resume file: None
 Next action: `/gsd:execute-phase 15-05` (Google OAuth redirect URIs)

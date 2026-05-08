@@ -67,8 +67,8 @@ Refactor admin to construct customer-facing URLs through a single helper before 
 
 Lift-and-shift the v2.1 customer release page to portal as read-first; mutations land in PORTAL-WRITE phase.
 
-- [ ] **PORTAL-01**: Portal route `/projects/[slug]/releases` renders the existing release page with FilterChips, WhatsComingCard, BranchSection, ReleasesClient, lifecycle timeline — visually identical to admin
-- [ ] **PORTAL-02**: Portal route `/projects` renders project tile list (membership-filtered) using shared `getProjectPipelineSummaries()` helper from the shared package
+- [x] **PORTAL-01**: Portal route `/projects/[slug]/releases` renders the existing release page with FilterChips, WhatsComingCard, BranchSection, ReleasesClient, lifecycle timeline — visually identical to admin
+- [x] **PORTAL-02**: Portal route `/projects` renders project tile list (membership-filtered) using shared `getProjectPipelineSummaries()` helper from the shared package
 - [ ] **PORTAL-03**: Non-member access to `/projects/[slug]/*` returns 404 (NOT 403) — no membership-existence leak
 - [ ] **PORTAL-04**: Portal pages render with mobile-responsive layout for read paths (release list, bug list, feature list, project list); approve/branch-swap controls remain desktop-optimized
 
@@ -192,8 +192,8 @@ Updated by roadmapper during phase mapping.
 | URL-01 | Phase 20 | Complete |
 | URL-02 | Phase 20 | Complete |
 | URL-03 | Phase 20 | Complete |
-| PORTAL-01 | Phase 21 | Pending |
-| PORTAL-02 | Phase 21 | Pending |
+| PORTAL-01 | Phase 21 | Complete |
+| PORTAL-02 | Phase 21 | Complete |
 | PORTAL-03 | Phase 21 | Pending |
 | PORTAL-04 | Phase 21 | Pending |
 | WRITE-01 | Phase 22 | Pending |
