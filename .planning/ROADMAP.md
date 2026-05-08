@@ -146,7 +146,10 @@
   2. Filter chips show counts ("Bug fixes (4)", "Features (2)") derived from `release_log_links` data; chips with no entries show "(0)" and remain visible but dimmed
   3. A "What's coming to prod" summary card appears at the top of the customer release page showing entry count and type breakdown (collapsed by default; customer expands to see the full entry list)
   4. A "Preview this branch" button appears in each branch section header on the customer release page, integrated with the swap concurrency state from Phase 13 — in-flight swap disables all competing swap buttons site-wide
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 14-01-PLAN.md — Server-side entry-type counts + WhatsComing summary lib + page.tsx wiring (CUST-01/02, DIFF-02 data layer)
+- [ ] 14-02-PLAN.md — FilterChips + WhatsComingCard client islands + ReleasesClient URL-state filter math (CUST-01, CUST-02, DIFF-02)
+- [ ] 14-03-PLAN.md — BranchPreviewClient split (banner singleton + per-section buttons) + BranchSection header integration + human-verify checkpoint + v2.8.0 (CUST-03)
 
 ## Progress
 
@@ -175,4 +178,4 @@
 | 11. Commit Parser and Tracker Linkage Authoring | v2.1 | 5/5 | Complete    | 2026-05-08 |
 | 12. Bug and Feature Detail Pages | v2.1 | 3/3 | Complete    | 2026-05-08 |
 | 13. Branch Preview Swap | v2.1 | 3/3 | Complete    | 2026-05-08 |
-| 14. Customer Page Integration | v2.1 | 0/TBD | Not started | - |
+| 14. Customer Page Integration | v2.1 | 0/3 | In Progress |  |
