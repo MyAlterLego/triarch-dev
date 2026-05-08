@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
-status: roadmap_approved
-stopped_at: null
-last_updated: "2026-05-08T14:15:00.000Z"
+status: executing
+stopped_at: Completed 15-01-PLAN.md — triarch-portal repo created and cloned locally
+last_updated: "2026-05-08T15:22:13.438Z"
 progress:
-  total_phases: 12
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 19
+  completed_phases: 7
+  total_plans: 28
+  completed_plans: 24
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,14 +19,12 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** v2.2 milestone — fork the customer-facing surface out of `admin.triarch.dev` into a sibling Next.js app at `portal.triarch.dev`. Customers stop logging into a domain literally named "admin"; staff stop sharing host + cookies + blast radius with customers.
+**Current focus:** Phase 15 — operational-prework
 
 ## Current Position
 
-Phase: 15 — Operational Prework (not started)
-Plan: —
-Status: Roadmap approved; awaiting `/gsd:plan-phase 15`
-Last activity: 2026-05-08 — Roadmap created (12 phases, 47 requirements mapped 100%)
+Phase: 15 (operational-prework) — EXECUTING
+Plan: 2 of 5
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -50,7 +48,7 @@ Last activity: 2026-05-08 — Roadmap created (12 phases, 47 requirements mapped
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Roadmap approved 2026-05-08; ready for plan-phase 15
+**Status:** Ready to execute
 
 ## Performance Metrics
 
@@ -93,6 +91,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Roadmap-v2.2]: Admin sole migration authority; portal has DML-only DB role + no `db:push` script in package.json — defense-in-depth against rogue schema writes
 - [Roadmap-v2.2]: Customer email blast list at cutover derived from `project_members.email WHERE role IN ('admin','viewer')`
 - [Roadmap-v2.2]: Truth+Treason pilot reactivation deferred to v2.3 milestone candidate (was deferred from v2.0; out of v2.2 scope per Mike's directive)
+- [Phase 15-operational-prework]: Repo created in MyAlterLego org (private); ci-cd.yml deferred to Phase 16 scaffold; HTTPS clone used
 
 ### Pending Todos
 
@@ -110,7 +109,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-08T14:15:00.000Z
-Stopped at: Completed roadmap creation — 12 phases (15–26), 47 requirements 100% mapped, ROADMAP.md and REQUIREMENTS.md traceability updated
+Last session: 2026-05-08T15:22:13.436Z
+Stopped at: Completed 15-01-PLAN.md — triarch-portal repo created and cloned locally
 Resume file: None
 Next action: `/gsd:plan-phase 15`
