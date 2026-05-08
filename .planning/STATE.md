@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
-status: planning
-stopped_at: Completed 12-03-PLAN.md — feature detail page + list link wrap (Phase 12 complete)
-last_updated: "2026-05-08T05:47:20.244Z"
+status: executing
+stopped_at: Completed 13-01-PLAN.md — FAH rollout lib + jose/swr deps (TDD)
+last_updated: "2026-05-08T06:08:42.448Z"
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 20
+  completed_plans: 18
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,12 +19,12 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-07 — v2.1 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 12 — Bug and Feature Detail Pages
+**Current focus:** Phase 13 — Branch Preview Swap
 
 ## Current Position
 
-Phase: 13
-Plan: Not started
+Phase: 13 (Branch Preview Swap) — EXECUTING
+Plan: 2 of 3
 
 ## Active Milestone: v2.1 — Pipeline UI
 
@@ -43,7 +43,7 @@ Plan: Not started
 | 14 — Customer Page Integration | Filter chips, what's-changed card, branch swap in section headers | CUST-01..03, DIFF-02 | Not started |
 
 **Requirements:** 29 total, all mapped
-**Status:** Ready to plan
+**Status:** Ready to execute
 
 ## Performance Metrics
 
@@ -117,6 +117,9 @@ v2.1 decisions captured at roadmap creation:
 - [Phase 12]: stopPropagation on Link title in bug list — navigates to detail page without triggering expand toggle
 - [Phase 12-bug-and-feature-detail-pages]: ReleasedInSidebar reused unchanged from 12-02 for feature detail — zero modifications; 12-02 designed it as shared component
 - [Phase 12-bug-and-feature-detail-pages]: jsonb != null check (not truthy) prevents Drizzle unknown ReactNode TypeScript error in feature detail page
+- [Phase 13]: jose v5 added as direct dep alongside next-auth transitive jose v4: npm hoists both; no API conflict
+- [Phase 13]: branch regex /^[a-zA-Z0-9\/_.-]{1,256}$/ blocks shell metacharacters before any fetch call in createFahRollout
+- [Phase 13]: @vitest-environment node on fah-rollout.test.ts: jose v5 needs TextEncoder which jsdom lacks
 
 ### Pending Todos
 
@@ -131,7 +134,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T05:44:25.316Z
-Stopped at: Completed 12-03-PLAN.md — feature detail page + list link wrap (Phase 12 complete)
+Last session: 2026-05-08T06:08:42.446Z
+Stopped at: Completed 13-01-PLAN.md — FAH rollout lib + jose/swr deps (TDD)
 Resume file: None
 Next action: `/gsd:plan-phase 8`

@@ -133,7 +133,7 @@
   4. A failed rollout (build error, bad branch name) surfaces an error inline with a link to the Firebase App Hosting console; the preview lock is cleared so another swap can be attempted
   5. An 8-minute hard timeout clears a preview lock that never reaches terminal state, preventing permanent UI lockout
 **Plans**: 3 plans
-- [ ] 13-01-PLAN.md — TDD fah-rollout lib (jose JWT mint + FAH REST client) + add swr/jose deps (PREV-03 lib layer)
+- [x] 13-01-PLAN.md — TDD fah-rollout lib (jose JWT mint + FAH REST client) + add swr/jose deps (PREV-03 lib layer)
 - [ ] 13-02-PLAN.md — POST swap route (atomic UPDATE-with-WHERE-IS-NULL lock) + GET status route (8-min timeout + branch-guarded auto-clear) (PREV-03/05/06)
 - [ ] 13-03-PLAN.md — BranchPreviewClient client island (SWR polling) + ReleasesClient integration + human-verify checkpoint + v2.7.0 (PREV-02/04/05)
 
@@ -174,5 +174,5 @@
 | 10. Schema Gate | v2.1 | 1/1 | Complete    | 2026-05-08 |
 | 11. Commit Parser and Tracker Linkage Authoring | v2.1 | 5/5 | Complete    | 2026-05-08 |
 | 12. Bug and Feature Detail Pages | v2.1 | 3/3 | Complete    | 2026-05-08 |
-| 13. Branch Preview Swap | v2.1 | 0/3 | In Progress | - |
+| 13. Branch Preview Swap | v2.1 | 1/3 | In Progress|  |
 | 14. Customer Page Integration | v2.1 | 0/TBD | Not started | - |
