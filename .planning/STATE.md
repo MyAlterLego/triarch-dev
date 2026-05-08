@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
-status: executing
-stopped_at: Completed 19-01-PLAN.md — portal_runtime CRDB role + DATABASE_URL_PORTAL GCP secret; DB-02 + DB-04 satisfied
-last_updated: "2026-05-08T18:51:32.918Z"
+status: verifying
+stopped_at: "Completed 19-02-PLAN.md — portal db.ts re-export + DATABASE_URL_PORTAL binding + portal v0.2.1 merged (PR #6)"
+last_updated: "2026-05-08T18:57:58.318Z"
 progress:
   total_phases: 19
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 41
-  completed_plans: 40
+  completed_plans: 41
 ---
 
 # Triarch Dev Admin — Project State
@@ -48,7 +48,7 @@ Plan: 2 of 2
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 
 ## Performance Metrics
 
@@ -122,6 +122,9 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 18-portal-auth-scaffolding]: no-sub-claim.test.ts filters JSDoc comment lines to prevent false positives from auth.ts documentation
 - [Phase 19-database-connectivity]: portal_runtime provisioned on prod cluster (triarchdev-24092/triarch_dev) — admin's DATABASE_URL points to prod; portal shares same cluster
 - [Phase 19-database-connectivity]: DATABASE_URL_PORTAL in triarch-vault (mirrors PORTAL_NEXTAUTH_SECRET pattern); secretAccessor to firebase-app-hosting-compute SA + secretVersionManager to FAH service agent
+- [Phase 19]: Re-export pattern for portal db.ts — zero duplicate Pool, shared package owns construction
+- [Phase 19]: Single DATABASE_URL_PORTAL secret for portal prod + dev FAH backends (one portal_runtime CRDB role)
+- [Phase 19]: Drizzle wraps pg errors via .cause — test pattern: check error.cause.message for CRDB rejection propagation
 
 ### Pending Todos
 
@@ -139,7 +142,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-08T18:51:32.916Z
-Stopped at: Completed 19-01-PLAN.md — portal_runtime CRDB role + DATABASE_URL_PORTAL GCP secret; DB-02 + DB-04 satisfied
+Last session: 2026-05-08T18:57:58.315Z
+Stopped at: Completed 19-02-PLAN.md — portal db.ts re-export + DATABASE_URL_PORTAL binding + portal v0.2.1 merged (PR #6)
 Resume file: None
 Next action: `/gsd:execute-phase 15-05` (Google OAuth redirect URIs)

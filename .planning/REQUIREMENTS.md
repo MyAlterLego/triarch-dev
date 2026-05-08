@@ -50,9 +50,9 @@ NextAuth v4 setup with brand isolation, customer-only authorization, and staff "
 
 Portal DB access with defense-in-depth schema-write protection.
 
-- [ ] **DB-01**: Portal `src/lib/db.ts` connects to the same CockroachDB cluster + database via `pg.Pool`; reuses `DATABASE_URL` secret (or `DATABASE_URL_DEV` for dev backend)
+- [x] **DB-01**: Portal `src/lib/db.ts` connects to the same CockroachDB cluster + database via `pg.Pool`; reuses `DATABASE_URL` secret (or `DATABASE_URL_DEV` for dev backend)
 - [x] **DB-02**: New CockroachDB user `portal_runtime` with GRANT SELECT/INSERT/UPDATE/DELETE on the v2.2 tables (no DDL grants); portal connects with this role; admin retains its current admin role
-- [ ] **DB-03**: Portal `package.json` does NOT include `db:push` or `db:generate` scripts (Drizzle is read-only-from-portal's-perspective); admin remains sole migration authority
+- [x] **DB-03**: Portal `package.json` does NOT include `db:push` or `db:generate` scripts (Drizzle is read-only-from-portal's-perspective); admin remains sole migration authority
 - [x] **DB-04**: Smoke test from portal: `ALTER TABLE projects ADD COLUMN test text` returns CockroachDB permission denied
 
 ### URL Centralization (Admin Refactor)
@@ -185,9 +185,9 @@ Updated by roadmapper during phase mapping.
 | AUTH-05 | Phase 18 | Complete |
 | AUTH-06 | Phase 18 | Complete |
 | AUTH-07 | Phase 18 | Complete |
-| DB-01 | Phase 19 | Pending |
+| DB-01 | Phase 19 | Complete |
 | DB-02 | Phase 19 | Complete |
-| DB-03 | Phase 19 | Pending |
+| DB-03 | Phase 19 | Complete |
 | DB-04 | Phase 19 | Complete |
 | URL-01 | Phase 20 | Pending |
 | URL-02 | Phase 20 | Pending |
