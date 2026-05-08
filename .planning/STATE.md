@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
-status: verifying
+status: planning
 stopped_at: Completed 12-03-PLAN.md — feature detail page + list link wrap (Phase 12 complete)
-last_updated: "2026-05-08T05:44:25.317Z"
+last_updated: "2026-05-08T05:47:20.244Z"
 progress:
   total_phases: 7
   completed_phases: 5
@@ -23,8 +23,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-07 — v2.1 milestone started)
 
 ## Current Position
 
-Phase: 12 (Bug and Feature Detail Pages) — EXECUTING
-Plan: 3 of 3
+Phase: 13
+Plan: Not started
 
 ## Active Milestone: v2.1 — Pipeline UI
 
@@ -43,7 +43,7 @@ Plan: 3 of 3
 | 14 — Customer Page Integration | Filter chips, what's-changed card, branch swap in section headers | CUST-01..03, DIFF-02 | Not started |
 
 **Requirements:** 29 total, all mapped
-**Status:** Phase complete — ready for verification
+**Status:** Ready to plan
 
 ## Performance Metrics
 
