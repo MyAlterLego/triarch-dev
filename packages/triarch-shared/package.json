@@ -1,6 +1,6 @@
 {
   "name": "@myalterlego/triarch-shared",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Shared Drizzle schema + helpers consumed by triarch-dev admin and triarch-portal apps",
   "private": false,
   "main": "./dist/index.js",
@@ -51,6 +51,10 @@
     "./group-sections": {
       "types": "./dist/group-sections.d.ts",
       "default": "./dist/group-sections.js"
+    },
+    "./internal-hmac": {
+      "types": "./dist/internal-hmac.d.ts",
+      "default": "./dist/internal-hmac.js"
     }
   },
   "scripts": {

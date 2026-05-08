@@ -17,3 +17,4 @@ export * from './release-entry-summary';
 export * from './release-history';
 export * from './pipeline-summary';
 export * from './group-sections';
+export * from './internal-hmac';
