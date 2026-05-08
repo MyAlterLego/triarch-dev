@@ -1,3 +1,5 @@
+// @vitest-environment node
+// This lib runs server-side only — use node environment so jose's TextEncoder/Crypto works.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import crypto from 'node:crypto';
 
