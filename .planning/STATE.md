@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
 status: executing
-stopped_at: Completed 21-release-page-port-read 21-06-PLAN.md (Phase 21 closed)
-last_updated: "2026-05-08T20:36:51.028Z"
+stopped_at: Completed 22-release-page-port-write 22-02-PLAN.md (PRs open, awaiting Mike's review)
+last_updated: "2026-05-08T21:58:17.038Z"
 progress:
   total_phases: 19
   completed_phases: 13
   total_plans: 54
-  completed_plans: 48
+  completed_plans: 50
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 ## Current Position
 
 Phase: 22 (release-page-port-write) — EXECUTING
-Plan: 1 of 5
+Plan: 3 of 5
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -48,7 +48,7 @@ Plan: 1 of 5
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Executing Phase 22
+**Status:** Ready to execute
 
 ## Performance Metrics
 
@@ -138,6 +138,10 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 21-release-page-port-read]: projectKeys passed as string[] (not null) to getProjectPipelineSummaries — null is staff all-projects view; portal always scopes to membership
 - [Phase 21-06]: hidden sm:flex established as portal pattern for desktop-only mutation controls — Phase 22 should follow same pattern for new write actions
 - [Phase 21-06]: Vitest server component testing pattern: mock drizzle-orm operators as stubs + mock db builder chain; assert on Next.js navigation hooks (notFound/redirect call count)
+- [Phase 22]: WRITE-01: actor_source='portal' hardcoded in approveReleasePortal/rejectReleasePortal — never caller-controlled, ensures customer-side provenance is unfakable
+- [Phase 22]: WRITE-04 portal side: dispatchPromotion is fire-and-forget; failure logged but does NOT roll back the approval (matches admin's Slack-notify pattern)
+- [Phase 22]: Canonical rawBody = JSON.stringify(body, Object.keys(body).sort()) — must match signRequest's internal canonicalize byte-for-byte for admin's verifyRequest to succeed
+- [Phase 22]: Slack notification + UI un-stub deferred to 22-04 — this plan ships the dispatch path correctly first; data + dispatch are the WRITE-01 critical path
 
 ### Pending Todos
 
@@ -155,7 +159,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-08T20:08:07Z
-Stopped at: Completed 21-release-page-port-read 21-06-PLAN.md (Phase 21 closed)
+Last session: 2026-05-08T21:58:17.036Z
+Stopped at: Completed 22-release-page-port-write 22-02-PLAN.md (PRs open, awaiting Mike's review)
 Resume file: None
 Next action: Research Phase 22 (Release Page Port — Write) via /gsd:research-phase 22 before planning; HMAC-proxy operational mechanics required
