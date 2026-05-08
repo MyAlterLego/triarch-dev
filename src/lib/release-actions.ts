@@ -12,6 +12,7 @@ export type ApproveInput = {
   approverEmail: string;
   ipAddress: string | null;
   userAgent: string | null;
+  actorSource?: 'web' | 'slack' | null;  // defaults to 'web' if undefined
 };
 
 export type ApproveResult =
@@ -19,7 +20,7 @@ export type ApproveResult =
   | { ok: false; code: 'invalid_status'; currentStatus: string; message: string };
 
 export async function approveRelease(input: ApproveInput): Promise<ApproveResult> {
-  const { release, approverEmail, ipAddress, userAgent } = input;
+  const { release, approverEmail, ipAddress, userAgent, actorSource } = input;
 
   // Idempotent short-circuit — preserve Phase 2 behavior exactly
   if (release.status === 'approved') {
@@ -50,7 +51,7 @@ export async function approveRelease(input: ApproveInput): Promise<ApproveResult
   const result = await db.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(releaseApprovals)
-      .values({ releaseId: release.id, approverEmail, decision: 'approved', ipAddress, userAgent, reason: null })
+      .values({ releaseId: release.id, approverEmail, decision: 'approved', ipAddress, userAgent, reason: null, actorSource: actorSource ?? 'web' })
       .returning();
     const [updated] = await tx
       .update(releaseLogs)
@@ -74,6 +75,7 @@ export type RejectInput = {
   reason: string;
   ipAddress: string | null;
   userAgent: string | null;
+  actorSource?: 'web' | 'slack' | null;  // defaults to 'web' if undefined
 };
 
 export type RejectResult =
@@ -81,7 +83,7 @@ export type RejectResult =
   | { ok: false; code: 'invalid_reason' | 'invalid_status'; currentStatus?: string; message: string };
 
 export async function rejectRelease(input: RejectInput): Promise<RejectResult> {
-  const { release, approverEmail, ipAddress, userAgent } = input;
+  const { release, approverEmail, ipAddress, userAgent, actorSource } = input;
   const trimmed = (input.reason ?? '').trim();
   if (!trimmed) {
     return { ok: false, code: 'invalid_reason', message: 'Rejection reason is required' };
@@ -103,7 +105,7 @@ export async function rejectRelease(input: RejectInput): Promise<RejectResult> {
   const result = await db.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(releaseApprovals)
-      .values({ releaseId: release.id, approverEmail, decision: 'rejected', ipAddress, userAgent, reason: trimmed })
+      .values({ releaseId: release.id, approverEmail, decision: 'rejected', ipAddress, userAgent, reason: trimmed, actorSource: actorSource ?? 'web' })
       .returning();
     const [updated] = await tx
       .update(releaseLogs)
