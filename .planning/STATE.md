@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
-status: verifying
+status: planning
 stopped_at: "Completed 19-02-PLAN.md — portal db.ts re-export + DATABASE_URL_PORTAL binding + portal v0.2.1 merged (PR #6)"
-last_updated: "2026-05-08T18:57:58.318Z"
+last_updated: "2026-05-08T19:01:40.683Z"
 progress:
   total_phases: 19
   completed_phases: 12
@@ -23,8 +23,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 ## Current Position
 
-Phase: 19 (database-connectivity) — EXECUTING
-Plan: 2 of 2
+Phase: 20
+Plan: Not started
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -48,7 +48,7 @@ Plan: 2 of 2
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Phase complete — ready for verification
+**Status:** Ready to plan
 
 ## Performance Metrics
 
