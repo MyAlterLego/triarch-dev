@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
 status: executing
-stopped_at: Completed 09-01-PLAN.md — actor_source column + partial unique index on release_approvals; migration 0014 ready for deploy
-last_updated: "2026-05-08T03:43:21.194Z"
+stopped_at: Completed 09-02-PLAN.md — promoteAndAudit nullable Slack params, postSlackChannelMessage helper, 12 tests green
+last_updated: "2026-05-08T03:45:12.001Z"
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 8
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-07 — v2.1 milestone started)
 ## Current Position
 
 Phase: 09 (Per-Project Pipeline Page and Web-UI Promote) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 
 ## Active Milestone: v2.1 — Pipeline UI
 
@@ -87,6 +87,8 @@ v2.1 decisions captured at roadmap creation:
 - [Phase 09]: actor_source is nullable — legacy rows have NULL; web path sets 'web', Slack path sets 'slack'
 - [Phase 09]: Partial unique index on (release_id) WHERE decision='approved' enforces one-approved-per-release at DB level (PROM-04)
 - [Phase 09]: Migration rename pattern: drizzle-kit generate → rename SQL file → update journal tag → drizzle-kit check
+- [Phase 09-per-project-pipeline-page-and-web-ui-promote]: Option (a): nullable params in promoteAndAudit (not split functions) — unified function harder to misuse
+- [Phase 09-per-project-pipeline-page-and-web-ui-promote]: slackChannelId added to projects table (migration 0015) — web-origin Slack notification uses per-project channel; graceful no-op if null
 
 ### Pending Todos
 
@@ -101,7 +103,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T03:43:21.192Z
-Stopped at: Completed 09-01-PLAN.md — actor_source column + partial unique index on release_approvals; migration 0014 ready for deploy
+Last session: 2026-05-08T03:45:12.000Z
+Stopped at: Completed 09-02-PLAN.md — promoteAndAudit nullable Slack params, postSlackChannelMessage helper, 12 tests green
 Resume file: None
 Next action: `/gsd:plan-phase 8`
