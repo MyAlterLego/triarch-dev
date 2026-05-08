@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
-status: verifying
+status: planning
 stopped_at: Completed 08-03-PLAN.md — pipeline-aware admin home tiles with prod/dev rows, amber pill, and what-changed one-liner; version 2.4.0
-last_updated: "2026-05-08T02:49:59.299Z"
+last_updated: "2026-05-08T02:54:16.528Z"
 progress:
   total_phases: 7
   completed_phases: 1
@@ -23,8 +23,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-07 — v2.1 milestone started)
 
 ## Current Position
 
-Phase: 08 (Admin Home Pipeline Visibility) — EXECUTING
-Plan: 3 of 3
+Phase: 9
+Plan: Not started
 
 ## Active Milestone: v2.1 — Pipeline UI
 
@@ -43,7 +43,7 @@ Plan: 3 of 3
 | 14 — Customer Page Integration | Filter chips, what's-changed card, branch swap in section headers | CUST-01..03, DIFF-02 | Not started |
 
 **Requirements:** 29 total, all mapped
-**Status:** Phase complete — ready for verification
+**Status:** Ready to plan
 
 ## Performance Metrics
 
