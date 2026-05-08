@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
-status: verifying
+status: planning
 stopped_at: Completed 10-01-PLAN.md — migration 0016 applied to admin_dev, release_log_links + preview lock columns, v2.5.1
-last_updated: "2026-05-08T04:24:08.477Z"
+last_updated: "2026-05-08T04:27:22.253Z"
 progress:
   total_phases: 7
   completed_phases: 3
@@ -23,8 +23,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-07 — v2.1 milestone started)
 
 ## Current Position
 
-Phase: 10 (Schema Gate) — EXECUTING
-Plan: 1 of 1
+Phase: 11
+Plan: Not started
 
 ## Active Milestone: v2.1 — Pipeline UI
 
@@ -43,7 +43,7 @@ Plan: 1 of 1
 | 14 — Customer Page Integration | Filter chips, what's-changed card, branch swap in section headers | CUST-01..03, DIFF-02 | Not started |
 
 **Requirements:** 29 total, all mapped
-**Status:** Phase complete — ready for verification
+**Status:** Ready to plan
 
 ## Performance Metrics
 
