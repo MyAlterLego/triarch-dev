@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useProjectOptions } from '@/lib/use-projects';
 import { Bug, ChevronDown, ChevronRight, Search } from 'lucide-react';
 
@@ -123,7 +124,13 @@ export default function BugReportsPage() {
                   <span className={`px-1.5 py-0.5 rounded text-[10px] border ${SEVERITY_COLORS[bug.severity] ?? ''}`}>
                     {bug.severity}
                   </span>
-                  <span className="text-sm text-zinc-200 flex-1 truncate">{bug.title}</span>
+                  <Link
+                    href={`/admin/modules/bug-reports/${bug.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-sm text-zinc-200 flex-1 truncate hover:text-violet-300 transition-colors cursor-pointer"
+                  >
+                    {bug.title}
+                  </Link>
                   <span className={`px-1.5 py-0.5 rounded text-[10px] ${STATUS_COLORS[bug.status] ?? 'bg-zinc-700 text-zinc-400'}`}>
                     {bug.status.replace('_', ' ')}
                   </span>
