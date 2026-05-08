@@ -23,7 +23,55 @@ export interface PipelineSummary {
   whatChangedOneliner: string | null; // null when parity; "dev behind prod" when inverted; full breakdown when dev-ahead
 }
 
+// ── New types for getProjectPipelineDetail ───────────────────────────────
+
+export interface RcRow {
+  id: string;
+  branch: string;
+  version: string;
+  status: 'dev' | 'pending_approval' | 'approved' | 'rejected' | 'promoted' | null;
+  author: string | null;       // releasedBy
+  deployedAt: string | null;   // ISO; falls back to releasedAt
+  releasedAt: string;          // ISO
+  promotionDispatchedAt: string | null;  // for the in-flight UI (plan 09-05)
+}
+
+export interface WhatChangedEntry {
+  releaseId: string;
+  type: 'fix' | 'feature' | 'other';   // bucketed from entry.type
+  title: string;                        // entry.message or entry.title
+  branch: string;
+  author: string | null;
+  date: string;                         // ISO
+}
+
+export interface DeployHistoryRow {
+  id: string;
+  env: 'dev' | 'prod';
+  version: string;
+  deployedAt: string | null;
+  releasedAt: string;
+  releasedBy: string | null;
+}
+
+export interface PipelineDetail {
+  project: { key: string; name: string };
+  summary: PipelineSummary;          // reuse Phase 8 type
+  rcs: RcRow[];                      // sorted: latest deployment first within each branch; branches sorted by max deployedAt desc
+  whatChanged: WhatChangedEntry[];   // entries unreleased to prod, in deploy date desc order
+  deployHistory: DeployHistoryRow[]; // last 10 prod + last 10 dev, env-tagged, sorted by deployedAt desc
+}
+
 // ── Private helpers ──────────────────────────────────────────────────────
+
+/**
+ * Bucket a single entry's type string into 'fix' | 'feature' | 'other'.
+ */
+function bucketEntryTypeSingle(type: string | undefined): 'fix' | 'feature' | 'other' {
+  if (type === 'fix' || type === 'bug' || type === 'bugfix') return 'fix';
+  if (type === 'feature' || type === 'feat') return 'feature';
+  return 'other';
+}
 
 /**
  * Bucket entry objects from release_logs.entries[] into fix/feature/other counts.
@@ -265,4 +313,201 @@ export async function getProjectPipelineSummaries(
       whatChangedOneliner,
     };
   });
+}
+
+// ── Per-project pipeline detail ──────────────────────────────────────────
+
+/**
+ * Returns consolidated pipeline detail for a single project.
+ * Returns null if the project does not exist in the projects table (consumers: notFound()).
+ *
+ * Sections:
+ *  - summary:       reuses getProjectPipelineSummaries([slug]) — same Phase 8 shape
+ *  - rcs:           all dev-env release_logs for this project, grouped by branch
+ *                   sorted by branch maxDeployedAt desc, then by deployedAt desc within branch
+ *  - whatChanged:   expanded WhatChangedEntry[] — each entry from dev rows after the prod cutoff
+ *                   with type bucketing per bucketEntryTypeSingle()
+ *  - deployHistory: last 10 prod + last 10 dev rows from release_logs, sorted desc
+ */
+export async function getProjectPipelineDetail(slug: string): Promise<PipelineDetail | null> {
+  // ── a. Look up project ─────────────────────────────────────────────
+  const projectRows = await db
+    .select({ key: projects.key, name: projects.name })
+    .from(projects)
+    .where(eq(projects.key, slug));
+
+  if (projectRows.length === 0) return null;
+  const project = projectRows[0];
+
+  // ── b. Get summary via Phase 8 helper ─────────────────────────────
+  const summaries = await getProjectPipelineSummaries([slug]);
+  const summary = summaries[0] ?? {
+    projectKey: slug,
+    prodVersion: null,
+    prodDeployedAt: null,
+    devVersion: null,
+    devDeployedAt: null,
+    pendingApprovalCount: 0,
+    pipelineState: 'parity' as PipelineState,
+    whatChangedOneliner: null,
+  };
+
+  // ── Helper: normalize DB dates to ISO strings ──────────────────────
+  function toIso(val: string | Date | null | undefined): string | null {
+    if (val == null) return null;
+    if (val instanceof Date) return val.toISOString();
+    return val as string;
+  }
+
+  // ── c. RC rows (all dev rows for this project) ────────────────────
+
+  type RcRawRow = {
+    id: string;
+    branch: string | null;
+    version: string;
+    status: string | null;
+    released_by: string | null;
+    deployed_at: string | Date | null;
+    released_at: string | Date;
+    promotion_dispatched_at: string | Date | null;
+  };
+
+  const rcResult = await db.execute(sql`
+    SELECT id, branch, version, status, released_by,
+           deployed_at, released_at, promotion_dispatched_at
+    FROM release_logs
+    WHERE project = ${slug} AND env = 'dev'
+    ORDER BY branch, COALESCE(deployed_at, released_at) DESC NULLS LAST
+  `);
+
+  const rawRcRows = rcResult.rows as RcRawRow[];
+
+  // Group by branch, collect RcRow[], then sort branches by their max deployedAt desc
+  const branchMap = new Map<string, RcRow[]>();
+  for (const row of rawRcRows) {
+    const branch = row.branch ?? 'main';
+    const rcRow: RcRow = {
+      id: row.id,
+      branch,
+      version: row.version,
+      status: (row.status ?? null) as RcRow['status'],
+      author: row.released_by ?? null,
+      deployedAt: toIso(row.deployed_at),
+      releasedAt: toIso(row.released_at) ?? new Date(0).toISOString(),
+      promotionDispatchedAt: toIso(row.promotion_dispatched_at),
+    };
+    if (!branchMap.has(branch)) branchMap.set(branch, []);
+    branchMap.get(branch)!.push(rcRow);
+  }
+
+  // For each branch compute max deployedAt for sorting
+  const branchMaxTs = new Map<string, number>();
+  for (const [branch, rows] of branchMap) {
+    const max = Math.max(
+      ...rows.map((r) => new Date(r.deployedAt ?? r.releasedAt).getTime()),
+    );
+    branchMaxTs.set(branch, max);
+  }
+
+  // Sort within each branch by deployedAt desc (defensive: SQL orders this but mocks may not)
+  for (const rows of branchMap.values()) {
+    rows.sort((a, b) => {
+      const aTs = new Date(a.deployedAt ?? a.releasedAt).getTime();
+      const bTs = new Date(b.deployedAt ?? b.releasedAt).getTime();
+      return bTs - aTs;
+    });
+  }
+
+  // Sort branches by max deployedAt desc; within each branch rows are already sorted desc
+  const sortedBranches = Array.from(branchMap.keys()).sort(
+    (a, b) => (branchMaxTs.get(b) ?? 0) - (branchMaxTs.get(a) ?? 0),
+  );
+
+  const rcs: RcRow[] = sortedBranches.flatMap((branch) => branchMap.get(branch)!);
+
+  // ── d. What-changed entries ───────────────────────────────────────
+  // Expand dev rows after the prod cutoff into individual WhatChangedEntry[]
+
+  type WhatChangedRawRow = {
+    id: string;
+    branch: string | null;
+    released_by: string | null;
+    deployed_at: string | Date | null;
+    released_at: string | Date;
+    entries: unknown;
+  };
+
+  const prodCutoffTs = summary.prodDeployedAt ? new Date(summary.prodDeployedAt).getTime() : null;
+
+  const whatChangedResult = await db.execute(sql`
+    SELECT id, branch, released_by, deployed_at, released_at, entries
+    FROM release_logs
+    WHERE project = ${slug} AND env = 'dev'
+    ORDER BY COALESCE(deployed_at, released_at) DESC NULLS LAST
+  `);
+
+  const whatChanged: WhatChangedEntry[] = [];
+  for (const row of whatChangedResult.rows as WhatChangedRawRow[]) {
+    const effectiveTs = toIso(row.deployed_at) ?? toIso(row.released_at);
+    if (!effectiveTs) continue;
+    // Only include rows after prod cutoff (if prod exists)
+    if (prodCutoffTs !== null && new Date(effectiveTs).getTime() <= prodCutoffTs) continue;
+
+    const rowEntries = Array.isArray(row.entries) ? row.entries : [];
+    const branch = row.branch ?? 'main';
+    const author = row.released_by ?? null;
+    const date = effectiveTs;
+
+    for (const entry of rowEntries as { type?: string; message?: string; title?: string }[]) {
+      whatChanged.push({
+        releaseId: row.id,
+        type: bucketEntryTypeSingle(entry.type),
+        title: entry.message ?? entry.title ?? '',
+        branch,
+        author,
+        date,
+      });
+    }
+  }
+
+  // ── e. Deploy history: last 10 prod + last 10 dev ─────────────────
+
+  type HistRawRow = {
+    id: string;
+    env: string;
+    version: string;
+    deployed_at: string | Date | null;
+    released_at: string | Date;
+    released_by: string | null;
+  };
+
+  const histResult = await db.execute(sql`
+    SELECT id, env, version, deployed_at, released_at, released_by
+    FROM release_logs
+    WHERE project = ${slug} AND env IN ('dev', 'prod')
+    ORDER BY COALESCE(deployed_at, released_at) DESC NULLS LAST
+  `);
+
+  const allHistRows = histResult.rows as HistRawRow[];
+
+  // Split into prod / dev, take top 10 each, re-merge and sort desc
+  const prodHist = allHistRows.filter((r) => r.env === 'prod').slice(0, 10);
+  const devHist = allHistRows.filter((r) => r.env === 'dev').slice(0, 10);
+
+  const deployHistory: DeployHistoryRow[] = [...prodHist, ...devHist]
+    .map((row) => ({
+      id: row.id,
+      env: row.env as 'dev' | 'prod',
+      version: row.version,
+      deployedAt: toIso(row.deployed_at),
+      releasedAt: toIso(row.released_at) ?? new Date(0).toISOString(),
+      releasedBy: row.released_by ?? null,
+    }))
+    .sort((a, b) => {
+      const aTs = new Date(a.deployedAt ?? a.releasedAt).getTime();
+      const bTs = new Date(b.deployedAt ?? b.releasedAt).getTime();
+      return bTs - aTs;
+    });
+
+  return { project, summary, rcs, whatChanged, deployHistory };
 }
