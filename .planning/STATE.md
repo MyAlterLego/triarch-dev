@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
 status: planning
-stopped_at: Completed 21-release-page-port-read 21-02-PLAN.md
-last_updated: "2026-05-08T19:49:36.000Z"
+stopped_at: Completed 21-release-page-port-read 21-03-PLAN.md
+last_updated: "2026-05-08T19:58:04.115Z"
 progress:
   total_phases: 19
   completed_phases: 13
   total_plans: 49
-  completed_plans: 45
+  completed_plans: 46
 ---
 
 # Triarch Dev Admin — Project State
@@ -133,6 +133,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 21-release-page-port-read]: Inline structural types in shared package group-sections.ts (ReleaseRow/ConflictState/BranchSection) — zero admin-relative imports; TypeScript structural typing preserves assignability
 - [Phase 21-02]: Portal types.ts re-exports EntryTypeCounts/WhatsComingSummary from @myalterlego/triarch-shared/release-entry-summary (not @/lib shim); all other leaf UI files copied verbatim
 - [Phase 21-02]: Portal vitest.setup.ts lacked afterEach(cleanup) — added to match admin pattern; required for RTL multi-render correctness in vitest
+- [Phase 21]: ReleasesClient ported as read-only fork: 4 mutation handlers stubbed with TODO Phase 22, handleLoadMore stripped, hasMoreState=false
 
 ### Pending Todos
 
@@ -150,7 +151,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-08T19:49:36.000Z
-Stopped at: Completed 21-release-page-port-read 21-02-PLAN.md
+Last session: 2026-05-08T19:58:04.113Z
+Stopped at: Completed 21-release-page-port-read 21-03-PLAN.md
 Resume file: None
 Next action: Execute 21-03-PLAN.md (ReleasesClient port)
