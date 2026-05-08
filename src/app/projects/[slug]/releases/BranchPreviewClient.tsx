@@ -30,7 +30,8 @@ type StatusResponse = {
   rolloutResourcePath?: string;
 };
 
-type Props = {
+// Back-compat shim props (used by default export only)
+type ShimProps = {
   projectSlug: string;
   userRole: UserRole;
   branches: string[];
@@ -54,83 +55,41 @@ const fetcher = async (url: string): Promise<StatusResponse> => {
 };
 
 // ---------------------------------------------------------------------------
-// Component
+// Shared SWR hook (private to this module)
+// Both BranchPreviewBanner and BranchPreviewButton use the same cache key
+// so SWR deduplicates to a single poll across all mounts.
 // ---------------------------------------------------------------------------
 
-export default function BranchPreviewClient({
-  projectSlug,
-  userRole,
-  branches,
-  fahProjectId,
-}: Props) {
-  const [dispatching, setDispatching] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ kind: ToastKind; message: string; key: number } | null>(
-    null,
-  );
-
-  const { data, mutate } = useSWR<StatusResponse>(
+function usePreviewStatus(projectSlug: string) {
+  return useSWR<StatusResponse>(
     `/api/projects/${projectSlug}/branch/preview/status`,
     fetcher,
     {
-      // refreshInterval as function: receives latest cached data — pause when terminal
       refreshInterval: (latest) => (latest?.terminal ? 0 : 5000),
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
       dedupingInterval: 2000,
     },
   );
+}
 
+// ---------------------------------------------------------------------------
+// Export 1: BranchPreviewBanner
+// Mounted ONCE at the top of ReleasesClient — informational, shown to both
+// admin and viewer. No role gating.
+// ---------------------------------------------------------------------------
+
+export type BranchPreviewBannerProps = {
+  projectSlug: string;
+  fahProjectId: string | null;
+};
+
+export function BranchPreviewBanner({ projectSlug, fahProjectId }: BranchPreviewBannerProps) {
+  const { data } = usePreviewStatus(projectSlug);
   const inFlight = data ? IN_FLIGHT_STATES.has(data.state) : false;
-  const isAdmin = userRole === 'admin';
 
-  // ---------------------------------------------------------------------------
-  // Handlers
-  // ---------------------------------------------------------------------------
-
-  async function handlePreview(branch: string) {
-    setDispatching(branch);
-    try {
-      const res = await fetch(`/api/projects/${projectSlug}/branch/preview`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ branch }),
-      });
-      const payload = await res.json().catch(() => ({}));
-
-      if (res.status === 202) {
-        // Force immediate re-fetch so SWR picks up the new lock
-        mutate();
-      } else if (res.status === 400) {
-        setToast({ kind: 'error', message: 'Branch name not allowed', key: Date.now() });
-      } else if (res.status === 409) {
-        setToast({
-          kind: 'error',
-          message: 'Another preview is already in flight',
-          key: Date.now(),
-        });
-        // Re-fetch to show existing lock state
-        mutate();
-      } else if (res.status === 502) {
-        const detail = (payload as { detail?: string }).detail;
-        setToast({
-          kind: 'error',
-          message: `Preview dispatch failed${detail ? `: ${detail}` : ''}`,
-          key: Date.now(),
-        });
-      } else {
-        setToast({ kind: 'error', message: 'Could not start preview swap', key: Date.now() });
-      }
-    } catch {
-      setToast({ kind: 'error', message: 'Network error during preview swap', key: Date.now() });
-    } finally {
-      setDispatching(null);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Render helpers
-  // ---------------------------------------------------------------------------
+  // Renders nothing when idle (avoids empty card)
+  if (!data || data.state === 'idle') return null;
 
   function renderBanner() {
     if (!data || !inFlight) return null;
@@ -138,9 +97,11 @@ export default function BranchPreviewClient({
     const lockedTime = data.locked_at ? formatRelativeTime(data.locked_at) : 'just now';
 
     return (
-      // In-flight banner: violet-400 spinner + bg-violet-500/10 border-violet-500/30 halo
-      // per DESIGN-REFERENCE.md active/in-flight pattern
-      <div role="status" aria-live="polite" className="flex items-center gap-3 px-4 py-3 rounded-md bg-violet-500/10 border border-violet-500/30 text-violet-300 text-sm mb-3">
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex items-center gap-3 px-4 py-3 rounded-md bg-violet-500/10 border border-violet-500/30 text-violet-300 text-sm mb-3"
+      >
         <Loader2 size={14} className="animate-spin text-violet-400 flex-shrink-0" />
         <span>
           <span className="font-mono font-semibold">{data.branch}</span>
@@ -209,13 +170,95 @@ export default function BranchPreviewClient({
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Main render
-  // ---------------------------------------------------------------------------
+  // Wrap in card container only when there is content to show
+  const content = renderBanner() ?? renderSucceededPill() ?? renderFailedPill() ?? renderTimeoutPill();
+  if (!content) return null;
 
   return (
     <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4 mb-4">
-      {/* Toast */}
+      {/* Section header */}
+      <div className="flex items-center gap-2 mb-3">
+        <GitBranch size={14} className="text-violet-400" />
+        <span className="text-xs font-semibold tracking-wider text-zinc-500 uppercase">
+          Branch Preview
+        </span>
+      </div>
+      {renderBanner()}
+      {renderSucceededPill()}
+      {renderFailedPill()}
+      {renderTimeoutPill()}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Export 2: BranchPreviewButton
+// Mounted per-BranchSection header. Admin only. Shares SWR cache key with
+// BranchPreviewBanner so only ONE poll runs (SWR deduplication).
+// ---------------------------------------------------------------------------
+
+export type BranchPreviewButtonProps = {
+  projectSlug: string;
+  branch: string;
+  userRole: UserRole;
+};
+
+export function BranchPreviewButton({ projectSlug, branch, userRole }: BranchPreviewButtonProps) {
+  // Viewer sees no button
+  if (userRole !== 'admin') return null;
+
+  const { data, mutate } = usePreviewStatus(projectSlug);
+  const [dispatching, setDispatching] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ kind: ToastKind; message: string; key: number } | null>(
+    null,
+  );
+
+  const inFlight = data ? IN_FLIGHT_STATES.has(data.state) : false;
+  const isDisabled = inFlight || dispatching === branch;
+
+  async function handlePreview() {
+    setDispatching(branch);
+    try {
+      const res = await fetch(`/api/projects/${projectSlug}/branch/preview`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branch }),
+      });
+      const payload = await res.json().catch(() => ({}));
+
+      if (res.status === 202) {
+        mutate();
+      } else if (res.status === 400) {
+        setToast({ kind: 'error', message: 'Branch name not allowed', key: Date.now() });
+      } else if (res.status === 409) {
+        setToast({
+          kind: 'error',
+          message: 'Another preview is already in flight',
+          key: Date.now(),
+        });
+        mutate();
+      } else if (res.status === 502) {
+        const detail = (payload as { detail?: string }).detail;
+        setToast({
+          kind: 'error',
+          message: `Preview dispatch failed${detail ? `: ${detail}` : ''}`,
+          key: Date.now(),
+        });
+      } else {
+        setToast({ kind: 'error', message: 'Could not start preview swap', key: Date.now() });
+      }
+    } catch {
+      setToast({ kind: 'error', message: 'Network error during preview swap', key: Date.now() });
+    } finally {
+      setDispatching(null);
+    }
+  }
+
+  const isSpinning = dispatching === branch;
+
+  return (
+    <>
       {toast && (
         <Toast
           key={toast.key}
@@ -224,46 +267,50 @@ export default function BranchPreviewClient({
           onDismiss={() => setToast(null)}
         />
       )}
+      <button
+        type="button"
+        onClick={handlePreview}
+        disabled={isDisabled}
+        title={inFlight ? 'A preview swap is in flight; please wait' : undefined}
+        aria-label="Preview this branch"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {isSpinning ? (
+          <Loader2 size={11} className="animate-spin" />
+        ) : (
+          <GitBranch size={11} />
+        )}
+        <span className="font-mono">{branch}</span>
+      </button>
+    </>
+  );
+}
 
-      {/* Section header */}
-      <div className="flex items-center gap-2 mb-3">
-        <GitBranch size={14} className="text-violet-400" />
-        <span className="text-xs font-semibold tracking-wider text-zinc-500 uppercase">
-          Branch Preview
-        </span>
-      </div>
+// ---------------------------------------------------------------------------
+// Default export: BranchPreviewClient — backward-compatibility SHIM
+// Not used by ReleasesClient after Plan 14-03, but preserved so any import
+// of the default export continues to work without modification.
+// ---------------------------------------------------------------------------
 
-      {/* Status pills — one visible at a time */}
-      {renderBanner()}
-      {renderSucceededPill()}
-      {renderFailedPill()}
-      {renderTimeoutPill()}
-
-      {/* Preview buttons — admin only */}
-      {isAdmin && branches.length > 0 && (
+export default function BranchPreviewClient({
+  projectSlug,
+  userRole,
+  branches,
+  fahProjectId,
+}: ShimProps) {
+  return (
+    <div>
+      <BranchPreviewBanner projectSlug={projectSlug} fahProjectId={fahProjectId} />
+      {userRole === 'admin' && branches.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {branches.map((branch) => {
-            const isDisabled = inFlight || dispatching === branch;
-            const isSpinning = dispatching === branch;
-
-            return (
-              <button
-                key={branch}
-                onClick={() => handlePreview(branch)}
-                disabled={isDisabled}
-                title={inFlight ? 'A preview swap is in flight; please wait' : undefined}
-                aria-label="Preview this branch"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isSpinning ? (
-                  <Loader2 size={11} className="animate-spin" />
-                ) : (
-                  <GitBranch size={11} />
-                )}
-                <span className="font-mono">{branch}</span>
-              </button>
-            );
-          })}
+          {branches.map((branch) => (
+            <BranchPreviewButton
+              key={branch}
+              projectSlug={projectSlug}
+              branch={branch}
+              userRole={userRole}
+            />
+          ))}
         </div>
       )}
     </div>
