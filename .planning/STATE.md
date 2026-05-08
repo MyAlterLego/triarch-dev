@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
 status: verifying
-stopped_at: Completed 11-04-PLAN.md — link CRUD API + LinksClient + Slack sanitization (LINK-04/LINK-07), Phase 11 complete
-last_updated: "2026-05-08T05:01:27.839Z"
+stopped_at: Completed 11-05-PLAN.md — LinksClient mount-fetch hydration gap closure (LINK-04 chip-visibility), Phase 11 fully closed
+last_updated: "2026-05-08T05:17:15.579Z"
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 14
+  completed_plans: 14
 ---
 
 # Triarch Dev Admin — Project State
@@ -109,6 +109,7 @@ v2.1 decisions captured at roadmap creation:
 - [Phase 11]: Stamper is forgiving internally (try/catch) AND wrapped at call site in route — two layers for defense-in-depth
 - [Phase 11]: UUID-paste fallback for LinksClient picker: bug/feature typeahead search endpoints not yet built; picker uses direct UUID paste with placeholder text — POST API contract unchanged so future plan can add typeahead without route changes
 - [Phase 11]: sanitizeBlockKitBlocks helper added to slack.ts: walks block.text.text and fields[].text — covers all Block Kit patterns in current codebase; sanitize-at-chokepoint pattern means future callers cannot bypass sanitization
+- [Phase 11]: Option A (useEffect) over Option B (platform route augment) for LinksClient mount-fetch — self-contained, per-row expand, no N+1 cost
 
 ### Pending Todos
 
@@ -123,7 +124,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T05:01:27.837Z
-Stopped at: Completed 11-04-PLAN.md — link CRUD API + LinksClient + Slack sanitization (LINK-04/LINK-07), Phase 11 complete
+Last session: 2026-05-08T05:17:15.578Z
+Stopped at: Completed 11-05-PLAN.md — LinksClient mount-fetch hydration gap closure (LINK-04 chip-visibility), Phase 11 fully closed
 Resume file: None
 Next action: `/gsd:plan-phase 8`
