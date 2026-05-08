@@ -31,37 +31,37 @@ The Drizzle schema + select helpers extracted into a private GitHub Packages npm
 
 Catalog and harden the v2.1 hostname-aware routing before introducing a second valid host.
 
-- [ ] **HOST-01**: Inventory document at `.planning/host-guard-inventory.md` listing every `host ===` / `headers().get('host')` / `x-forwarded-host` reference in admin codebase (with file:line + current behavior)
-- [ ] **HOST-02**: Admin's `src/proxy.ts` (or `src/middleware.ts`) fails closed for hosts that are neither `admin.triarch.dev` nor `localhost:300x` — returns 404 instead of marketing fallback
+- [x] **HOST-01**: Inventory document at `.planning/host-guard-inventory.md` listing every `host ===` / `headers().get('host')` / `x-forwarded-host` reference in admin codebase (with file:line + current behavior)
+- [x] **HOST-02**: Admin's `src/proxy.ts` (or `src/middleware.ts`) fails closed for hosts that are neither `admin.triarch.dev` nor `localhost:300x` — returns 404 instead of marketing fallback
 
 ### Portal Auth Scaffolding
 
 NextAuth v4 setup with brand isolation, customer-only authorization, and staff "switch to admin" callout.
 
-- [ ] **AUTH-01**: Portal NextAuth v4 config with `__Host-` cookie prefix in production, NO `domain` attribute set (host-only scope)
-- [ ] **AUTH-02**: Portal uses `PORTAL_NEXTAUTH_SECRET` (distinct from admin's `NEXTAUTH_SECRET`) so JWTs cannot be cross-replayed
-- [ ] **AUTH-03**: Portal `signIn` callback enforces customer-membership rule — rejects users with no `project_members` row; staff users are allowed in but flagged for the callout in AUTH-04
-- [ ] **AUTH-04**: Authenticated staff users see a persistent "Switch to admin.triarch.dev" callout banner; viewer/admin customer users do not see it
-- [ ] **AUTH-05**: Vitest assertion that the portal `Set-Cookie` header for the session token contains `__Host-` prefix and lacks any `Domain=` attribute
-- [ ] **AUTH-06**: Vitest grep-test that no portal source file references the OAuth `sub` claim (everywhere keys on `email`)
-- [ ] **AUTH-07**: Login wall on portal `/` (unauthenticated → /login); post-login routing (0 memberships → empty state with "Contact your project admin" copy; 1 → auto-redirect to that project; 2+ → /projects list)
+- [x] **AUTH-01**: Portal NextAuth v4 config with `__Host-` cookie prefix in production, NO `domain` attribute set (host-only scope)
+- [x] **AUTH-02**: Portal uses `PORTAL_NEXTAUTH_SECRET` (distinct from admin's `NEXTAUTH_SECRET`) so JWTs cannot be cross-replayed
+- [x] **AUTH-03**: Portal `signIn` callback enforces customer-membership rule — rejects users with no `project_members` row; staff users are allowed in but flagged for the callout in AUTH-04
+- [x] **AUTH-04**: Authenticated staff users see a persistent "Switch to admin.triarch.dev" callout banner; viewer/admin customer users do not see it
+- [x] **AUTH-05**: Vitest assertion that the portal `Set-Cookie` header for the session token contains `__Host-` prefix and lacks any `Domain=` attribute
+- [x] **AUTH-06**: Vitest grep-test that no portal source file references the OAuth `sub` claim (everywhere keys on `email`)
+- [x] **AUTH-07**: Login wall on portal `/` (unauthenticated → /login); post-login routing (0 memberships → empty state with "Contact your project admin" copy; 1 → auto-redirect to that project; 2+ → /projects list)
 
 ### Database Connectivity
 
 Portal DB access with defense-in-depth schema-write protection.
 
-- [ ] **DB-01**: Portal `src/lib/db.ts` connects to the same CockroachDB cluster + database via `pg.Pool`; reuses `DATABASE_URL` secret (or `DATABASE_URL_DEV` for dev backend)
-- [ ] **DB-02**: New CockroachDB user `portal_runtime` with GRANT SELECT/INSERT/UPDATE/DELETE on the v2.2 tables (no DDL grants); portal connects with this role; admin retains its current admin role
-- [ ] **DB-03**: Portal `package.json` does NOT include `db:push` or `db:generate` scripts (Drizzle is read-only-from-portal's-perspective); admin remains sole migration authority
-- [ ] **DB-04**: Smoke test from portal: `ALTER TABLE projects ADD COLUMN test text` returns CockroachDB permission denied
+- [x] **DB-01**: Portal `src/lib/db.ts` connects to the same CockroachDB cluster + database via `pg.Pool`; reuses `DATABASE_URL` secret (or `DATABASE_URL_DEV` for dev backend)
+- [x] **DB-02**: New CockroachDB user `portal_runtime` with GRANT SELECT/INSERT/UPDATE/DELETE on the v2.2 tables (no DDL grants); portal connects with this role; admin retains its current admin role
+- [x] **DB-03**: Portal `package.json` does NOT include `db:push` or `db:generate` scripts (Drizzle is read-only-from-portal's-perspective); admin remains sole migration authority
+- [x] **DB-04**: Smoke test from portal: `ALTER TABLE projects ADD COLUMN test text` returns CockroachDB permission denied
 
 ### URL Centralization (Admin Refactor)
 
 Refactor admin to construct customer-facing URLs through a single helper before portal ships.
 
-- [ ] **URL-01**: New `src/lib/urls.ts` in admin with helpers: `customerProjectUrl(slug)`, `customerReleaseUrl(slug)`, `customerBugUrl(slug, id)`, `customerFeatureUrl(slug, id)`, all reading `PORTAL_BASE_URL` env (default `https://portal.triarch.dev`)
-- [ ] **URL-02**: All admin Slack message builders, OttoBot Block Kit constructors, GitHub release-note templates, and email templates refactored to call `urls.ts` helpers
-- [ ] **URL-03**: ESLint rule (`no-restricted-syntax`) blocks raw `https://admin.triarch.dev/projects/` literals outside `src/lib/urls.ts` — CI fails on violation
+- [x] **URL-01**: New `src/lib/urls.ts` in admin with helpers: `customerProjectUrl(slug)`, `customerReleaseUrl(slug)`, `customerBugUrl(slug, id)`, `customerFeatureUrl(slug, id)`, all reading `PORTAL_BASE_URL` env (default `https://portal.triarch.dev`)
+- [x] **URL-02**: All admin Slack message builders, OttoBot Block Kit constructors, GitHub release-note templates, and email templates refactored to call `urls.ts` helpers
+- [x] **URL-03**: ESLint rule (`no-restricted-syntax`) blocks raw `https://admin.triarch.dev/projects/` literals outside `src/lib/urls.ts` — CI fails on violation
 
 ### Release Page Port (Read Surface)
 
@@ -176,22 +176,22 @@ Updated by roadmapper during phase mapping.
 | PKG-02 | Phase 16 | Complete |
 | PKG-03 | Phase 16 | Complete |
 | PKG-04 | Phase 16 | Complete |
-| HOST-01 | Phase 17 | Pending |
-| HOST-02 | Phase 17 | Pending |
-| AUTH-01 | Phase 18 | Pending |
-| AUTH-02 | Phase 18 | Pending |
-| AUTH-03 | Phase 18 | Pending |
-| AUTH-04 | Phase 18 | Pending |
-| AUTH-05 | Phase 18 | Pending |
-| AUTH-06 | Phase 18 | Pending |
-| AUTH-07 | Phase 18 | Pending |
-| DB-01 | Phase 19 | Pending |
-| DB-02 | Phase 19 | Pending |
-| DB-03 | Phase 19 | Pending |
-| DB-04 | Phase 19 | Pending |
-| URL-01 | Phase 20 | Pending |
-| URL-02 | Phase 20 | Pending |
-| URL-03 | Phase 20 | Pending |
+| HOST-01 | Phase 17 | Complete |
+| HOST-02 | Phase 17 | Complete |
+| AUTH-01 | Phase 18 | Complete |
+| AUTH-02 | Phase 18 | Complete |
+| AUTH-03 | Phase 18 | Complete |
+| AUTH-04 | Phase 18 | Complete |
+| AUTH-05 | Phase 18 | Complete |
+| AUTH-06 | Phase 18 | Complete |
+| AUTH-07 | Phase 18 | Complete |
+| DB-01 | Phase 19 | Complete |
+| DB-02 | Phase 19 | Complete |
+| DB-03 | Phase 19 | Complete |
+| DB-04 | Phase 19 | Complete |
+| URL-01 | Phase 20 | Complete |
+| URL-02 | Phase 20 | Complete |
+| URL-03 | Phase 20 | Complete |
 | PORTAL-01 | Phase 21 | Pending |
 | PORTAL-02 | Phase 21 | Pending |
 | PORTAL-03 | Phase 21 | Pending |

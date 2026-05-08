@@ -26,6 +26,10 @@ const packageTestRedirectPlugin = {
       './slack-status': path.resolve(__dirname, 'src/lib/slack-status.ts'),
       './schema': path.resolve(__dirname, 'src/db/schema.ts'),
       './sanitize-commit': path.resolve(__dirname, 'src/lib/sanitize-commit.ts'),
+      './release-entry-summary': path.resolve(__dirname, 'src/lib/release-entry-summary.ts'),
+      './release-history': path.resolve(__dirname, 'src/lib/release-history.ts'),
+      './pipeline-summary': path.resolve(__dirname, 'src/lib/pipeline-summary.ts'),
+      './group-sections': path.resolve(__dirname, 'src/app/projects/[slug]/releases/group-sections.ts'),
     };
     if (source in shimMap) {
       return shimMap[source];

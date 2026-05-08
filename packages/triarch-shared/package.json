@@ -1,6 +1,6 @@
 {
   "name": "@myalterlego/triarch-shared",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared Drizzle schema + helpers consumed by triarch-dev admin and triarch-portal apps",
   "private": false,
   "main": "./dist/index.js",
@@ -35,6 +35,22 @@
     "./db": {
       "types": "./dist/db.d.ts",
       "default": "./dist/db.js"
+    },
+    "./release-entry-summary": {
+      "types": "./dist/release-entry-summary.d.ts",
+      "default": "./dist/release-entry-summary.js"
+    },
+    "./release-history": {
+      "types": "./dist/release-history.d.ts",
+      "default": "./dist/release-history.js"
+    },
+    "./pipeline-summary": {
+      "types": "./dist/pipeline-summary.d.ts",
+      "default": "./dist/pipeline-summary.js"
+    },
+    "./group-sections": {
+      "types": "./dist/group-sections.d.ts",
+      "default": "./dist/group-sections.js"
     }
   },
   "scripts": {

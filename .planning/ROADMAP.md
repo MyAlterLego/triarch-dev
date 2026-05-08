@@ -53,10 +53,10 @@
 
 - [x] **Phase 15: Operational Prework** — Repo, FAH backends, DNS, OAuth, secrets exist before app code ships (completed 2026-05-08)
 - [x] **Phase 16: Shared Package Extraction** — `@myalterlego/triarch-shared@0.1.0` published; admin re-exports; CI gate prevents schema drift (completed 2026-05-08)
-- [ ] **Phase 17: Hostname Guard Inventory** — Catalog admin's hostname checks; fail-closed middleware before second valid host appears
-- [ ] **Phase 18: Portal Auth Scaffolding** — NextAuth v4 with `__Host-` cookies, distinct secret, customer-membership signIn, staff "Switch to admin" callout
-- [ ] **Phase 19: Database Connectivity** — Portal `pg.Pool` + `portal_runtime` DML-only role + DDL permission-denied smoke test
-- [ ] **Phase 20: URL Centralization (admin)** — `src/lib/urls.ts` + ESLint guard; refactor admin Slack/email/release-note URL emitters BEFORE cutover
+- [x] **Phase 17: Hostname Guard Inventory** — Catalog admin's hostname checks; fail-closed middleware before second valid host appears (completed 2026-05-08)
+- [x] **Phase 18: Portal Auth Scaffolding** — NextAuth v4 with `__Host-` cookies, distinct secret, customer-membership signIn, staff "Switch to admin" callout (completed 2026-05-08)
+- [x] **Phase 19: Database Connectivity** — Portal `pg.Pool` + `portal_runtime` DML-only role + DDL permission-denied smoke test (completed 2026-05-08)
+- [x] **Phase 20: URL Centralization (admin)** — `src/lib/urls.ts` + ESLint guard; refactor admin Slack/email/release-note URL emitters BEFORE cutover (completed 2026-05-08)
 - [ ] **Phase 21: Release Page Port (Read)** — Lift-and-shift `/projects/[slug]/releases` + `/projects` list; 404 (not 403) for non-members; mobile-responsive read paths
 - [ ] **Phase 22: Release Page Port (Write)** — Approve/reject/feedback + branch preview swap; portal-owned `FAH_PROMOTER_SA_KEY`; HMAC-proxy to admin for GitHub dispatch
 - [ ] **Phase 23: Bug + Feature Customer Surface** — `/bugs/*` and `/features/*` list/detail/new routes (the two net-new primitives)
@@ -209,7 +209,9 @@
 **Success Criteria** (what must be TRUE):
   1. `.planning/host-guard-inventory.md` lists every `host ===`, `headers().get('host')`, and `x-forwarded-host` reference in admin codebase with file:line + current behavior
   2. Curling admin with `Host: portal.triarch.dev` or any non-`admin.triarch.dev`/`localhost:300x` value returns 404 (not the marketing fallback)
-**Plans**: TBD
+**Plans**: 2 plans
+- [x] 17-01-PLAN.md — Audit admin src/ and write `.planning/host-guard-inventory.md` (5 known sites cataloged + Phase 26 cleanup checklist) — HOST-01
+- [x] 17-02-PLAN.md — Harden src/proxy.ts to fail-closed 404 for unknown hosts + Vitest test (8 cases) + bump v2.9.0 → v2.9.1 — HOST-02
 
 ### Phase 18: Portal Auth Scaffolding
 **Goal**: Customer-only Google OAuth on portal with brand-isolated cookies and a staff "Switch to admin.triarch.dev" callout instead of a 401.
@@ -221,7 +223,12 @@
   3. A user with no `project_members` row attempting Google sign-in is rejected at signIn callback; a staff user is allowed in but sees the persistent "Switch to admin.triarch.dev" callout banner; a customer admin/viewer sees no banner
   4. Vitest grep-test confirms no portal source file references the OAuth `sub` claim (everywhere keys on `email`, AUTH-06)
   5. Unauthenticated visit to portal `/` redirects to `/login`; post-login, a 0-membership user lands on an empty state with "Contact your project admin" copy, a 1-membership user auto-redirects to that project, a 2+ membership user lands on `/projects`
-**Plans**: TBD
+**Plans**: 5 plans
+- [x] 18-01-PLAN.md — Portal Next.js scaffold (package.json, configs, apphosting yamls, ci-cd.yml, layout/page skeletons) — AUTH-01 baseline (cookie config plumbing)
+- [x] 18-02-PLAN.md — NextAuth core (src/lib/auth.ts with host-only cookies + STUB signIn, route handler, login page) — AUTH-01, AUTH-02
+- [x] 18-03-PLAN.md — signIn callback (real customer-membership rule via getCurrentUserContext) + StaffCallout banner in layout — AUTH-03, AUTH-04
+- [x] 18-04-PLAN.md — Post-login routing decision tree at src/app/page.tsx + /no-memberships + /projects stubs — AUTH-07
+- [x] 18-05-PLAN.md — Vitest tests (cookies shape, no-.sub grep guard, signIn callback unit tests) + portal v0.2.0 deploy — AUTH-05, AUTH-06
 
 ### Phase 19: Database Connectivity
 **Goal**: Portal connects to the same CockroachDB cluster via `pg.Pool` using a DML-only role; admin remains sole migration authority and rogue schema writes from portal are blocked at the database.
@@ -232,7 +239,9 @@
   2. CRDB role `portal_runtime` exists with SELECT/INSERT/UPDATE/DELETE on v2.2 tables and zero DDL grants; portal connects with this role
   3. Portal `package.json` contains no `db:push` or `db:generate` script — `grep -r "db:push" portal/package.json` returns no matches
   4. From portal runtime, executing `ALTER TABLE projects ADD COLUMN test text` returns CockroachDB permission denied (DB-04 smoke test)
-**Plans**: TBD
+**Plans**: 2 plans
+- [x] 19-01-PLAN.md — Provision CRDB portal_runtime role (DML-only) + GCP secret DATABASE_URL_PORTAL + secretAccessor IAM (DB-02, DB-04)
+- [x] 19-02-PLAN.md — Portal src/lib/db.ts re-export + db.test.ts smoke test + apphosting.yaml DATABASE_URL_PORTAL bind + portal v0.2.1 (DB-01, DB-03)
 
 ### Phase 20: URL Centralization (admin)
 **Goal**: Admin emits all customer-facing URLs through a single helper before portal ships, so the cutover redirect doesn't strand bookmarks in Slack messages or release notes.
@@ -242,7 +251,9 @@
   1. `src/lib/urls.ts` in admin exports `customerProjectUrl`, `customerReleaseUrl`, `customerBugUrl`, `customerFeatureUrl` reading `PORTAL_BASE_URL` (default `https://portal.triarch.dev`)
   2. All admin Slack message builders, OttoBot Block Kit constructors, GitHub release-note templates, and email templates call the helpers — `grep -r 'admin.triarch.dev/projects/' src/` returns matches only inside `src/lib/urls.ts`
   3. ESLint `no-restricted-syntax` rule blocks raw `https://admin.triarch.dev/projects/` literals outside `src/lib/urls.ts`; CI fails on any new violation
-**Plans**: TBD
+**Plans**: 2 plans
+- [x] 20-01-PLAN.md — src/lib/urls.ts (4 helpers + PORTAL_BASE_URL reader) + Vitest suite (6 cases) + admin v2.9.2 bump — URL-01/URL-02
+- [x] 20-02-PLAN.md — eslint.config.mjs no-restricted-syntax rule + apphosting.yaml PORTAL_BASE_URL binding — URL-03
 
 ### Phase 21: Release Page Port (Read)
 **Goal**: Customer release page and project list render on portal as a faithful lift-and-shift of v2.1, with non-member access returning 404 and read paths mobile-responsive.
@@ -343,11 +354,11 @@
 | 13. Branch Preview Swap | v2.1 | 3/3 | Complete    | 2026-05-08 |
 | 14. Customer Page Integration | v2.1 | 3/3 | Complete    | 2026-05-08 |
 | 15. Operational Prework | v2.2 | 5/5 | Complete    | 2026-05-08 |
-| 16. Shared Package Extraction | v2.2 | 4/4 | Complete   | 2026-05-08 |
-| 17. Hostname Guard Inventory | v2.2 | 0/0 | Not started | - |
-| 18. Portal Auth Scaffolding | v2.2 | 0/0 | Not started | - |
-| 19. Database Connectivity | v2.2 | 0/0 | Not started | - |
-| 20. URL Centralization | v2.2 | 0/0 | Not started | - |
+| 16. Shared Package Extraction | v2.2 | 4/4 | Complete    | 2026-05-08 |
+| 17. Hostname Guard Inventory | v2.2 | 2/2 | Complete    | 2026-05-08 |
+| 18. Portal Auth Scaffolding | v2.2 | 5/5 | Complete    | 2026-05-08 |
+| 19. Database Connectivity | v2.2 | 2/2 | Complete    | 2026-05-08 |
+| 20. URL Centralization | v2.2 | 2/2 | Complete    | 2026-05-08 |
 | 21. Release Page Port (Read) | v2.2 | 0/0 | Not started | - |
 | 22. Release Page Port (Write) | v2.2 | 0/0 | Not started | - |
 | 23. Bug + Feature Customer Surface | v2.2 | 0/0 | Not started | - |

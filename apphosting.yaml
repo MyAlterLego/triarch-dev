@@ -23,6 +23,11 @@ env:
     availability:
       - RUNTIME
 
+  - variable: PORTAL_BASE_URL
+    value: https://portal.triarch.dev
+    availability:
+      - RUNTIME
+
   # Secrets — set via: firebase apphosting:secrets:set <KEY>
   - variable: DATABASE_URL
     secret: DATABASE_URL

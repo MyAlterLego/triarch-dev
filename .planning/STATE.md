@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
-status: verifying
-stopped_at: Completed 16-04-PLAN.md — shared/v0.1.0 tagged and published to GitHub Packages; Phase 16 complete
-last_updated: "2026-05-08T17:15:47.448Z"
+status: planning
+stopped_at: Completed 20-url-centralization-admin 20-02-PLAN.md
+last_updated: "2026-05-08T19:16:02.652Z"
 progress:
   total_phases: 19
-  completed_phases: 9
-  total_plans: 32
-  completed_plans: 32
+  completed_phases: 13
+  total_plans: 43
+  completed_plans: 43
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,12 +19,12 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 16 — shared-package-extraction
+**Current focus:** Phase 20 — url-centralization-admin
 
 ## Current Position
 
-Phase: 16 (shared-package-extraction) — EXECUTING
-Plan: 4 of 4
+Phase: 21
+Plan: Not started
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -48,7 +48,7 @@ Plan: 4 of 4
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Phase complete — ready for verification
+**Status:** Ready to plan
 
 ## Performance Metrics
 
@@ -104,6 +104,31 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 16]: file: dep for @myalterlego/triarch-shared until 16-04 publishes 0.1.0 to GitHub Packages
 - [Phase 16-shared-package-extraction]: Workflow conclusion:failure was cosmetic-only (Summary step quoting bug); npm publish succeeded; fix committed in 164a7cd
 - [Phase 16-shared-package-extraction]: Package ESM dist targets bundler consumers (Next.js transpilePackages); bare Node.js require of cross-subpath imports is not a supported consumption pattern
+- [Phase 17-hostname-guard-inventory]: Inventory document at .planning/host-guard-inventory.md (NOT in phases/) — milestone-spanning reference used through Phase 26
+- [Phase 17-hostname-guard-inventory]: Re-grep at execution time confirmed planning-time site list is exhaustive — exactly 5 sites, no new sites found
+- [Phase 17-hostname-guard-inventory]: KNOWN_EXACT_HOSTS Set with exact match in proxy.ts prevents prefix-bypass attacks like admin-dev.triarch.dev.evil.com
+- [Phase 17-hostname-guard-inventory]: Cloud Run *.run.app hostname accepted only when x-forwarded-host independently validates to known admin host
+- [Phase 17-hostname-guard-inventory]: new NextResponse(null, {status: 404}) chosen for fail-closed response — no HTML body, lowest overhead
+- [Phase 18]: feat/portal-scaffold branch + squash-merge PR strategy to land first commit on main (satisfies workspace no-direct-to-main rule)
+- [Phase 18]: passWithNoTests: true in vitest.config.ts so zero-test portal scaffold exits 0
+- [Phase 18]: Portal vitest.config.ts omits packageTestRedirectPlugin — uses published triarch-shared from GitHub Packages, not file: dep
+- [Phase 18-portal-auth-scaffolding]: signIn callback STUBbed as Boolean(email) — full membership enforcement deferred to 18-03 by plan design
+- [Phase 18-portal-auth-scaffolding]: __Host- cookie prefix in production with NO domain attribute (host-only, Pitfall 1 guard) — AUTH-01 satisfied in code, live OAuth verification gated on OPS-04
+- [Phase 18-portal-auth-scaffolding]: Portal signIn fails closed on null getCurrentUserContext (no @triarchsecurity.com bypass unlike admin)
+- [Phase 18-portal-auth-scaffolding]: jwt callback re-queries DB for isStaff on first sign-in; getPortalSession() helper centralizes session reads
+- [Phase 18-portal-auth-scaffolding]: Staff with 0 memberships route to /no-memberships (StaffCallout handles guidance); null ctx from getCurrentUserContext also routes to /no-memberships as safe fallback
+- [Phase 18-portal-auth-scaffolding]: /projects/[slug]/releases intentionally absent — Phase 21 ships it; 1-membership users see 404 confirming routing fired
+- [Phase 18-portal-auth-scaffolding]: Source-text assertions (readFileSync) used for __Host- prefix test — more stable than dynamic import + ENV patch in Vitest jsdom
+- [Phase 18-portal-auth-scaffolding]: no-sub-claim.test.ts filters JSDoc comment lines to prevent false positives from auth.ts documentation
+- [Phase 19-database-connectivity]: portal_runtime provisioned on prod cluster (triarchdev-24092/triarch_dev) — admin's DATABASE_URL points to prod; portal shares same cluster
+- [Phase 19-database-connectivity]: DATABASE_URL_PORTAL in triarch-vault (mirrors PORTAL_NEXTAUTH_SECRET pattern); secretAccessor to firebase-app-hosting-compute SA + secretVersionManager to FAH service agent
+- [Phase 19]: Re-export pattern for portal db.ts — zero duplicate Pool, shared package owns construction
+- [Phase 19]: Single DATABASE_URL_PORTAL secret for portal prod + dev FAH backends (one portal_runtime CRDB role)
+- [Phase 19]: Drizzle wraps pg errors via .cause — test pattern: check error.cause.message for CRDB rejection propagation
+- [Phase 20-url-centralization-admin]: PORTAL_BASE_URL read at call time in getPortalBaseUrl() inside each helper — not at module load — so env mutation in tests and per-request overrides work
+- [Phase 20-url-centralization-admin]: No speculative helpers beyond four locked signatures — scout confirmed zero current customer-facing URL emission sites in admin
+- [Phase 20-url-centralization-admin]: Exempt eslint.config.mjs from no-restricted-syntax — selector strings contain the pattern as regex fragment causing false positives
+- [Phase 20-url-centralization-admin]: PORTAL_BASE_URL bound as plain value (not secret) in apphosting.yaml, RUNTIME-only availability
 
 ### Pending Todos
 
@@ -121,7 +146,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-08T17:15:47.446Z
-Stopped at: Completed 16-04-PLAN.md — shared/v0.1.0 tagged and published to GitHub Packages; Phase 16 complete
+Last session: 2026-05-08T19:13:24.721Z
+Stopped at: Completed 20-url-centralization-admin 20-02-PLAN.md
 Resume file: None
 Next action: `/gsd:execute-phase 15-05` (Google OAuth redirect URIs)
