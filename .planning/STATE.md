@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
 status: planning
-stopped_at: Completed 21-release-page-port-read 21-06-PLAN.md
-last_updated: "2026-05-08T20:08:07Z"
+stopped_at: Completed 21-release-page-port-read 21-06-PLAN.md (Phase 21 closed)
+last_updated: "2026-05-08T20:14:18.010Z"
 progress:
   total_phases: 19
-  completed_phases: 14
+  completed_phases: 13
   total_plans: 49
-  completed_plans: 49
+  completed_plans: 48
 ---
 
 # Triarch Dev Admin — Project State
@@ -23,8 +23,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 ## Current Position
 
-Phase: 21 (complete — Phase 22 next)
-Plan: 06 (complete — Phase 21 closed)
+Phase: 22
+Plan: Not started
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
