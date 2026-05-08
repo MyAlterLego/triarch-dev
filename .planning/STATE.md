@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
 status: executing
-stopped_at: Completed 15-01-PLAN.md — triarch-portal repo created and cloned locally
-last_updated: "2026-05-08T15:22:13.438Z"
+stopped_at: Completed 15-03-PLAN.md — PORTAL_NEXTAUTH_SECRET created in triarch-vault with FAH secretAccessor IAM
+last_updated: "2026-05-08T15:24:35.776Z"
 progress:
   total_phases: 19
   completed_phases: 7
   total_plans: 28
-  completed_plans: 24
+  completed_plans: 25
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 ## Current Position
 
 Phase: 15 (operational-prework) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -92,6 +92,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Roadmap-v2.2]: Customer email blast list at cutover derived from `project_members.email WHERE role IN ('admin','viewer')`
 - [Roadmap-v2.2]: Truth+Treason pilot reactivation deferred to v2.3 milestone candidate (was deferred from v2.0; out of v2.2 scope per Mike's directive)
 - [Phase 15-operational-prework]: Repo created in MyAlterLego org (private); ci-cd.yml deferred to Phase 16 scaffold; HTTPS clone used
+- [Phase 15-operational-prework]: PORTAL_NEXTAUTH_SECRET: distinct from admin NEXTAUTH_SECRET; secretAccessor to FAH compute SA only (mirrors admin pattern)
 
 ### Pending Todos
 
@@ -109,7 +110,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-08T15:22:13.436Z
-Stopped at: Completed 15-01-PLAN.md — triarch-portal repo created and cloned locally
+Last session: 2026-05-08T15:24:35.775Z
+Stopped at: Completed 15-03-PLAN.md — PORTAL_NEXTAUTH_SECRET created in triarch-vault with FAH secretAccessor IAM
 Resume file: None
 Next action: `/gsd:plan-phase 15`
