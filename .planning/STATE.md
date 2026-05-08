@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
 status: executing
-stopped_at: Completed 08-01-PLAN.md — composite index release_logs_project_env_deployed_idx
-last_updated: "2026-05-08T02:42:03.913Z"
+stopped_at: Completed 08-02-PLAN.md — getProjectPipelineSummaries helper with 10/10 tests GREEN
+last_updated: "2026-05-08T02:43:39.782Z"
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-07 — v2.1 milestone started)
 ## Current Position
 
 Phase: 08 (Admin Home Pipeline Visibility) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Active Milestone: v2.1 — Pipeline UI
 
@@ -78,6 +78,9 @@ v2.1 decisions captured at roadmap creation:
 - [Roadmap-2026-05-07]: LINK-07 (commit message sanitization) ships with commit parser (Phase 11) — parser and sanitizer are one unit, never separated
 - [Roadmap-2026-05-07]: Requirements count discrepancy: REQUIREMENTS.md header says 27, actual count by enumeration is 29 (6+5+2+7+6+3). All 29 enumerated requirements are mapped.
 - [Phase 08]: Composite index on release_logs uses index() non-unique with deployedAt.desc() — separate from uniqueIndex; journal backfilled to resolve pre-existing 0012_promote_attempts inconsistency
+- [Phase 08]: Raw SQL (db.execute) required for DISTINCT ON query — Drizzle typed builder lacks native DISTINCT ON support per Pitfall 8
+- [Phase 08]: parity vs inverted state uses version comparison: same version = parity (just promoted), different version AND prod newer = inverted (hotfix)
+- [Phase 08]: What-changed uses JS-side filter (safer alt): fetch all dev rows via Drizzle typed builder, filter by per-project prod cutoff in JS
 
 ### Pending Todos
 
@@ -92,7 +95,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T02:42:03.911Z
-Stopped at: Completed 08-01-PLAN.md — composite index release_logs_project_env_deployed_idx
+Last session: 2026-05-08T02:43:39.780Z
+Stopped at: Completed 08-02-PLAN.md — getProjectPipelineSummaries helper with 10/10 tests GREEN
 Resume file: None
 Next action: `/gsd:plan-phase 8`

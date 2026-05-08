@@ -60,7 +60,7 @@
   5. Each project tile shows a compact one-liner what-changed summary ("4 entries since prod: 2 bug fixes, 1 feature, 1 other") when dev is ahead of prod; no summary shown when dev and prod are at the same version
 **Plans**: 3 plans
 - [x] 08-01-PLAN.md — Composite index migration on release_logs (project, env, deployed_at DESC) — Pitfall 8 guard
-- [ ] 08-02-PLAN.md — getProjectPipelineSummaries helper with DISTINCT ON query, type bucketing, parity/inversion logic, Vitest suite
+- [x] 08-02-PLAN.md — getProjectPipelineSummaries helper with DISTINCT ON query, type bucketing, parity/inversion logic, Vitest suite
 - [ ] 08-03-PLAN.md — Admin page tile rendering: Link wrap, prod/dev rows, pending pill, what-changed oneliner, version bump
 
 ### Phase 9: Per-Project Pipeline Page and Web-UI Promote
@@ -153,7 +153,7 @@
 | 6. promoteAndAudit Rewrite | v2.0 | 4/4 | Complete | 2026-05-05 |
 | 7. OttoBot Dispatcher Hardening | v2.0 | 6/6 | Complete | 2026-05-05 |
 | 7.5. Dev Cluster + Admin Dev Backend | v2.0 | 5/5 | Complete | 2026-05-05 |
-| 8. Admin Home Pipeline Visibility | v2.1 | 1/3 | In Progress|  |
+| 8. Admin Home Pipeline Visibility | v2.1 | 2/3 | In Progress|  |
 | 9. Per-Project Pipeline Page and Web-UI Promote | v2.1 | 0/TBD | Not started | - |
 | 10. Schema Gate | v2.1 | 0/TBD | Not started | - |
 | 11. Commit Parser and Tracker Linkage Authoring | v2.1 | 0/TBD | Not started | - |
