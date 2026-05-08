@@ -77,8 +77,8 @@ Lift-and-shift the v2.1 customer release page to portal as read-first; mutations
 Customer write paths: approve, reject, feedback, branch preview swap, plus Slack/GitHub integration.
 
 - [x] **WRITE-01**: Portal API routes `POST /api/projects/[slug]/releases/[releaseId]/approve` and `/reject` and `/feedback` (and DELETE feedback) call the same `promoteAndAudit` flow + write `release_approvals.actor_source='portal'`
-- [ ] **WRITE-02**: Portal API route `POST /api/projects/[slug]/branch/preview` and `GET /status` mirror the v2.1 admin endpoints (atomic lock, branch regex guard, 8-min timeout, branch-guarded auto-clear)
-- [ ] **WRITE-03**: Portal binding for `FAH_PROMOTER_SA_KEY` secret in its apphosting.yaml; FAH compute SA + service-agent IAM bindings on the secret (matches admin's pattern)
+- [x] **WRITE-02**: Portal API route `POST /api/projects/[slug]/branch/preview` and `GET /status` mirror the v2.1 admin endpoints (atomic lock, branch regex guard, 8-min timeout, branch-guarded auto-clear)
+- [x] **WRITE-03**: Portal binding for `FAH_PROMOTER_SA_KEY` secret in its apphosting.yaml; FAH compute SA + service-agent IAM bindings on the secret (matches admin's pattern)
 - [x] **WRITE-04**: Portal posts customer-side Slack notifications via `PORTAL_SLACK_BOT_TOKEN` directly; for GitHub workflow dispatch (promote-branch.yml), portal calls admin via internal HMAC-signed POST `/api/internal/dispatch` (admin retains GitHub App key custody)
 - [ ] **WRITE-05**: Two-step approve UX, conflict badge, branch lock disable propagation — all preserved from v2.1
 
@@ -197,8 +197,8 @@ Updated by roadmapper during phase mapping.
 | PORTAL-03 | Phase 21 | Complete |
 | PORTAL-04 | Phase 21 | Complete |
 | WRITE-01 | Phase 22 | Complete |
-| WRITE-02 | Phase 22 | Pending |
-| WRITE-03 | Phase 22 | Pending |
+| WRITE-02 | Phase 22 | Complete |
+| WRITE-03 | Phase 22 | Complete |
 | WRITE-04 | Phase 22 | Complete |
 | WRITE-05 | Phase 22 | Pending |
 | BUG-01 | Phase 23 | Pending |

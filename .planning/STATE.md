@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
 status: executing
-stopped_at: Completed 22-release-page-port-write 22-02-PLAN.md (PRs open, awaiting Mike's review)
-last_updated: "2026-05-08T21:58:17.038Z"
+stopped_at: Completed 22-release-page-port-write 22-03-PLAN.md (PRs open, awaiting Mike's review)
+last_updated: "2026-05-08T22:35:00.000Z"
 progress:
   total_phases: 19
   completed_phases: 13
   total_plans: 54
-  completed_plans: 50
+  completed_plans: 51
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 ## Current Position
 
 Phase: 22 (release-page-port-write) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -142,6 +142,9 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 22]: WRITE-04 portal side: dispatchPromotion is fire-and-forget; failure logged but does NOT roll back the approval (matches admin's Slack-notify pattern)
 - [Phase 22]: Canonical rawBody = JSON.stringify(body, Object.keys(body).sort()) — must match signRequest's internal canonicalize byte-for-byte for admin's verifyRequest to succeed
 - [Phase 22]: Slack notification + UI un-stub deferred to 22-04 — this plan ships the dispatch path correctly first; data + dispatch are the WRITE-01 critical path
+- [Phase 22-03]: WRITE-02 + WRITE-03 — portal-owned FAH_PROMOTER_SA_KEY end-to-end (no admin proxy on branch swap path) per CONTEXT.md D-04 lower-latency / lower-blast-radius verdict
+- [Phase 22-03]: Verbatim port + auth swap — fah-rollout.ts copied from admin with zero logic deltas; preview routes copied with only getServerSession→getPortalSession + getCurrentUserContext({user:{email}}) substitution
+- [Phase 22-03]: FAH_PROMOTER_SA_KEY explicitly re-bound on apphosting.dev.yaml (not relying on overlay inheritance) so grep finds the binding in both files
 
 ### Pending Todos
 
@@ -159,7 +162,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-08T21:58:17.036Z
-Stopped at: Completed 22-release-page-port-write 22-02-PLAN.md (PRs open, awaiting Mike's review)
+Last session: 2026-05-08T22:35:00.000Z
+Stopped at: Completed 22-release-page-port-write 22-03-PLAN.md (PRs open, awaiting Mike's review)
 Resume file: None
-Next action: Research Phase 22 (Release Page Port — Write) via /gsd:research-phase 22 before planning; HMAC-proxy operational mechanics required
+Next action: Execute 22-04 (Portal Slack notifications + un-stub ReleasesClient + BranchPreviewClient handlers) once 22-03 PRs merged and portal-dev redeploys
