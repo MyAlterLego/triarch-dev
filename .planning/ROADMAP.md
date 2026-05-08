@@ -209,7 +209,9 @@
 **Success Criteria** (what must be TRUE):
   1. `.planning/host-guard-inventory.md` lists every `host ===`, `headers().get('host')`, and `x-forwarded-host` reference in admin codebase with file:line + current behavior
   2. Curling admin with `Host: portal.triarch.dev` or any non-`admin.triarch.dev`/`localhost:300x` value returns 404 (not the marketing fallback)
-**Plans**: TBD
+**Plans**: 2 plans
+- [x] 17-01-PLAN.md — Audit admin src/ and write `.planning/host-guard-inventory.md` (5 known sites cataloged + Phase 26 cleanup checklist) — HOST-01
+- [ ] 17-02-PLAN.md — Harden src/proxy.ts to fail-closed 404 for unknown hosts + Vitest test (8 cases) + bump v2.9.0 → v2.9.1 — HOST-02
 
 ### Phase 18: Portal Auth Scaffolding
 **Goal**: Customer-only Google OAuth on portal with brand-isolated cookies and a staff "Switch to admin.triarch.dev" callout instead of a 401.
@@ -344,7 +346,7 @@
 | 14. Customer Page Integration | v2.1 | 3/3 | Complete    | 2026-05-08 |
 | 15. Operational Prework | v2.2 | 5/5 | Complete    | 2026-05-08 |
 | 16. Shared Package Extraction | v2.2 | 4/4 | Complete    | 2026-05-08 |
-| 17. Hostname Guard Inventory | v2.2 | 0/0 | Not started | - |
+| 17. Hostname Guard Inventory | v2.2 | 1/2 | In Progress|  |
 | 18. Portal Auth Scaffolding | v2.2 | 0/0 | Not started | - |
 | 19. Database Connectivity | v2.2 | 0/0 | Not started | - |
 | 20. URL Centralization | v2.2 | 0/0 | Not started | - |
