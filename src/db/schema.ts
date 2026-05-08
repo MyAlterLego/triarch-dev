@@ -41,6 +41,9 @@ export const projects = pgTable('projects', {
   // API key for ingest endpoints
   apiKey: varchar('api_key', { length: 128 }),
 
+  // Slack integration — channel for release-approvals notifications (project-scoped)
+  slackChannelId: varchar('slack_channel_id', { length: 64 }),
+
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

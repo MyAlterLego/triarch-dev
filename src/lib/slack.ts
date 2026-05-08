@@ -74,6 +74,40 @@ export async function postSlackThreadedReply(input: {
 }
 
 /**
+ * Post a standalone (non-threaded) message to a Slack channel.
+ * Used for web-origin promotions that have no existing Slack thread to reply to.
+ * Graceful no-op when SLACK_BOT_TOKEN is missing.
+ */
+export async function postSlackChannelMessage(input: {
+  channel: string;
+  text: string;
+  blocks?: unknown[];
+}): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  const token = await getBotToken();
+  if (!token) {
+    console.warn('[slack] SLACK_BOT_TOKEN not set - skipping channel message');
+    return { ok: false, error: 'no_token' };
+  }
+  const res = await fetch('https://slack.com/api/chat.postMessage', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      channel: input.channel,
+      text: input.text,
+      ...(input.blocks ? { blocks: input.blocks } : {}),
+    }),
+  });
+  const data = await res.json() as { ok: boolean; ts?: string; error?: string };
+  if (!data.ok) {
+    console.warn(`[slack] channel message failed: ${data.error}`);
+  }
+  return data;
+}
+
+/**
  * Update an existing Slack message in place (chat.update).
  * Used to amend the original "Approved" message when a downstream dispatch fails (Phase 4 CONTEXT.md Area 3).
  * Graceful no-op when SLACK_BOT_TOKEN is missing.
