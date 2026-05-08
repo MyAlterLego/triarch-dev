@@ -209,7 +209,7 @@ export default async function AdminDashboard() {
           {stats.projectHealth.map((p) => (
             <Link
               key={p.key}
-              href={`/projects/${p.key}/releases`}
+              href={`/admin/modules/pipeline/${p.key}`}
               className="relative block p-4 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900/80 transition-colors"
             >
               {/* PIPE-02: pending approval pill — top-right corner; absent when count is 0 */}
