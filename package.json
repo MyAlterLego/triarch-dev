@@ -1,6 +1,6 @@
 {
   "name": "triarch-dev",
-  "version": "2.8.1",
+  "version": "2.9.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@myalterlego/secrets": "^0.1.0",
+    "@myalterlego/triarch-shared": "file:./packages/triarch-shared",
     "@myalterlego/shared-ui": "^1.2.0",
     "drizzle-orm": "^0.45.2",
     "jose": "^5",
