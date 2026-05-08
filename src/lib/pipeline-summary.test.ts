@@ -202,24 +202,25 @@ describe('getProjectPipelineSummaries', () => {
 
     // Dev rows for what-changed: 4 rows after prod timestamp, with type breakdown
     // 2 with type='fix', 1 with type='feature', 1 with no type (→ 'other')
+    // Note: Drizzle select returns camelCase column names (deployedAt, releasedAt)
     makeDrizzleSelectMock([
       {
         project: 'tmi',
         entries: [{ type: 'fix' }, { type: 'fix' }],
-        deployed_at: '2026-05-02T00:00:00.000Z',
-        released_at: '2026-05-02T00:00:00.000Z',
+        deployedAt: '2026-05-02T00:00:00.000Z',
+        releasedAt: '2026-05-02T00:00:00.000Z',
       },
       {
         project: 'tmi',
         entries: [{ type: 'feature' }],
-        deployed_at: '2026-05-03T00:00:00.000Z',
-        released_at: '2026-05-03T00:00:00.000Z',
+        deployedAt: '2026-05-03T00:00:00.000Z',
+        releasedAt: '2026-05-03T00:00:00.000Z',
       },
       {
         project: 'tmi',
         entries: [{}], // no type field → 'other'
-        deployed_at: '2026-05-04T00:00:00.000Z',
-        released_at: '2026-05-04T00:00:00.000Z',
+        deployedAt: '2026-05-04T00:00:00.000Z',
+        releasedAt: '2026-05-04T00:00:00.000Z',
       },
     ]);
 
