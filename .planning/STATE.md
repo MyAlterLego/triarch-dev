@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
 status: executing
-stopped_at: "Completed 18-02-PLAN.md — NextAuth core wired in portal (PR #2 merged a184e21)"
-last_updated: "2026-05-08T18:14:02.702Z"
+stopped_at: "Completed 18-03-PLAN.md — real signIn membership rule + StaffCallout banner (PR #3 merged 5fbceb9)"
+last_updated: "2026-05-08T18:19:02.455Z"
 progress:
   total_phases: 19
   completed_phases: 10
   total_plans: 39
-  completed_plans: 36
+  completed_plans: 37
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 ## Current Position
 
 Phase: 18 (portal-auth-scaffolding) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -114,6 +114,8 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 18]: Portal vitest.config.ts omits packageTestRedirectPlugin — uses published triarch-shared from GitHub Packages, not file: dep
 - [Phase 18-portal-auth-scaffolding]: signIn callback STUBbed as Boolean(email) — full membership enforcement deferred to 18-03 by plan design
 - [Phase 18-portal-auth-scaffolding]: __Host- cookie prefix in production with NO domain attribute (host-only, Pitfall 1 guard) — AUTH-01 satisfied in code, live OAuth verification gated on OPS-04
+- [Phase 18-portal-auth-scaffolding]: Portal signIn fails closed on null getCurrentUserContext (no @triarchsecurity.com bypass unlike admin)
+- [Phase 18-portal-auth-scaffolding]: jwt callback re-queries DB for isStaff on first sign-in; getPortalSession() helper centralizes session reads
 
 ### Pending Todos
 
@@ -131,7 +133,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-08T18:14:02.700Z
-Stopped at: Completed 18-02-PLAN.md — NextAuth core wired in portal (PR #2 merged a184e21)
+Last session: 2026-05-08T18:19:02.453Z
+Stopped at: Completed 18-03-PLAN.md — real signIn membership rule + StaffCallout banner (PR #3 merged 5fbceb9)
 Resume file: None
 Next action: `/gsd:execute-phase 15-05` (Google OAuth redirect URIs)

@@ -226,7 +226,7 @@
 **Plans**: 5 plans
 - [x] 18-01-PLAN.md — Portal Next.js scaffold (package.json, configs, apphosting yamls, ci-cd.yml, layout/page skeletons) — AUTH-01 baseline (cookie config plumbing)
 - [x] 18-02-PLAN.md — NextAuth core (src/lib/auth.ts with host-only cookies + STUB signIn, route handler, login page) — AUTH-01, AUTH-02
-- [ ] 18-03-PLAN.md — signIn callback (real customer-membership rule via getCurrentUserContext) + StaffCallout banner in layout — AUTH-03, AUTH-04
+- [x] 18-03-PLAN.md — signIn callback (real customer-membership rule via getCurrentUserContext) + StaffCallout banner in layout — AUTH-03, AUTH-04
 - [ ] 18-04-PLAN.md — Post-login routing decision tree at src/app/page.tsx + /no-memberships + /projects stubs — AUTH-07
 - [ ] 18-05-PLAN.md — Vitest tests (cookies shape, no-.sub grep guard, signIn callback unit tests) + portal v0.2.0 deploy — AUTH-05, AUTH-06
 
@@ -352,7 +352,7 @@
 | 15. Operational Prework | v2.2 | 5/5 | Complete    | 2026-05-08 |
 | 16. Shared Package Extraction | v2.2 | 4/4 | Complete    | 2026-05-08 |
 | 17. Hostname Guard Inventory | v2.2 | 2/2 | Complete    | 2026-05-08 |
-| 18. Portal Auth Scaffolding | v2.2 | 2/5 | In Progress|  |
+| 18. Portal Auth Scaffolding | v2.2 | 3/5 | In Progress|  |
 | 19. Database Connectivity | v2.2 | 0/0 | Not started | - |
 | 20. URL Centralization | v2.2 | 0/0 | Not started | - |
 | 21. Release Page Port (Read) | v2.2 | 0/0 | Not started | - |
