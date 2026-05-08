@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
-status: executing
-stopped_at: Completed 12-02-PLAN.md — bug detail page + ReleasedInSidebar + list link wrap
-last_updated: "2026-05-08T05:39:31.011Z"
+status: verifying
+stopped_at: Completed 12-03-PLAN.md — feature detail page + list link wrap (Phase 12 complete)
+last_updated: "2026-05-08T05:44:25.317Z"
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 17
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Triarch Dev Admin — Project State
@@ -43,7 +43,7 @@ Plan: 3 of 3
 | 14 — Customer Page Integration | Filter chips, what's-changed card, branch swap in section headers | CUST-01..03, DIFF-02 | Not started |
 
 **Requirements:** 29 total, all mapped
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 
 ## Performance Metrics
 
@@ -115,6 +115,8 @@ v2.1 decisions captured at roadmap creation:
 - [Phase 12]: ReleasedInSidebar.tsx is a shared server component with zero bug-specific logic — 12-03 imports it unchanged
 - [Phase 12]: Version links use ?release= query param to pipeline page — informational now, anchor-scroll wirable later
 - [Phase 12]: stopPropagation on Link title in bug list — navigates to detail page without triggering expand toggle
+- [Phase 12-bug-and-feature-detail-pages]: ReleasedInSidebar reused unchanged from 12-02 for feature detail — zero modifications; 12-02 designed it as shared component
+- [Phase 12-bug-and-feature-detail-pages]: jsonb != null check (not truthy) prevents Drizzle unknown ReactNode TypeScript error in feature detail page
 
 ### Pending Todos
 
@@ -129,7 +131,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T05:39:31.009Z
-Stopped at: Completed 12-02-PLAN.md — bug detail page + ReleasedInSidebar + list link wrap
+Last session: 2026-05-08T05:44:25.316Z
+Stopped at: Completed 12-03-PLAN.md — feature detail page + list link wrap (Phase 12 complete)
 Resume file: None
 Next action: `/gsd:plan-phase 8`
