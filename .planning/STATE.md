@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
 status: executing
-stopped_at: Completed 13-01-PLAN.md — FAH rollout lib + jose/swr deps (TDD)
-last_updated: "2026-05-08T06:08:42.448Z"
+stopped_at: Completed 13-03-PLAN.md — BranchPreviewClient + ReleasesClient integration + v2.7.0
+last_updated: "2026-05-08T06:31:26.552Z"
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 20
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-07 — v2.1 milestone started)
 ## Current Position
 
 Phase: 13 (Branch Preview Swap) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Active Milestone: v2.1 — Pipeline UI
 
@@ -120,6 +120,9 @@ v2.1 decisions captured at roadmap creation:
 - [Phase 13]: jose v5 added as direct dep alongside next-auth transitive jose v4: npm hoists both; no API conflict
 - [Phase 13]: branch regex /^[a-zA-Z0-9\/_.-]{1,256}$/ blocks shell metacharacters before any fetch call in createFahRollout
 - [Phase 13]: @vitest-environment node on fah-rollout.test.ts: jose v5 needs TextEncoder which jsdom lacks
+- [Phase 13]: Banner uses violet-400 spinner + bg-violet-500/10 halo per DESIGN-REFERENCE.md active/in-flight pattern (overrides plan's amber suggestion)
+- [Phase 13]: refreshInterval as function form ensures terminal pause applies immediately after first terminal response
+- [Phase 13]: branchPreviewEnabled optional with default false — additive prop, existing ReleasesClient tests unchanged
 
 ### Pending Todos
 
@@ -134,7 +137,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T06:08:42.446Z
-Stopped at: Completed 13-01-PLAN.md — FAH rollout lib + jose/swr deps (TDD)
+Last session: 2026-05-08T06:31:26.550Z
+Stopped at: Completed 13-03-PLAN.md — BranchPreviewClient + ReleasesClient integration + v2.7.0
 Resume file: None
 Next action: `/gsd:plan-phase 8`

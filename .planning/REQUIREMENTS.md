@@ -44,10 +44,10 @@
 ### Branch Preview (PREV)
 
 - [x] **PREV-01**: System has `projects.preview_branch_locked` (text, nullable) and `preview_branch_locked_at` (timestamp with timezone, nullable) columns to coordinate branch swap concurrency
-- [ ] **PREV-02**: Customer admin can click "Preview this branch" next to any RC on `/projects/<slug>/releases`
+- [x] **PREV-02**: Customer admin can click "Preview this branch" next to any RC on `/projects/<slug>/releases`
 - [x] **PREV-03**: Branch swap calls Firebase App Hosting programmatic rollout API to deploy the selected branch onto the project's existing dev backend (e.g. `truthtreason-dev`, `tmi-dev`, `darksouls-dev`, etc.)
-- [ ] **PREV-04**: While swap is in flight, all RC rows on the page show "branch X currently previewing — set N minutes ago by user@email" banner; competing Preview buttons disabled with tooltip
-- [ ] **PREV-05**: System polls rollout state via SWR at 5-second interval until terminal (SUCCEEDED / FAILED); 8-minute hard timeout
+- [x] **PREV-04**: While swap is in flight, all RC rows on the page show "branch X currently previewing — set N minutes ago by user@email" banner; competing Preview buttons disabled with tooltip
+- [x] **PREV-05**: System polls rollout state via SWR at 5-second interval until terminal (SUCCEEDED / FAILED); 8-minute hard timeout
 - [ ] **PREV-06**: Preview lock auto-clears on rollout terminal state (success or failure); FAILED state surfaces error inline with link to FAH console
 
 ### Customer Page Integration (CUST)
@@ -119,10 +119,10 @@ Populated by `gsd-roadmapper` 2026-05-07.
 | LINK-07 | Phase 11 — Commit Parser and Tracker Linkage Authoring | Complete |
 | LINK-05 | Phase 12 — Bug and Feature Detail Pages | Complete |
 | LINK-06 | Phase 12 — Bug and Feature Detail Pages | Complete |
-| PREV-02 | Phase 13 — Branch Preview Swap | Pending |
+| PREV-02 | Phase 13 — Branch Preview Swap | Complete |
 | PREV-03 | Phase 13 — Branch Preview Swap | Complete |
-| PREV-04 | Phase 13 — Branch Preview Swap | Pending |
-| PREV-05 | Phase 13 — Branch Preview Swap | Pending |
+| PREV-04 | Phase 13 — Branch Preview Swap | Complete |
+| PREV-05 | Phase 13 — Branch Preview Swap | Complete |
 | PREV-06 | Phase 13 — Branch Preview Swap | Pending |
 | CUST-01 | Phase 14 — Customer Page Integration | Pending |
 | CUST-02 | Phase 14 — Customer Page Integration | Pending |

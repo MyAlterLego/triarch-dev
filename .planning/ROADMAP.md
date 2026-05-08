@@ -43,7 +43,7 @@
 - [x] **Phase 10: Schema Gate** - `release_log_links` join table, `projects` branch-preview lock columns, Drizzle schema + migration verified (completed 2026-05-08)
 - [x] **Phase 11: Commit Parser and Tracker Linkage Authoring** - `commit-parser.ts`, ingest auto-stamp, manual add/remove UI in release-logs (completed 2026-05-08)
 - [x] **Phase 12: Bug and Feature Detail Pages** - `/admin/modules/bug-reports/[id]`, `/admin/modules/feature-requests/[id]`, "Released in" sidebar section (completed 2026-05-08)
-- [ ] **Phase 13: Branch Preview Swap** - `BranchPreviewClient`, `/api/projects/[slug]/branch/preview`, SWR polling, DB lock lifecycle (3 plans, research resolved)
+- [x] **Phase 13: Branch Preview Swap** - `BranchPreviewClient`, `/api/projects/[slug]/branch/preview`, SWR polling, DB lock lifecycle (3 plans, research resolved) (completed 2026-05-08)
 - [ ] **Phase 14: Customer Page Integration** - Entry type filter chips, "What's coming to prod" summary card, branch swap UI in section headers
 
 ## Phase Details
@@ -135,7 +135,7 @@
 **Plans**: 3 plans
 - [x] 13-01-PLAN.md — TDD fah-rollout lib (jose JWT mint + FAH REST client) + add swr/jose deps (PREV-03 lib layer)
 - [x] 13-02-PLAN.md — POST swap route (atomic UPDATE-with-WHERE-IS-NULL lock) + GET status route (8-min timeout + branch-guarded auto-clear) (PREV-03/05/06)
-- [ ] 13-03-PLAN.md — BranchPreviewClient client island (SWR polling) + ReleasesClient integration + human-verify checkpoint + v2.7.0 (PREV-02/04/05)
+- [x] 13-03-PLAN.md — BranchPreviewClient client island (SWR polling) + ReleasesClient integration + human-verify checkpoint + v2.7.0 (PREV-02/04/05)
 
 ### Phase 14: Customer Page Integration
 **Goal**: The customer release page surfaces all the pipeline intelligence built in Phases 8–13 in a form customers can use — filterable by entry type, with a "what's coming to prod" summary and branch swap controls directly in the branch section headers
@@ -174,5 +174,5 @@
 | 10. Schema Gate | v2.1 | 1/1 | Complete    | 2026-05-08 |
 | 11. Commit Parser and Tracker Linkage Authoring | v2.1 | 5/5 | Complete    | 2026-05-08 |
 | 12. Bug and Feature Detail Pages | v2.1 | 3/3 | Complete    | 2026-05-08 |
-| 13. Branch Preview Swap | v2.1 | 2/3 | In Progress|  |
+| 13. Branch Preview Swap | v2.1 | 3/3 | Complete   | 2026-05-08 |
 | 14. Customer Page Integration | v2.1 | 0/TBD | Not started | - |
