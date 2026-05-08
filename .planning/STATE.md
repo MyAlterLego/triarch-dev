@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
-status: verifying
+status: planning
 stopped_at: Completed 11-05-PLAN.md — LinksClient mount-fetch hydration gap closure (LINK-04 chip-visibility), Phase 11 fully closed
-last_updated: "2026-05-08T05:17:15.579Z"
+last_updated: "2026-05-08T05:20:59.488Z"
 progress:
   total_phases: 7
   completed_phases: 4
@@ -23,8 +23,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-07 — v2.1 milestone started)
 
 ## Current Position
 
-Phase: 11 (Commit Parser and Tracker Linkage Authoring) — EXECUTING
-Plan: 4 of 4
+Phase: 12
+Plan: Not started
 
 ## Active Milestone: v2.1 — Pipeline UI
 
@@ -43,7 +43,7 @@ Plan: 4 of 4
 | 14 — Customer Page Integration | Filter chips, what's-changed card, branch swap in section headers | CUST-01..03, DIFF-02 | Not started |
 
 **Requirements:** 29 total, all mapped
-**Status:** Phase complete — ready for verification
+**Status:** Ready to plan
 
 ## Performance Metrics
 
