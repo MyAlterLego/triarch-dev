@@ -180,7 +180,12 @@
   3. `https://portal.triarch.dev` resolves via GoDaddy DNS and returns 200-OK with valid TLS
   4. Google OAuth client `Triarch Dev` accepts callbacks at both `portal.triarch.dev` and `localhost:3002` redirect URIs
   5. `PORTAL_NEXTAUTH_SECRET` exists in `triarch-vault` with secretAccessor binding granted to both portal runtime SAs
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 15-01-PLAN.md — Create MyAlterLego/triarch-portal repo + local clone (OPS-01)
+- [ ] 15-02-PLAN.md — GoDaddy DNS for portal.triarch.dev (OPS-03)
+- [ ] 15-03-PLAN.md — PORTAL_NEXTAUTH_SECRET in triarch-vault + secretAccessor IAM (OPS-05)
+- [ ] 15-04-PLAN.md — Firebase App Hosting backends portal-prod + portal-dev (OPS-02)
+- [ ] 15-05-PLAN.md — Google OAuth client redirect URI updates (portal prod + localhost:3002) (OPS-04)
 
 ### Phase 16: Shared Package Extraction
 **Goal**: Drizzle schema and shared helpers extracted into a private GitHub Packages npm module that both apps consume; admin remains migration authority.
