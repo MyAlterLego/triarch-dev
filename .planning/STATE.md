@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Pipeline UI
-status: executing
-stopped_at: Completed 11-03-PLAN.md — link-stamper + ingest hook (LINK-02/LINK-03), 18 tests GREEN
-last_updated: "2026-05-08T04:53:18.785Z"
+status: verifying
+stopped_at: Completed 11-04-PLAN.md — link CRUD API + LinksClient + Slack sanitization (LINK-04/LINK-07), Phase 11 complete
+last_updated: "2026-05-08T05:01:27.839Z"
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Triarch Dev Admin — Project State
@@ -43,7 +43,7 @@ Plan: 4 of 4
 | 14 — Customer Page Integration | Filter chips, what's-changed card, branch swap in section headers | CUST-01..03, DIFF-02 | Not started |
 
 **Requirements:** 29 total, all mapped
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 
 ## Performance Metrics
 
@@ -107,6 +107,8 @@ v2.1 decisions captured at roadmap creation:
 - [Phase 11]: inArray for batch bug/feature validation — never per-ID queries (Pitfall 5 false-positive guard + performance)
 - [Phase 11]: External #N refs dropped silently when projects.github_repo is null — no phantom links
 - [Phase 11]: Stamper is forgiving internally (try/catch) AND wrapped at call site in route — two layers for defense-in-depth
+- [Phase 11]: UUID-paste fallback for LinksClient picker: bug/feature typeahead search endpoints not yet built; picker uses direct UUID paste with placeholder text — POST API contract unchanged so future plan can add typeahead without route changes
+- [Phase 11]: sanitizeBlockKitBlocks helper added to slack.ts: walks block.text.text and fields[].text — covers all Block Kit patterns in current codebase; sanitize-at-chokepoint pattern means future callers cannot bypass sanitization
 
 ### Pending Todos
 
@@ -121,7 +123,7 @@ v2.1 decisions captured at roadmap creation:
 
 ## Session Continuity
 
-Last session: 2026-05-08T04:53:18.783Z
-Stopped at: Completed 11-03-PLAN.md — link-stamper + ingest hook (LINK-02/LINK-03), 18 tests GREEN
+Last session: 2026-05-08T05:01:27.837Z
+Stopped at: Completed 11-04-PLAN.md — link CRUD API + LinksClient + Slack sanitization (LINK-04/LINK-07), Phase 11 complete
 Resume file: None
 Next action: `/gsd:plan-phase 8`

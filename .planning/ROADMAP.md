@@ -41,7 +41,7 @@
 - [x] **Phase 8: Admin Home Pipeline Visibility** - Per-project prod/dev versions, pending-approval count, last-deploy timestamp, clickable tiles, compact what-changed summary (completed 2026-05-08)
 - [ ] **Phase 9: Per-Project Pipeline Page and Web-UI Promote** - `/admin/modules/pipeline/[slug]`, PromoteButton island, promote API route, expanded what-changed view, double-promote guard
 - [x] **Phase 10: Schema Gate** - `release_log_links` join table, `projects` branch-preview lock columns, Drizzle schema + migration verified (completed 2026-05-08)
-- [ ] **Phase 11: Commit Parser and Tracker Linkage Authoring** - `commit-parser.ts`, ingest auto-stamp, manual add/remove UI in release-logs
+- [x] **Phase 11: Commit Parser and Tracker Linkage Authoring** - `commit-parser.ts`, ingest auto-stamp, manual add/remove UI in release-logs (completed 2026-05-08)
 - [ ] **Phase 12: Bug and Feature Detail Pages** - `/admin/modules/bug-reports/[id]`, `/admin/modules/feature-requests/[id]`, "Released in" sidebar section
 - [ ] **Phase 13: Branch Preview Swap** ⚠️ research_required - `BranchSwapClient`, `/api/projects/[slug]/branch/preview`, SWR polling, DB lock lifecycle
 - [ ] **Phase 14: Customer Page Integration** - Entry type filter chips, "What's coming to prod" summary card, branch swap UI in section headers
@@ -105,7 +105,7 @@
 - [x] 11-01-PLAN.md — TDD commit-parser regex (BUG/FEAT UUID + verb-prefixed + bare #N) — LINK-02 / LINK-03 (parser layer)
 - [x] 11-02-PLAN.md — TDD sanitize-commit helpers (sanitizeForSlack + sanitizeForRender) — LINK-07
 - [x] 11-03-PLAN.md — link-stamper (DB validation + ingest hook, non-blocking) — LINK-02 / LINK-03 (DB layer)
-- [ ] 11-04-PLAN.md — Manual link CRUD API + LinksClient + slack.ts sanitization wrap — LINK-04 / LINK-07
+- [x] 11-04-PLAN.md — Manual link CRUD API + LinksClient + slack.ts sanitization wrap — LINK-04 / LINK-07
 
 ### Phase 12: Bug and Feature Detail Pages
 **Goal**: Bugs and features each have a detail page that shows which release versions they shipped in — closing the bidirectional visibility loop between the tracker and the release log
@@ -166,7 +166,7 @@
 | 8. Admin Home Pipeline Visibility | v2.1 | 3/3 | Complete   | 2026-05-08 |
 | 9. Per-Project Pipeline Page and Web-UI Promote | v2.1 | 4/5 | In Progress|  |
 | 10. Schema Gate | v2.1 | 1/1 | Complete    | 2026-05-08 |
-| 11. Commit Parser and Tracker Linkage Authoring | v2.1 | 3/4 | In Progress|  |
+| 11. Commit Parser and Tracker Linkage Authoring | v2.1 | 4/4 | Complete   | 2026-05-08 |
 | 12. Bug and Feature Detail Pages | v2.1 | 0/TBD | Not started | - |
 | 13. Branch Preview Swap | v2.1 | 0/TBD | Not started | - |
 | 14. Customer Page Integration | v2.1 | 0/TBD | Not started | - |
