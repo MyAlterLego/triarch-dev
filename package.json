@@ -1,6 +1,6 @@
 {
   "name": "triarch-dev",
-  "version": "2.10.4",
+  "version": "2.10.5",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -14,9 +14,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@myalterlego/secrets": "^0.1.0",
-    "@myalterlego/triarch-shared": "^0.3.0",
-    "@myalterlego/shared-ui": "^1.2.0",
+    "@triarchsecurity/secrets": "^0.1.0",
+    "@triarchsecurity/triarch-shared": "^0.3.0",
+    "@triarchsecurity/shared-ui": "^1.2.0",
     "drizzle-orm": "^0.45.2",
     "jose": "^5",
     "lucide-react": "^1.7.0",
