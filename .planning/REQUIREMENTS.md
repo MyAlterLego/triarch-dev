@@ -89,8 +89,8 @@ Customer-readable views + customer-facing submission forms (the two net-new prim
 - [x] **BUG-01**: Portal route `/projects/[slug]/bugs` renders membership-scoped bug list (each project's bugs only); supports the existing status pills + filter UI
 - [x] **BUG-02**: Portal route `/projects/[slug]/bugs/[id]` renders bug detail with `ReleasedInSidebar` reused from admin (read-only customer view; NO staff edit controls)
 - [ ] **BUG-03**: Portal route `/projects/[slug]/bugs/new` provides customer submission form (title, description, severity, reproduction steps); POST creates bug_reports row with reporter_email = session email + project_key from URL
-- [ ] **FEAT-01**: Portal route `/projects/[slug]/features` renders membership-scoped feature list with status pills
-- [ ] **FEAT-02**: Portal route `/projects/[slug]/features/[id]` renders feature detail with `ReleasedInSidebar` (read-only customer view)
+- [x] **FEAT-01**: Portal route `/projects/[slug]/features` renders membership-scoped feature list with status pills
+- [x] **FEAT-02**: Portal route `/projects/[slug]/features/[id]` renders feature detail with `ReleasedInSidebar` (read-only customer view)
 - [ ] **FEAT-03**: Portal route `/projects/[slug]/features/new` provides customer submission form (title, description); POST creates feature_requests row with reporter_email + project_key
 
 ### CI/CD + Deploy Safety
@@ -204,8 +204,8 @@ Updated by roadmapper during phase mapping.
 | BUG-01 | Phase 23 | Complete |
 | BUG-02 | Phase 23 | Complete |
 | BUG-03 | Phase 23 | Pending |
-| FEAT-01 | Phase 23 | Pending |
-| FEAT-02 | Phase 23 | Pending |
+| FEAT-01 | Phase 23 | Complete |
+| FEAT-02 | Phase 23 | Complete |
 | FEAT-03 | Phase 23 | Pending |
 | CI-01 | Phase 24 | Pending |
 | CI-02 | Phase 24 | Pending |

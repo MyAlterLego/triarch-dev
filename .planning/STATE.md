@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
-status: planning
-stopped_at: "Completed 23-02-PLAN.md (BUG-01 + BUG-02 ship; portal v0.3.6; portal PR #17 open; admin docs PR pending; awaiting Mike's review + merge)"
-last_updated: "2026-05-09T13:30:13.826Z"
+status: executing
+stopped_at: "Completed 23-03-PLAN.md (FEAT-01 + FEAT-02 ship; portal v0.3.7; portal PR #18 open; admin docs PR pending; awaiting Mike's review + merge)"
+last_updated: "2026-05-09T13:48:55.784Z"
 progress:
   total_phases: 19
   completed_phases: 14
   total_plans: 58
-  completed_plans: 55
+  completed_plans: 56
 ---
 
 # Triarch Dev Admin — Project State
@@ -24,8 +24,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 ## Current Position
 
 Phase: 23
-Plan: 02 of 04 complete (Wave 2 — bugs read surface; 23-03 features read surface ready to run in parallel)
-Last completed: Phase 23 bug-feature-customer-surface 23-02-PLAN.md (2026-05-09)
+Plan: 3 of 04 complete (Wave 2 — bugs read surface 23-02 + features read surface 23-03 both shipped; Wave 3 23-04 submission write paths pending)
+Last completed: Phase 23 bug-feature-customer-surface 23-03-PLAN.md (2026-05-09)
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -43,13 +43,13 @@ Last completed: Phase 23 bug-feature-customer-surface 23-02-PLAN.md (2026-05-09)
 | 20 — URL Centralization (admin) | `src/lib/urls.ts` + ESLint guard; refactor admin Slack/email/release-note URL emitters | URL-01..03 | Not started |
 | 21 — Release Page Port (Read) | Lift-and-shift `/projects/[slug]/releases` + `/projects` list; 404 for non-members | PORTAL-01..04 | Complete |
 | 22 — Release Page Port (Write, research_required) | Approve/reject/feedback + branch swap; portal-owned FAH key; HMAC-proxy to admin for GH dispatch | WRITE-01..05 | Complete (5/5 plans) |
-| 23 — Bug + Feature Customer Surface | `/bugs/*` and `/features/*` list/detail/new routes (two net-new primitives) | BUG-01..03, FEAT-01..03 | In Progress (2/4 plans: 23-01 foundations + 23-02 bugs read shipped; 23-03 features read + 23-04 submit pending) |
+| 23 — Bug + Feature Customer Surface | `/bugs/*` and `/features/*` list/detail/new routes (two net-new primitives) | BUG-01..03, FEAT-01..03 | In Progress (3/4 plans: 23-01 foundations + 23-02 bugs read + 23-03 features read shipped; 23-04 submit pending) |
 | 24 — CI/CD Deploy Safety (research_required) | `verify-deploy-target`, per-repo deploy SAs, `assertEnv()`, `validate-apphosting.ts` | CI-01..04 | Not started |
 | 25 — Cutover | Admin 301 → portal; customer email blast; Slack URL sweep; redirect telemetry; kill-switch | CUT-01..05 | Not started |
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Ready to plan
+**Status:** Ready to execute
 
 ## Performance Metrics
 
@@ -160,6 +160,9 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 23-bugs-read-surface]: Staff-only fields HIDDEN two ways: (1) source never references columns; (2) renderToStaticMarkup tests assert strings absent from HTML output. Comment block uses indirect phrasing so plan-checker grep on bug.triarchNotes returns 0 in source too
 - [Phase 23-bugs-read-surface]: JSX-tree-walk findClientProps helper for server-component prop assertion — alternative to RTL render when only prop shape matters; faster + simpler
 - [Phase 23-bugs-read-surface]: Closure state in vi.mock factories survives vi.clearAllMocks() — module-scope dbCallIdx with explicit reset in resetState() pattern logged for future server-component tests with multi-step query chains
+- [Phase 23-features-read-surface]: ReleasedInSidebar populated via getReleaseHistoryForFeature (Phase 11 release_log_links join), NOT freeform feature.shippedVersion — advisory A-3 honored across 23-01/23-02/23-03
+- [Phase 23-features-read-surface]: Staff-only fields HIDDEN for 4 fields (vs bug's 2): triarchNotes, buildPlan, buildPlanStatus, estimatedEffort. Tests use unique-sentinel mocking + renderToStaticMarkup-level assertion. Comment-block grep barrier preempted from 23-02 lessons (first-time correct phrasing)
+- [Phase 23-features-read-surface]: Lessons-applied-first-time from 23-02: closure-state mock hoisting + comment-block grep barriers written correctly on initial implementation; zero in-flight Rule-3 deviations
 
 ### Pending Todos
 
@@ -177,7 +180,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-09T13:30:00.511Z
-Stopped at: Completed 23-02-PLAN.md (BUG-01 + BUG-02 ship; portal v0.3.6; portal PR #17 open; admin docs PR pending; awaiting Mike's review + merge)
+Last session: 2026-05-09T13:48:55.781Z
+Stopped at: Completed 23-03-PLAN.md (FEAT-01 + FEAT-02 ship; portal v0.3.7; portal PR #18 open; admin docs PR pending; awaiting Mike's review + merge)
 Resume file: None
-Next action: After portal PR + admin docs PR merge, run `/gsd:verify-phase 22` for the verifier pass, then begin Phase 23 (Bug + Feature customer surface) planning
+Next action: After portal PR #18 + admin docs PR merge, proceed to 23-04 (BUG-03 + FEAT-03 submission write paths). Both read surfaces are now shipped; Wave 3 (write) is unblocked.
