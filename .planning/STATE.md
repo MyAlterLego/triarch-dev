@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
 status: planning
-stopped_at: "Completed 23-04-PLAN.md (BUG-03 + FEAT-03 ship; portal v0.4.0 phase-close; portal PR #19 open; admin docs PR pending; Phase 23 COMPLETE — 4/4 plans, 6/6 requirements shipped). Awaiting Mike's review + merge of portal PR #19 then admin docs PR."
-last_updated: "2026-05-09T15:22:18.322Z"
+stopped_at: "Completed 23.1-01-PLAN.md (UX-01 sub-nav ship; portal v0.4.7; ProjectSubNav 8/8 GREEN; portal suite 290 → 298). Awaiting Mike's review + merge of portal PR (feat/23.1-01-sub-nav) and admin docs PR (same branch name)."
+last_updated: "2026-05-09T23:25:00.000Z"
 progress:
   total_phases: 19
   completed_phases: 15
-  total_plans: 58
-  completed_plans: 57
+  total_plans: 62
+  completed_plans: 58
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,13 +19,13 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 24 — CI/CD Deploy Safety (Phase 23 closed; pending research before plan)
+**Current focus:** Phase 23.1 — Portal UI Polish (Plan 01 complete; Plans 02–04 next)
 
 ## Current Position
 
-Phase: 24
-Plan: Not started
-Last completed: Phase 23 bug-feature-customer-surface 23-04-PLAN.md (2026-05-09)
+Phase: 23.1
+Plan: 02 (Status column rewrite — UX-02)
+Last completed: Phase 23.1 portal-ui-polish 23.1-01-PLAN.md (2026-05-09)
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -44,6 +44,7 @@ Last completed: Phase 23 bug-feature-customer-surface 23-04-PLAN.md (2026-05-09)
 | 21 — Release Page Port (Read) | Lift-and-shift `/projects/[slug]/releases` + `/projects` list; 404 for non-members | PORTAL-01..04 | Complete |
 | 22 — Release Page Port (Write, research_required) | Approve/reject/feedback + branch swap; portal-owned FAH key; HMAC-proxy to admin for GH dispatch | WRITE-01..05 | Complete (5/5 plans) |
 | 23 — Bug + Feature Customer Surface | `/bugs/*` and `/features/*` list/detail/new routes (two net-new primitives) | BUG-01..03, FEAT-01..03 | Complete (4/4 plans — 23-01 foundations + 23-02 bugs read + 23-03 features read + 23-04 bug+feature write surface; portal v0.4.0; all 6 reqs shipped) |
+| 23.1 — Portal UI Polish | Sub-nav, status column rewrite, empty-state copy, staff preview-as-customer toggle | UX-01..04 | In progress (1/4 plans — 23.1-01 sub-nav shipped portal v0.4.7) |
 | 24 — CI/CD Deploy Safety (research_required) | `verify-deploy-target`, per-repo deploy SAs, `assertEnv()`, `validate-apphosting.ts` | CI-01..04 | Not started |
 | 25 — Cutover | Admin 301 → portal; customer email blast; Slack URL sweep; redirect telemetry; kill-switch | CUT-01..05 | Not started |
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
@@ -170,6 +171,12 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 23-04-bug-feature-write-surface]: Cross-project POST defense via the same membership 404 code path as non-member 404 — Tests 6 + FEAT-6 verify member-of-A POSTing to project-B returns 404 with no row INSERTed and no Slack post.
 - [Phase 23-04-bug-feature-write-surface]: Channel env vars (PORTAL_BUG_REPORTS_CHANNEL, PORTAL_FEATURE_REQUESTS_CHANNEL) read at CALL TIME inside helper bodies — mirrors Phase 22-04 SLACK_RELEASE_APPROVAL_CHANNEL pattern; allows test override + apphosting.dev.yaml runtime overlay both win without module-cache poisoning.
 - [Phase 23-04-bug-feature-write-surface]: Phase-close MINOR bump 0.3.7 → 0.4.0 — Phase 23 ships entire bug + feature primitive customer surface (read in 23-02/23-03; write in 23-04). The 0.3.5/0.3.6/0.3.7 patch progression in 23-01..03 reserved the minor for the close.
+- [Phase 23.1-01-portal-ui-polish]: Active tab styling = text-teal-300 + border-b-2 border-teal-400 (saturated underline, NOT a filled pill) — matches StatusPill `approved` family hue and CONTEXT.md UX-01 D-02. Muted = text-zinc-400 with hover:text-zinc-200.
+- [Phase 23.1-01-portal-ui-polish]: Layout duplicates auth check with child pages intentionally — child pages still derive userRole/currentUserEmail props the layout doesn't pass down. Two cheap DB lookups per request, single TCP connection — kept separate for clean concerns. Documented in 12-line comment block at top of layout.tsx.
+- [Phase 23.1-01-portal-ui-polish]: 7 customer-side page.tsx files lose their CustomerHeader render (3 main + 4 sub-pages: bugs/[id], bugs/new, features/[id], features/new) — `grep -rn 'import CustomerHeader' src/app/projects/[slug]/` returns exactly 1 match (layout.tsx). Zero per-page integration code remains.
+- [Phase 23.1-01-portal-ui-polish]: usePathname startsWith active matcher (not exact equality) — so `/bugs/[id]` and `/features/new` light up parent tab. Critical correctness for sub-routes; covered by tests T1.3 + T1.4.
+- [Phase 23.1-01-portal-ui-polish]: Mobile horizontal-scroll affordance via outer div `overflow-x-auto` + ul `whitespace-nowrap` — preferred over flex-wrap or hamburger. Covered by test T1.6.
+- [Phase 23.1-01-portal-ui-polish]: Pre-existing portal TS test errors (7 files, baseline from commit 9dae716 v0.4.3 import migration) logged to `.planning/phases/23.1-portal-ui-polish/deferred-items.md` per scope-boundary rule. `npx vitest run` GREEN; `next build` clean (build excludes test files from compile).
 
 ### Pending Todos
 
@@ -187,7 +194,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-09T10:00:00.000Z
-Stopped at: Completed 23-04-PLAN.md (BUG-03 + FEAT-03 ship; portal v0.4.0 phase-close; portal PR #19 open; admin docs PR pending; Phase 23 COMPLETE — 4/4 plans, 6/6 requirements shipped). Awaiting Mike's review + merge of portal PR #19 then admin docs PR.
+Last session: 2026-05-09T23:25:00.000Z
+Stopped at: Completed 23.1-01-PLAN.md (UX-01 sub-nav ship; portal v0.4.7; ProjectSubNav 8/8 GREEN; portal suite 290 → 298). Portal PR open against `triarchsecurity/dev-portal` main; admin docs PR open against `triarchsecurity/platform` main. Awaiting Mike's review + merge of both PRs.
 Resume file: None
-Next action: After portal PR #19 + admin docs PR merge, run `/gsd:research-phase 24` to resolve `MyAlterLego/shared-workflows` v5 immutability question before planning Phase 24 (CI/CD Deploy Safety). Phase 23 is closed; Wave 4 of v2.2 milestone (CI safety prerequisite for cutover) is the next blocker on critical path.
+Next action: After both PRs merge, branch from main and execute 23.1-02-PLAN.md (UX-02 status column rewrite — ReleaseStatusPill, ENV column split, pending-approval row highlight, section badge, "Pending review only" filter chip; portal v0.4.8). Phase 23.1 has 4 plans total; 1/4 shipped.

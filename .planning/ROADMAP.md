@@ -311,7 +311,7 @@
   3. Project tiles with no prod/dev release row render `Prod: Not yet released` / `Dev: Not yet released` (no `--`); timestamps hidden when no row to time-relate; tile style remains standard (no greyed inactive treatment)
   4. Staff "preview as customer" toggle in StaffCallout sets a 1-hour cookie (`__Host-portal-preview-as-customer` in prod, HttpOnly+SameSite=Lax+Secure-in-prod, no Domain) that suppresses staff banner + flips userRole derivation to skip staff bypass; PreviewModeBanner shows the eye-emoji "Preview mode active (Xm remaining) — Exit preview" affordance; non-staff users with cookie set see ZERO change (security boundary)
 **Plans**: 4 plans
-- [ ] 23.1-01-PLAN.md — Sub-nav layout component + Next.js nested layout + portal v0.4.7 (UX-01)
+- [x] 23.1-01-PLAN.md — Sub-nav layout component + Next.js nested layout + portal v0.4.7 (UX-01) (completed 2026-05-09)
 - [ ] 23.1-02-PLAN.md — ReleaseStatusPill + ENV column split + pending-approval row highlight + section badge + Pending-only filter chip + portal v0.4.8 (UX-02)
 - [ ] 23.1-03-PLAN.md — Empty-state "Not yet released" copy + hidden timestamps on project tiles (UX-03)
 - [ ] 23.1-04-PLAN.md — Staff preview-as-customer toggle (cookie helper + API route + PreviewModeBanner + StaffCallout mod + cookie-aware userRole across pages) + portal v0.5.0 phase close (UX-04)
