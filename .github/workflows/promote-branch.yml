@@ -26,7 +26,7 @@ permissions:
 
 jobs:
   promote:
-    uses: MyAlterLego/shared-workflows/.github/workflows/promote-branch.yml@v4
+    uses: triarchsecurity/shared-workflows/.github/workflows/promote-branch.yml@v4
     with:
       branch: ${{ inputs.branch }}
       target_branch: ${{ inputs.target_branch }}

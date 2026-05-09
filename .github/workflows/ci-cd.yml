@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   quality-gate:
-    uses: MyAlterLego/shared-workflows/.github/workflows/quality-gate.yml@v1
+    uses: triarchsecurity/shared-workflows/.github/workflows/quality-gate.yml@v1
     with:
       run_qa_tests: false
       run_pentest: false
@@ -46,7 +46,7 @@ jobs:
   deploy:
     needs: quality-gate
     if: github.event_name == 'push'
-    uses: MyAlterLego/shared-workflows/.github/workflows/deploy-firebase.yml@v4
+    uses: triarchsecurity/shared-workflows/.github/workflows/deploy-firebase.yml@v4
     with:
       firebase_project_id: triarch-dev-website
       app_hosting_backend: triarch-dev
@@ -56,7 +56,7 @@ jobs:
   notify:
     needs: [quality-gate, deploy]
     if: always() && github.event_name == 'push'
-    uses: MyAlterLego/shared-workflows/.github/workflows/notify.yml@v1
+    uses: triarchsecurity/shared-workflows/.github/workflows/notify.yml@v1
     with:
       status: ${{ needs.deploy.result }}
       project_name: Triarch Dev
