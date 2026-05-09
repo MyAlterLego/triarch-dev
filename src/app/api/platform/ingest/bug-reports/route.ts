@@ -3,6 +3,16 @@ import { requireApiKey } from '@/lib/api-key-auth';
 import { db } from '@/lib/db';
 import { bugReports, workflowTransitions } from '@/db/schema';
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
 export async function POST(req: NextRequest) {
   const { error, project } = await requireApiKey(req);
   if (error) return error;
@@ -38,5 +48,5 @@ export async function POST(req: NextRequest) {
     transitionedBy: `api:${project!.key}`,
   });
 
-  return NextResponse.json(bug, { status: 201 });
+  return NextResponse.json(bug, { status: 201, headers: CORS_HEADERS });
 }
