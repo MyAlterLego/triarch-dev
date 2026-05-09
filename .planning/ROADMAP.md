@@ -297,7 +297,7 @@
 **Plans**: 4 plans
 - [x] 23-01-PLAN.md — ReleasedInSidebar fork + StatusPill foundation (BUG-01/02 + FEAT-01/02 components)
 - [x] 23-02-PLAN.md — Bug list + detail customer surface (BUG-01, BUG-02)
-- [ ] 23-03-PLAN.md — Feature list + detail customer surface (FEAT-01, FEAT-02)
+- [x] 23-03-PLAN.md — Feature list + detail customer surface (FEAT-01, FEAT-02)
 - [ ] 23-04-PLAN.md — Bug + feature submission write surface + portal v0.4.0 phase close (BUG-03, FEAT-03)
 
 ### Phase 24: CI/CD Deploy Safety
@@ -371,7 +371,7 @@
 | 20. URL Centralization | v2.2 | 2/2 | Complete    | 2026-05-08 |
 | 21. Release Page Port (Read) | v2.2 | 4/6 | Complete    | 2026-05-08 |
 | 22. Release Page Port (Write) | v2.2 | 4/5 | Complete    | 2026-05-09 |
-| 23. Bug + Feature Customer Surface | v2.2 | 2/4 | In Progress|  |
+| 23. Bug + Feature Customer Surface | v2.2 | 3/4 | In Progress|  |
 | 24. CI/CD Deploy Safety | v2.2 | 0/0 | Not started | - |
 | 25. Cutover | v2.2 | 0/0 | Not started | - |
 | 26. Sunset (T+90) | v2.2 | 0/0 | Not started | - |
