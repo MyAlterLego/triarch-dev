@@ -14,10 +14,13 @@ env:
       - RUNTIME
 
   - variable: ADMIN_EMAIL
-    value: mike@triarchsecurity.com
+    secret: ADMIN_EMAIL
     availability:
       - RUNTIME
 
+  # Public webhook endpoint — security depends on DEPLOY_WEBHOOK_SECRET HMAC
+  # verification (not on URL secrecy). URL disclosure here is intentional and
+  # low-risk; HMAC validation rejects unsigned/forged requests.
   - variable: DEPLOY_WEBHOOK_URL
     value: https://admin.triarch.dev/api/webhooks/github-deploy
     availability:
