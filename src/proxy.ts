@@ -4,8 +4,9 @@ import type { NextRequest } from 'next/server';
 const PASSTHROUGH_PREFIXES = ['/api/', '/login', '/_next/', '/favicon.ico'];
 
 /**
- * Known-host allowlist. Admin only serves requests on:
- *   - admin.triarch.dev (production)
+ * Known-host allowlist. This app serves two domains:
+ *   - www.triarch.dev (production marketing/public site)
+ *   - admin.triarch.dev (production admin console)
  *   - admin-dev.triarch.dev (dev backend custom domain)
  *   - admin-dev--triarch-dev-website.us-central1.hosted.app (FAH internal hostname for dev)
  *   - localhost:3000 / localhost:3001 (local dev)
@@ -13,9 +14,10 @@ const PASSTHROUGH_PREFIXES = ['/api/', '/login', '/_next/', '/favicon.ico'];
  * FAH proxies through Cloud Run, so the `host` header is the internal Cloud Run
  * hostname (e.g. `t-XXXX---triarch-dev-website-uc.a.run.app`). Cloud Run also
  * sets `x-forwarded-host` to the public domain. We accept either pointing at a
- * known admin host. See .planning/host-guard-inventory.md and PITFALLS.md Pitfall 5.
+ * known host. See .planning/host-guard-inventory.md and PITFALLS.md Pitfall 5.
  */
 const KNOWN_EXACT_HOSTS = new Set<string>([
+  'www.triarch.dev',
   'admin.triarch.dev',
   'admin-dev.triarch.dev',
   'admin-dev--triarch-dev-website.us-central1.hosted.app',

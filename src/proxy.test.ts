@@ -43,6 +43,20 @@ describe('proxy middleware host allowlist', () => {
       }));
       expect(res.status).not.toBe(404);
     });
+
+    it('www.triarch.dev passes through', () => {
+      const res = proxy(makeRequest({ url: 'https://www.triarch.dev/', host: 'www.triarch.dev' }));
+      expect(res.status).not.toBe(404);
+    });
+
+    it('FAH internal hostname with x-forwarded-host: www.triarch.dev passes through', () => {
+      const res = proxy(makeRequest({
+        url: 'https://www.triarch.dev/',
+        host: 't-abc---triarch-dev-website-uc.a.run.app',
+        xForwardedHost: 'www.triarch.dev',
+      }));
+      expect(res.status).not.toBe(404);
+    });
   });
 
   describe('unknown hosts fail closed with 404', () => {
