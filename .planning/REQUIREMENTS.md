@@ -100,7 +100,7 @@ verify-deploy-target + apphosting validation prevent catastrophic cross-app depl
 - [ ] **CI-01**: Shared-workflows `verify-deploy-target` job committed to `MyAlterLego/shared-workflows` (or admin's per-repo equivalent if v4 immutable) — fails if `${{ github.repository }}` doesn't match expected `firebase_project_id` per a committed lookup table
 - [ ] **CI-02**: Per-repo deploy SAs — portal has its own `portal-deployer@triarch-vault.iam.gserviceaccount.com` distinct from admin's deploy SA
 - [x] **CI-03**: Boot-time `assertEnv()` in portal validates required env vars present; missing var fails container start with clear error (Phase 24-02; admin v2.11.0 + portal v0.5.1)
-- [ ] **CI-04**: CI step `validate-apphosting.ts` reads apphosting.yaml + apphosting.dev.yaml against an env-name TypeScript schema — fails build on missing/typo'd binding
+- [x] **CI-04**: CI step `validate-apphosting.ts` reads apphosting.yaml + apphosting.dev.yaml against an env-name TypeScript schema — fails build on missing/typo'd binding (Phase 24-03; admin v2.11.1 + portal v0.5.2)
 
 ### Cutover
 
@@ -216,10 +216,10 @@ Updated by roadmapper during phase mapping.
 | FEAT-01 | Phase 23 | Complete |
 | FEAT-02 | Phase 23 | Complete |
 | FEAT-03 | Phase 23 | Complete |
-| CI-01 | Phase 24 | Pending |
-| CI-02 | Phase 24 | Pending |
+| CI-01 | Phase 24 | Skipped (24-01 scoped out per Mike's reduced-scope decision) |
+| CI-02 | Phase 24 | Skipped (24-01/24-04 scoped out — SA work deferred) |
 | CI-03 | Phase 24 | Complete (24-02) |
-| CI-04 | Phase 24 | Pending |
+| CI-04 | Phase 24 | Complete (24-03) |
 | CUT-01 | Phase 25 | Pending |
 | CUT-02 | Phase 25 | Pending |
 | CUT-03 | Phase 25 | Pending |

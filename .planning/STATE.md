@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
 status: planning
-stopped_at: "Completed 24-02-PLAN.md (CI-03; instrumentation.ts + assertEnv() boot guard in BOTH admin v2.11.0 and portal v0.5.1; +12 Vitest cases total). Admin PR open against `triarchsecurity/platform` main (commit 42e29b3); portal PR open against `triarchsecurity/dev-portal` main (commit cafeb44). Awaiting Mike's review + merge. Phase 24-01 + 24-04 SKIPPED per scope decision; 24-03 (validate-apphosting.ts CI lint) is next plan in Phase 24."
-last_updated: "2026-05-10T00:42:06Z"
+stopped_at: "Completed 24-03-PLAN.md (CI-04; scripts/validate-apphosting.ts CI lint in BOTH admin v2.11.1 and portal v0.5.2; +10 Vitest cases total — 5 per repo using temp-file fixtures). Admin PR #55 open against `triarchsecurity/platform` main (commits fad2268 RED + a33000f GREEN); portal PR #27 open against `triarchsecurity/dev-portal` main (commits f5ef27f RED + a2cb5d4 GREEN). Awaiting Mike's review + merge. Phase 24 structurally complete under reduced scope (24-02 + 24-03 shipped; 24-01 + 24-04 SKIPPED). Verifier can audit Phase 24 next."
+last_updated: "2026-05-09T00:55:32Z"
 progress:
   total_phases: 20
   completed_phases: 12
@@ -19,13 +19,13 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 24 — CI/CD Deploy Safety in progress; CI-03 shipped via 24-02. Phase 24-01 + 24-04 skipped per scope decision; only 24-02 + 24-03 land this round.
+**Current focus:** Phase 24 — CI/CD Deploy Safety structurally complete under reduced scope. CI-03 (24-02) + CI-04 (24-03) shipped. Phase 24-01 + 24-04 skipped per scope decision. Verifier can audit Phase 24 next, then Phase 25 cutover unblocked.
 
 ## Current Position
 
 Phase: 24
-Plan: 24-02 complete; 24-03 next (validate-apphosting.ts CI lint, CI-04)
-Last completed: Phase 24-02 instrumentation+assertEnv (2026-05-10; admin v2.11.0 commit 42e29b3; portal v0.5.1 commit cafeb44)
+Plan: 24-03 complete (PRs open, awaiting merge); Phase 24 structurally complete under reduced scope
+Last completed: Phase 24-03 validate-apphosting.ts CI lint (2026-05-09; admin v2.11.1 commits fad2268+a33000f PR #55; portal v0.5.2 commits f5ef27f+a2cb5d4 PR #27)
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -45,7 +45,7 @@ Last completed: Phase 24-02 instrumentation+assertEnv (2026-05-10; admin v2.11.0
 | 22 — Release Page Port (Write, research_required) | Approve/reject/feedback + branch swap; portal-owned FAH key; HMAC-proxy to admin for GH dispatch | WRITE-01..05 | Complete (5/5 plans) |
 | 23 — Bug + Feature Customer Surface | `/bugs/*` and `/features/*` list/detail/new routes (two net-new primitives) | BUG-01..03, FEAT-01..03 | Complete (4/4 plans — 23-01 foundations + 23-02 bugs read + 23-03 features read + 23-04 bug+feature write surface; portal v0.4.0; all 6 reqs shipped) |
 | 23.1 — Portal UI Polish | Sub-nav, status column rewrite, empty-state copy, staff preview-as-customer toggle | UX-01..04 | Complete (4/4 plans — 23.1-01 sub-nav v0.4.7; 23.1-02 status column rewrite v0.4.8; 23.1-03 empty-state copy v0.4.9; 23.1-04 staff preview-as-customer toggle v0.5.0) |
-| 24 — CI/CD Deploy Safety (research_required) | `verify-deploy-target`, per-repo deploy SAs, `assertEnv()`, `validate-apphosting.ts` | CI-01..04 | In progress (24-02 shipped CI-03; 24-01 + 24-04 skipped per scope; 24-03 next) |
+| 24 — CI/CD Deploy Safety (research_required) | `verify-deploy-target`, per-repo deploy SAs, `assertEnv()`, `validate-apphosting.ts` | CI-01..04 | Structurally complete under reduced scope (24-02 shipped CI-03; 24-03 shipped CI-04 — PRs open; 24-01 + 24-04 SKIPPED per scope decision) |
 | 25 — Cutover | Admin 301 → portal; customer email blast; Slack URL sweep; redirect telemetry; kill-switch | CUT-01..05 | Not started |
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
@@ -190,6 +190,10 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 23.1-03-portal-ui-polish]: Timestamp HIDDEN entirely (not rendered) when corresponding deployedAt is null — per CONTEXT.md UX-03 D-03. NOT "—", NOT "never". Test T1.5 confirms by counting `(\d+\s+(min|hr|day|days)\s+ago|just now)` matches in serialised HTML.
 - [Phase 23.1-03-portal-ui-polish]: Brand-new project tile uses standard card classes (`bg-zinc-900 border-zinc-800`) — NO opacity/grayscale override per CONTEXT.md UX-03 D-04. Projects can go live at any time; greying might confuse customers.
 - [Phase 23.1-03-portal-ui-polish]: Server-component test pattern reuses Phase 21's approach — `renderToStaticMarkup(await ProjectsPage())` produces an HTML string for substring assertions. Mocks: `getPortalSession` + `getCurrentUserContext` for auth, `getProjectPipelineSummaries` as the unit-under-test boundary, `db.select` chain returns project rows. No jsdom dependency.
+- [Phase 24-03-validate-apphosting]: Temp-file fixtures over fs mocks for testing scripts that read YAML — `mkdtempSync(tmpdir(), 'prefix-')` per test + writeFileSync, afterEach `rmSync(recursive, force)`. Avoids vi.mock('node:fs') fragility with transitive yaml-package fs imports. Hermetic, fast, and exercises the script the way CI does (real filesystem, real yaml parser).
+- [Phase 24-03-validate-apphosting]: import.meta.url === `file://${process.argv[1]}` guard at script bottom — keeps script unit-testable (test imports do not run main()), still runs main() when invoked via `npx tsx scripts/validate-apphosting.ts`.
+- [Phase 24-03-validate-apphosting]: deploy: needs: [quality-gate, validate-apphosting] — NOT three prerequisites with verify-deploy-target. Plan 24-01 was scoped out per Mike's reduced-scope call; the job does not exist in either repo's ci-cd.yml. Listing it would cause CI to fail with "job not found." If 24-01 ships in a future plan, that plan extends the array in one line per repo.
+- [Phase 24-03-validate-apphosting]: scripts/validate-apphosting.ts byte-identical between admin and portal (only ../src/lib/env-schema.ts content differs — admin 18 entries, portal 12 entries). Future shared-package extraction (V2.3 candidate) only needs to relocate the script; call sites stay unchanged. Verifiable via `diff` on the two paths.
 
 ### Pending Todos
 
@@ -207,7 +211,13 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-09T22:58:00.000Z
-Stopped at: Completed 23.1-03-PLAN.md (UX-03 empty-state copy; portal v0.4.9; +7 Vitest cases page.test.tsx; portal suite 317 → 324). Portal PR #24 open against `triarchsecurity/dev-portal` main; admin docs PR open against `triarchsecurity/platform` main. Awaiting Mike's review + merge of both PRs.
+Last session: 2026-05-09T00:55:32Z
+Stopped at: Completed 24-03-PLAN.md (CI-04 validate-apphosting CI lint; admin v2.11.1 PR #55; portal v0.5.2 PR #27; +10 Vitest cases — 5 per repo using temp-file fixtures). Both PRs open against main, awaiting Mike's review + merge. Phase 24 structurally complete under reduced scope (24-02 + 24-03 shipped; 24-01 + 24-04 SKIPPED).
 Resume file: None
-Next action: After both PRs merge, branch from main and execute 23.1-04-PLAN.md (UX-04 staff preview-as-customer toggle; cookie helpers + API route + PreviewModeBanner + StaffCallout mod + cookie-aware userRole across pages; portal v0.5.0 phase close). Phase 23.1 has 4 plans total; 3/4 shipped.
+Next action: After both 24-03 PRs merge, run `/gsd:verify-work 24` to audit Phase 24 under reduced scope, then `/gsd:plan-phase 25` for cutover (admin 301 → portal). Phase 24 is now done as a hard prerequisite for Phase 25.
+
+## Performance Metrics (24-03)
+
+| Plan | Duration | Tasks | Files | Test cases |
+|------|----------|-------|-------|------------|
+| 24-03 | 5 min | 2 (admin + portal) | 4 created + 4 modified | +10 (5 per repo) |
