@@ -1,0 +1,250 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+# Deny by default; jobs request what they need.
+permissions: {}
+
+# Auto-cancel previous runs on the same PR/branch
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  # ---------------------------------------------------------------- lint+test
+  lint-test:
+    name: lint-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # threat-model drift needs history
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test -- --ci --coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+
+  # ---------------------------------------------------------------- semgrep
+  semgrep:
+    name: semgrep
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+    container:
+      # Pin to SHA before merge — replace tag with full commit SHA + comment.
+      image: semgrep/semgrep:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Semgrep diff scan (PR) / full scan (push)
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            semgrep ci \
+              --config p/ci \
+              --config p/owasp-top-ten \
+              --config p/react \
+              --config p/typescript \
+              --config p/javascript \
+              --config p/nodejs \
+              --config p/secrets \
+              --baseline-ref origin/${{ github.base_ref }} \
+              --sarif --output=semgrep.sarif || true
+          else
+            semgrep ci \
+              --config p/ci \
+              --config p/owasp-top-ten \
+              --config p/react \
+              --sarif --output=semgrep.sarif || true
+          fi
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+      - name: Fail on Critical / High
+        run: |
+          jq -e '.runs[].results[] | select(.level=="error")' semgrep.sarif >/dev/null && {
+            echo "::error::Semgrep found Critical/High findings"; exit 1; } || echo "no Critical/High"
+
+  # ---------------------------------------------------------------- osv-scanner
+  osv-scanner:
+    name: osv-scanner
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run OSV-Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v1.7.0   # TODO: pin to commit SHA
+        with:
+          scan-args: |-
+            --recursive
+            --skip-git
+            --sarif=osv.sarif
+            ./
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: osv.sarif
+          category: osv-scanner
+
+      - name: Fail on Critical / High
+        if: always()
+        run: |
+          if [[ -f osv.sarif ]] && jq -e '.runs[].results[] | select(.level=="error")' osv.sarif >/dev/null; then
+            echo "::error::OSV-Scanner found Critical/High vulnerabilities"; exit 1
+          fi
+
+  # ---------------------------------------------------------------- gitleaks
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2.3.7   # TODO: pin to commit SHA
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
+          GITLEAKS_ENABLE_SUMMARY: true
+
+  # ---------------------------------------------------------------- iac scans
+  checkov:
+    name: checkov
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    if: ${{ hashFiles('iac/**/*.tf', 'iac/**/*.tofu') != '' || hashFiles('**/Dockerfile') != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12.2949.0   # TODO: pin to commit SHA
+        with:
+          directory: .
+          framework: terraform,dockerfile,kubernetes,github_actions
+          output_format: cli,sarif
+          output_file_path: console,checkov.sarif
+          quiet: true
+          soft_fail: false
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov.sarif
+          category: checkov
+
+  tfsec:
+    name: tfsec
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    if: ${{ hashFiles('iac/**/*.tf', 'iac/**/*.tofu') != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-sarif-action@v0.1.4   # TODO: pin to commit SHA
+        with:
+          sarif_file: tfsec.sarif
+          working_directory: iac
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: tfsec.sarif
+          category: tfsec
+
+  # ---------------------------------------------------------------- threat model drift
+  threat-model-drift:
+    name: threat-model-drift
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    if: ${{ hashFiles('.threatmodel/**') != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect architectural changes
+        id: detect
+        run: |
+          # Heuristic: any change under src/ or iac/ requires the threat model to be touched.
+          base="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+          arch_changed=$(git diff --name-only "$base"...HEAD -- 'src/' 'iac/' 'docs/architecture/' | wc -l)
+          tm_touched=$(git diff --name-only "$base"...HEAD -- '.threatmodel/' | wc -l)
+
+          if [[ $arch_changed -gt 0 && $tm_touched -eq 0 ]]; then
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "drift=false" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR if drift
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '⚠️ **Threat-model drift detected.** Architectural files changed without updating `.threatmodel/`. Run `/tm-threats` (or `/tm-full`) in Claude Code, commit the result, and push again.'
+            });
+
+  # ---------------------------------------------------------------- summary
+  ci-passed:
+    name: ci-passed
+    needs: [lint-test, semgrep, osv-scanner, gitleaks, checkov, tfsec, threat-model-drift]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "::error::One or more required checks failed"; exit 1
+          fi
+          echo "All required checks passed."

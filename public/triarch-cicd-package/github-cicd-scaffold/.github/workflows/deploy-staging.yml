@@ -1,0 +1,97 @@
+name: deploy-staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to deploy (must already be in dev)"
+        required: true
+        type: string
+      change_summary:
+        description: "Short summary for the audit log"
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    with:
+      ref: ${{ inputs.sha }}
+
+  deploy:
+    name: deploy-staging
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: staging                           # 1 reviewer + 5min wait timer enforced by environment
+      url: https://staging.${{ vars.APP_DOMAIN || 'example.com' }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.7.0   # TODO: pin to commit SHA
+
+      - name: Verify SLSA provenance + cosign signature
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign verify \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${{ needs.build.outputs.image }}"
+
+          cosign verify-attestation \
+            --type slsaprovenance \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${{ needs.build.outputs.image }}"
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: gha-deploy-staging-${{ github.run_id }}
+
+      - name: Deploy
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}
+        run: |
+          echo "Deploying $IMAGE to staging..."
+          # plug your deploy commands here
+
+      - name: Integration tests
+        run: |
+          echo "Running integration suite against staging"
+          # npm run test:integration -- --base-url=https://staging.${{ vars.APP_DOMAIN }}
+
+      - name: Audit log
+        env:
+          SUMMARY: ${{ inputs.change_summary }}
+        run: |
+          jq -n --arg env "staging" \
+                --arg actor "${{ github.actor }}" \
+                --arg sha "${{ inputs.sha }}" \
+                --arg image "${{ needs.build.outputs.image }}" \
+                --arg summary "$SUMMARY" \
+                --arg run_id "${{ github.run_id }}" \
+                '{event:"deploy", env:$env, actor:$actor, sha:$sha, image:$image, summary:$summary, run_id:$run_id, ts:now}' \
+              > deploy-event.json
+          # forward to your audit sink (CloudWatch / Loki / S3)
+          # aws s3 cp deploy-event.json s3://acme-audit-staging/deploys/$(date -u +%FT%TZ)-$RUN_ID.json

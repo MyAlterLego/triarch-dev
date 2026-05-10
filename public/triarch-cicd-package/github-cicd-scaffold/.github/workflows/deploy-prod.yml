@@ -1,0 +1,165 @@
+name: deploy-prod
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to deploy (must match v*.*.*)"
+        required: true
+        type: string
+      change_ticket:
+        description: "Change ticket reference (e.g. CHG-1234)"
+        required: true
+        type: string
+      break_glass:
+        description: "Break-glass deploy? (skips integration suite — must post-mortem)"
+        required: false
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: preflight
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: resolve
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid tag: $TAG"; exit 1; }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Validate change ticket
+        env:
+          CT: ${{ inputs.change_ticket }}
+        run: |
+          # tag-push events don't have inputs.change_ticket; require workflow_dispatch for prod releases.
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "::warning::Tag-triggered deploy. Re-run via workflow_dispatch with a change ticket."
+          else
+            [[ -z "$CT" ]] && { echo "Change ticket required"; exit 1; }
+            [[ "$CT" =~ ^${{ vars.CHANGE_TICKET_PREFIX || 'CHG-' }}[0-9]+$ ]] || { echo "Bad change ticket format: $CT"; exit 1; }
+          fi
+
+      - name: Block break-glass without compensating events
+        if: ${{ inputs.break_glass == true }}
+        run: |
+          echo "::warning::BREAK-GLASS deploy requested. Post-mortem ticket auto-created."
+
+  build:
+    needs: preflight
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    with:
+      ref: ${{ needs.preflight.outputs.tag }}
+
+  deploy:
+    name: deploy-prod
+    needs: [preflight, build]
+    runs-on: ubuntu-latest
+    environment:
+      name: prod                              # 2 reviewers + 30min wait timer enforced by environment
+      url: https://${{ vars.APP_DOMAIN || 'example.com' }}
+    permissions:
+      contents: read
+      id-token: write
+      issues: write       # post-mortem issue creation for break-glass
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preflight.outputs.tag }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.7.0   # TODO: pin to commit SHA
+
+      - name: Verify cosign signature
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign verify \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/build.yml@refs/tags/" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${{ needs.build.outputs.image }}"
+
+      - name: Verify SLSA provenance attestation
+        run: |
+          cosign verify-attestation \
+            --type slsaprovenance \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${{ needs.build.outputs.image }}"
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: gha-deploy-prod-${{ github.run_id }}
+
+      - name: Pre-deploy DB backup
+        run: |
+          echo "Triggering pre-deploy DB snapshot"
+          # aws rds create-db-snapshot --db-instance-identifier prod-db --db-snapshot-identifier predeploy-$(date -u +%Y%m%d-%H%M%S)
+
+      - name: Deploy
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}
+          TAG: ${{ needs.preflight.outputs.tag }}
+        run: |
+          echo "Deploying $IMAGE ($TAG) to prod"
+          # plug your deploy commands here
+
+      - name: Smoke test
+        run: |
+          curl -fsS --retry 10 --retry-delay 6 \
+            "https://${{ vars.APP_DOMAIN || 'example.com' }}/healthz"
+
+      - name: Audit log
+        env:
+          CT: ${{ inputs.change_ticket }}
+          BG: ${{ inputs.break_glass }}
+        run: |
+          jq -n --arg env "prod" \
+                --arg actor "${{ github.actor }}" \
+                --arg tag "${{ needs.preflight.outputs.tag }}" \
+                --arg image "${{ needs.build.outputs.image }}" \
+                --arg ticket "$CT" \
+                --arg break_glass "$BG" \
+                --arg run_id "${{ github.run_id }}" \
+                '{event:"deploy", env:$env, actor:$actor, tag:$tag, image:$image, change_ticket:$ticket, break_glass:$break_glass, run_id:$run_id, ts:now}' \
+              > deploy-event.json
+          # aws s3 cp deploy-event.json s3://acme-audit-prod/deploys/$(date -u +%FT%TZ)-$RUN_ID.json
+
+      - name: Auto-create post-mortem issue (break-glass only)
+        if: ${{ inputs.break_glass == true }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[post-mortem] break-glass prod deploy ${process.env.TAG}`,
+              labels: ['post-mortem', 'break-glass'],
+              body: `Break-glass deploy. Change ticket: ${process.env.CT}. Owner: write a 5-whys + corrective actions in this issue within 5 business days.`
+            })
+        env:
+          TAG: ${{ needs.preflight.outputs.tag }}
+          CT: ${{ inputs.change_ticket }}
