@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Triarch · CI/CD Walkthrough — Analyze, Findings, Deploy</title>
+<link rel="icon" type="image/png" href="https://www.triarch.dev/triarch-logo.png" />
+<meta name="description" content="Triarch SMB CI/CD walkthrough: run discovery, get findings, deploy. No credentials logged anywhere." />
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg-2: #14140e;
+    --panel: #1f1d14;
+    --panel-2: #2b2818;
+    --border: #3a3424;
+    --border-strong: #5a4d2c;
+    --text: #f5ecd8;
+    --text-dim: #c9b88a;
+    --text-faint: #8a7956;
+    --accent: #e8a317;
+    --accent-2: #c97d1a;
+    --accent-3: #f5cc5b;
+    --pass: #b8a045;
+    --partial: #d97706;
+    --fail: #c84d4d;
+    --unknown: #8a7956;
+    --code-bg: #14110a;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(1100px 600px at 10% -10%, rgba(232,163,23,0.18), transparent 65%),
+      radial-gradient(800px 500px at 92% 5%, rgba(201,125,26,0.14), transparent 65%);
+    pointer-events: none;
+  }
+  main, header, nav, footer { position: relative; z-index: 1; }
+  h1 { font-size: clamp(2rem, 4.5vw, 3rem); margin-bottom: 0.6rem; line-height: 1.1; letter-spacing: -0.02em; }
+  h1 .hl {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+    display: inline-block;
+  }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 0.85rem; letter-spacing: -0.01em; }
+  h3 { font-size: 1.05rem; color: var(--text); margin: 0; }
+  p { color: var(--text-dim); margin: 0.4rem 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-3); text-decoration: underline; }
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.86em;
+    background: var(--code-bg);
+    color: #e8d4a4;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem 1rem;
+    overflow-x: auto;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: #e8d4a4;
+    margin: 0.5rem 0;
+  }
+  .container { max-width: 980px; margin: 0 auto; padding: 0 1.5rem; }
+
+  /* ---------- Sticky nav ---------- */
+  nav.toc {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10, 10, 15, 0.88);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav.toc .container {
+    display: flex; align-items: center; gap: 1.5rem;
+    padding: 0.55rem 1.5rem;
+    overflow-x: auto;
+  }
+  nav.toc .nav-brand {
+    display: flex; align-items: center; gap: 0.55rem;
+    font-weight: 700;
+    font-size: 0.88rem;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+  nav.toc .nav-brand img {
+    height: 26px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, rgba(232,163,23,0.06), rgba(201,125,26,0.06));
+    padding: 2px;
+    box-shadow: 0 0 0 2px rgba(232,163,23,0.35);
+  }
+  nav.toc .nav-brand .mark { color: var(--accent); }
+  nav.toc a {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  nav.toc a:hover { color: var(--text); background: var(--panel); text-decoration: none; }
+  nav.toc a.cta {
+    margin-left: auto;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--bg);
+    font-weight: 600;
+  }
+  nav.toc a.cta:hover { filter: brightness(1.1); text-decoration: none; }
+
+  /* ---------- Hero ---------- */
+  header.hero {
+    padding: 3.5rem 0 2.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand-row {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1.5rem; padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand-row img {
+    height: 52px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(232,163,23,0.06), rgba(201,125,26,0.06));
+    padding: 4px;
+    box-shadow: 0 0 0 2px rgba(232,163,23,0.4), 0 0 30px rgba(232,163,23,0.2);
+  }
+  .brand-row .brand-text { display: flex; flex-direction: column; gap: 0.15rem; }
+  .brand-row .brand-name {
+    font-size: 0.96rem; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .brand-row .brand-name .mark { color: var(--accent); }
+  .brand-row .brand-tag { font-size: 0.78rem; color: var(--text-dim); font-style: italic; }
+
+  .badge {
+    display: inline-block;
+    padding: 0.22rem 0.7rem;
+    background: linear-gradient(135deg, rgba(232,163,23,0.12), rgba(201,125,26,0.08));
+    color: var(--accent);
+    border: 1px solid rgba(232,163,23,0.3);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 1rem;
+  }
+  .lede {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    max-width: 700px;
+    margin-top: 1rem;
+  }
+  .lede strong { color: var(--text); }
+
+  /* ---------- 3-step flow visual ---------- */
+  .flow-strip {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 2rem;
+    padding: 1rem 0;
+  }
+  @media (max-width: 700px) {
+    .flow-strip { grid-template-columns: 1fr; }
+    .flow-strip .flow-arrow { display: none; }
+  }
+  .flow-step {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    text-align: center;
+  }
+  .flow-step .num {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--bg);
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+  }
+  .flow-step h4 { font-size: 1rem; color: var(--text); margin-bottom: 0.2rem; }
+  .flow-step p { font-size: 0.78rem; color: var(--text-faint); margin: 0; }
+  .flow-arrow { color: var(--accent-2); font-size: 1.2rem; text-align: center; }
+
+  /* ---------- Path picker ---------- */
+  .paths {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  @media (max-width: 760px) { .paths { grid-template-columns: 1fr; } }
+  .path-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.4rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s;
+  }
+  .path-card:hover { border-color: var(--border-strong); }
+  .path-card.recommended { border-top: 3px solid var(--accent); }
+  .path-card .label {
+    font-size: 0.7rem; font-weight: 700;
+    color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 0.3rem;
+  }
+  .path-card.recommended .label::after { content: ' · recommended'; color: var(--accent-3); }
+  .path-card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+  .path-card p { font-size: 0.9rem; margin: 0.3rem 0; line-height: 1.55; }
+  .path-card .meta {
+    margin-top: 0.85rem;
+    font-size: 0.78rem;
+    color: var(--text-faint);
+    border-top: 1px solid var(--border);
+    padding-top: 0.65rem;
+  }
+  .path-card button, .path-card a.btn {
+    margin-top: 1rem;
+    padding: 0.65rem 1.1rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    align-self: flex-start;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(232,163,23,0.25);
+    transition: all 0.15s;
+  }
+  .path-card button:hover, .path-card a.btn:hover {
+    background: linear-gradient(135deg, var(--accent-2), var(--accent));
+    text-decoration: none;
+    transform: translateY(-1px);
+  }
+
+  /* ---------- Form ---------- */
+  .form-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 1.75rem;
+    margin-top: 1rem;
+    display: none;
+  }
+  .form-card.open { display: block; }
+  .question {
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .question:last-child { border-bottom: none; }
+  .q-text {
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+    display: flex; align-items: flex-start; gap: 0.55rem;
+  }
+  .q-num {
+    background: var(--accent);
+    color: var(--bg);
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .q-text .id {
+    font-family: ui-monospace, monospace;
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    margin-left: auto;
+  }
+  .q-options { display: flex; gap: 0.45rem; flex-wrap: wrap; padding-left: 1.85rem; }
+  .q-opt {
+    padding: 0.4rem 0.85rem;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    transition: all 0.12s;
+    user-select: none;
+  }
+  .q-opt:hover { border-color: var(--border-strong); color: var(--text); }
+  .q-opt.selected {
+    background: rgba(232,163,23,0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .form-actions {
+    margin-top: 1rem;
+    display: flex; gap: 0.6rem; align-items: center;
+  }
+  .btn-primary {
+    padding: 0.7rem 1.4rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.92rem; font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 4px 16px rgba(232,163,23,0.25);
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+  .btn-secondary {
+    padding: 0.7rem 1.2rem;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-secondary:hover { background: var(--panel-2); }
+
+  /* ---------- Findings ---------- */
+  .findings-block {
+    display: none;
+    margin-top: 1.5rem;
+  }
+  .findings-block.shown { display: block; }
+  .findings-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+  @media (max-width: 700px) { .findings-summary { grid-template-columns: repeat(2, 1fr); } }
+  .summary-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 3px solid;
+    border-radius: var(--radius);
+    padding: 0.85rem 1rem;
+  }
+  .summary-card.pass { border-top-color: var(--pass); }
+  .summary-card.fail { border-top-color: var(--fail); }
+  .summary-card.partial { border-top-color: var(--partial); }
+  .summary-card.unknown { border-top-color: var(--unknown); }
+  .summary-card .lbl {
+    font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .summary-card.pass .lbl { color: var(--pass); }
+  .summary-card.fail .lbl { color: var(--fail); }
+  .summary-card.partial .lbl { color: var(--partial); }
+  .summary-card.unknown .lbl { color: var(--unknown); }
+  .summary-card .num {
+    font-size: 1.8rem; font-weight: 700; color: var(--text); line-height: 1; margin-top: 0.2rem;
+  }
+
+  .gap-list { display: flex; flex-direction: column; gap: 0.45rem; }
+  .gap-item {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 4px solid;
+    border-radius: var(--radius-sm);
+    padding: 0.7rem 0.95rem;
+    display: flex; align-items: center; gap: 0.65rem;
+  }
+  .gap-item.pass { border-left-color: var(--pass); }
+  .gap-item.partial { border-left-color: var(--partial); }
+  .gap-item.fail { border-left-color: var(--fail); }
+  .gap-item.unknown { border-left-color: var(--unknown); }
+  .status-icon {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: 0.78rem;
+    flex-shrink: 0;
+  }
+  .gap-item.pass .status-icon { background: rgba(184,160,69,0.18); color: var(--pass); }
+  .gap-item.fail .status-icon { background: rgba(200,77,77,0.18); color: var(--fail); }
+  .gap-item.partial .status-icon { background: rgba(217,119,6,0.18); color: var(--partial); }
+  .gap-item.unknown .status-icon { background: rgba(138,121,86,0.2); color: var(--unknown); }
+  .gap-item.pass .status-icon::before { content: '✓'; }
+  .gap-item.fail .status-icon::before { content: '✕'; }
+  .gap-item.partial .status-icon::before { content: '!'; }
+  .gap-item.unknown .status-icon::before { content: '?'; }
+  .gap-title { flex: 1; color: var(--text); font-size: 0.9rem; }
+  .gap-fix { color: var(--text-dim); font-size: 0.8rem; }
+  .gap-fix::before { content: ' · '; color: var(--text-faint); }
+  .tier-pill {
+    padding: 0.1rem 0.5rem;
+    font-size: 0.62rem; font-weight: 700;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    border-radius: 999px; border: 1px solid;
+    flex-shrink: 0;
+  }
+  .tier-pill.req { background: rgba(200,77,77,0.1); color: var(--fail); border-color: rgba(200,77,77,0.35); }
+  .tier-pill.rec { background: rgba(232,163,23,0.1); color: var(--accent); border-color: rgba(232,163,23,0.35); }
+  .tier-pill.opt { background: rgba(138,121,86,0.12); color: var(--text-faint); border-color: rgba(138,121,86,0.3); }
+
+  .findings-cta {
+    background: linear-gradient(135deg, rgba(232,163,23,0.08), rgba(201,125,26,0.05));
+    border: 1px solid rgba(232,163,23,0.3);
+    border-radius: var(--radius);
+    padding: 1.35rem 1.6rem;
+    margin-top: 1.25rem;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  }
+  .findings-cta .text { flex: 1; min-width: 240px; }
+  .findings-cta strong { color: var(--text); }
+  .findings-cta p { font-size: 0.88rem; }
+
+  /* ---------- Privacy block ---------- */
+  .privacy {
+    background: var(--panel);
+    border: 1px solid rgba(184,160,69,0.4);
+    border-left: 4px solid var(--pass);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .privacy h3 { color: var(--pass); font-size: 1.05rem; margin-bottom: 0.4rem; }
+  .privacy ul { margin: 0.5rem 0 0 1.25rem; padding: 0; font-size: 0.88rem; color: var(--text-dim); }
+  .privacy li { padding: 0.2rem 0; }
+
+  /* ---------- Misc ---------- */
+  .copy-block {
+    position: relative;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin: 0.5rem 0;
+  }
+  .copy-block pre { border: none; margin: 0; }
+  .copy-btn {
+    position: absolute;
+    top: 0.4rem; right: 0.4rem;
+    padding: 0.2rem 0.6rem;
+    background: var(--panel-2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .copy-btn.copied { color: var(--pass); border-color: var(--pass); }
+
+  footer {
+    border-top: 1px solid var(--border);
+    margin-top: 4rem;
+    padding: 2rem 0;
+    color: var(--text-faint);
+    font-size: 0.85rem;
+    background: linear-gradient(180deg, transparent, rgba(232,163,23,0.03));
+  }
+  footer .container {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 1rem; flex-wrap: wrap;
+  }
+  footer .footer-brand { display: flex; align-items: center; gap: 0.6rem; }
+  footer .footer-brand img { height: 24px; opacity: 0.75; }
+  footer .footer-brand strong { color: var(--text-dim); font-weight: 600; letter-spacing: 0.03em; }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem; right: 1.5rem;
+    background: var(--panel-2);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    padding: 0.7rem 1.2rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.86rem;
+    transform: translateY(150%);
+    transition: transform 0.3s;
+    z-index: 100;
+  }
+  .toast.show { transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<nav class="toc">
+  <div class="container">
+    <a href="index.html" class="nav-brand" style="text-decoration:none">
+      <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" />
+      <span><span class="mark">TRIARCH</span> · CI/CD walkthrough</span>
+    </a>
+    <a href="cicd-overview.html">Overview</a>
+    <a href="cicd-movie.html">▶ Movie</a>
+    <a href="#paths" class="cta">Get started</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <div class="brand-row">
+      <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" />
+      <div class="brand-text">
+        <span class="brand-name"><span class="mark">TRIARCH</span> · SECURITY ADVISORS</span>
+        <span class="brand-tag">In a market full of noise, we provide the signal.</span>
+      </div>
+    </div>
+    <span class="badge">Walkthrough · v1.0</span>
+    <h1>Run analysis. Get <span class="hl">findings</span>. Deploy.</h1>
+    <p class="lede">Two paths to start. One Triarch-branded findings view. One follow-on prompt that takes Claude Code through the deploy. <strong>No credentials are ever logged, retained, or transmitted.</strong></p>
+
+    <div class="flow-strip">
+      <div class="flow-step">
+        <div class="num">1</div>
+        <h4>Analyze</h4>
+        <p>10-question form <em>or</em> discovery script</p>
+      </div>
+      <div class="flow-arrow">›</div>
+      <div class="flow-step">
+        <div class="num">2</div>
+        <h4>Findings</h4>
+        <p>Triarch-branded report — pass / partial / fail / unknown per item</p>
+      </div>
+      <div class="flow-arrow">›</div>
+      <div class="flow-step">
+        <div class="num">3</div>
+        <h4>Deploy</h4>
+        <p>Hand <code>deploy.md</code> + findings to Claude Code</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section class="container" id="paths">
+  <h2>Step 1 · Choose how to analyze</h2>
+  <p>Both paths produce the same Triarch-branded findings format. The form is faster but coarser; the discovery script is more precise.</p>
+
+  <div class="paths">
+    <div class="path-card">
+      <span class="label">Path A · Quick form</span>
+      <h3>Answer 10 questions</h3>
+      <p>Pick from <em>Yes / No / Don't know</em> for each. We render findings inline below — same format Claude Code produces, branded the same way.</p>
+      <p style="margin-top:0.5rem">Best when you already know your repo's state and just want a fast assessment.</p>
+      <div class="meta">~3 minutes · runs entirely in your browser</div>
+      <button id="startFormBtn">Start the form →</button>
+    </div>
+
+    <div class="path-card recommended">
+      <span class="label">Path B · Discovery script</span>
+      <h3>Run discovery + Claude Code prompt</h3>
+      <p>Two downloads: a metadata-only shell script that hits <code>gh</code> and (optionally) <code>aws</code>, and a Claude Code prompt that scores the output.</p>
+      <p style="margin-top:0.5rem">Best when you want comprehensive, evidence-backed findings.</p>
+      <div class="meta">~10 minutes · requires <code>gh</code> auth + Claude Code</div>
+      <button id="showDiscoveryBtn">Show how to run it →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============== Form ============== -->
+<section class="container" id="form-section">
+  <div class="form-card" id="formCard">
+    <h3 style="margin-bottom:0.4rem">Quick assessment</h3>
+    <p style="font-size:0.88rem">Pick the option that best describes your current repo. <strong>"Don't know"</strong> is a valid answer — the deploy prompt will tell Claude Code to check it during the run.</p>
+
+    <div id="qList"></div>
+
+    <div class="form-actions">
+      <button class="btn-primary" id="generateBtn" disabled>Generate findings</button>
+      <button class="btn-secondary" id="resetBtn">Reset</button>
+      <span style="font-size:0.78rem;color:var(--text-faint);margin-left:auto" id="qCount">0 / 10 answered</span>
+    </div>
+  </div>
+
+  <div class="findings-block" id="findingsBlock">
+    <h2 style="margin-top:1.5rem">Step 2 · Your findings</h2>
+    <p style="font-size:0.9rem">Same scoring tiers Claude Code would produce from the discovery script. Use these to decide what to address first.</p>
+
+    <div class="findings-summary" id="findingsSummary"></div>
+    <div class="gap-list" id="gapList"></div>
+
+    <div class="findings-cta">
+      <div class="text">
+        <strong>Step 3 — Deploy</strong>
+        <p>Download the deployment prompt customized with your answers, hand it to Claude Code along with this findings page. It walks through implementing each gap, never asking for or logging your credentials.</p>
+      </div>
+      <button class="btn-primary" id="downloadDeployBtn">⬇ Download deploy.md</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============== Discovery instructions ============== -->
+<section class="container" id="discovery-section" style="display:none">
+  <h2>Path B · Discovery + Claude Code</h2>
+  <p>Four short steps. Nothing leaves your laptop.</p>
+
+  <h3 style="margin-top:1.25rem;font-size:1rem">0. Authenticate to GitHub + your cloud (one-time)</h3>
+  <p style="font-size:0.88rem">These are interactive logins — they open a browser, you sign in, the CLI stores a session. <strong>Triarch never sees any of these tokens.</strong> Skip whatever clouds you don't use.</p>
+
+  <p style="font-size:0.85rem;font-weight:600;color:var(--text);margin-top:0.85rem">GitHub <span style="color:var(--accent)">— required</span></p>
+  <div class="copy-block">
+    <button class="copy-btn">copy</button>
+<pre><span style="color:#637777"># Check current state — if already logged in with the right scopes, skip the login step</span>
+gh auth status
+
+<span style="color:#637777"># If not authenticated, login (browser flow):</span>
+gh auth login --hostname github.com --git-protocol https \
+  --scopes <span style="color:#ecc48d">"repo,read:org,workflow"</span></pre>
+  </div>
+
+  <p style="font-size:0.85rem;font-weight:600;color:var(--text);margin-top:0.85rem">AWS <span style="color:var(--text-faint)">— if you use AWS</span></p>
+  <div class="copy-block">
+    <button class="copy-btn">copy</button>
+<pre><span style="color:#637777"># Check first</span>
+aws sts get-caller-identity
+
+<span style="color:#637777"># If not authenticated, pick ONE of these:</span>
+
+<span style="color:#637777"># Option A — AWS SSO / IAM Identity Center (recommended for org-managed accounts)</span>
+aws configure sso         <span style="color:#637777"># first time only</span>
+aws sso login             <span style="color:#637777"># every ~8 hours</span>
+
+<span style="color:#637777"># Option B — federated via your IdP (Okta / Entra / Google) using existing tooling</span>
+<span style="color:#637777"># e.g. saml2aws, granted, leapp — whichever your org uses</span>
+
+<span style="color:#637777"># Option C — IAM access key (last resort; rotate keys regularly)</span>
+aws configure             <span style="color:#637777"># prompts for key + secret in your terminal — never paste into chat</span></pre>
+  </div>
+
+  <p style="font-size:0.85rem;font-weight:600;color:var(--text);margin-top:0.85rem">GCP <span style="color:var(--text-faint)">— if you use GCP IaaS</span></p>
+  <div class="copy-block">
+    <button class="copy-btn">copy</button>
+<pre><span style="color:#637777"># Check first</span>
+gcloud auth list
+
+<span style="color:#637777"># If not authenticated:</span>
+gcloud auth login                              <span style="color:#637777"># browser flow</span>
+gcloud config set project YOUR_PROJECT_ID
+gcloud auth application-default login          <span style="color:#637777"># for Terraform / SDKs</span></pre>
+  </div>
+
+  <p style="font-size:0.85rem;font-weight:600;color:var(--text);margin-top:0.85rem">Firebase <span style="color:var(--text-faint)">— if you use Firebase</span></p>
+  <div class="copy-block">
+    <button class="copy-btn">copy</button>
+<pre><span style="color:#637777"># Install if needed</span>
+npm install -g firebase-tools
+
+<span style="color:#637777"># Check + login</span>
+firebase projects:list
+firebase login                                 <span style="color:#637777"># browser flow</span></pre>
+  </div>
+
+  <p style="font-size:0.85rem;font-weight:600;color:var(--text);margin-top:0.85rem">Azure <span style="color:var(--text-faint)">— if you use Azure</span></p>
+  <div class="copy-block">
+    <button class="copy-btn">copy</button>
+<pre><span style="color:#637777"># Check + login</span>
+az account show
+az login                                       <span style="color:#637777"># browser flow</span>
+az account set --subscription <span style="color:#ecc48d">"Subscription Name or ID"</span></pre>
+  </div>
+
+  <p style="margin-top:0.6rem;font-size:0.82rem;color:var(--text-faint);background:rgba(184,160,69,0.05);border-left:3px solid var(--pass);padding:0.55rem 0.85rem;border-radius:0 4px 4px 0">
+    <strong style="color:var(--pass)">Note:</strong> Every command above runs locally. Tokens are stored in your home directory's CLI config (e.g. <code>~/.config/gh/</code>, <code>~/.aws/sso/</code>). They never get sent to Triarch, Claude Code chat, or any HTML rendered here.
+  </p>
+
+  <h3 style="margin-top:1.25rem;font-size:1rem">1. Download the files</h3>
+  <ul style="margin:0.5rem 0 0.5rem 1.25rem;color:var(--text-dim);font-size:0.92rem">
+    <li><a href="github-cicd-scaffold/discovery.sh" download>discovery.sh</a> — bash script, prints metadata only (account IDs, scopes, plan tier)</li>
+    <li><a href="gap-analysis.md" download>gap-analysis.md</a> — Claude Code prompt that scores discovery output</li>
+    <li><a href="deploy.md" download>deploy.md</a> — Claude Code prompt that walks through implementing each gap</li>
+  </ul>
+
+  <h3 style="margin-top:1.25rem;font-size:1rem">2. Run discovery (your terminal)</h3>
+  <div class="copy-block">
+    <button class="copy-btn">copy</button>
+<pre>chmod +x discovery.sh
+./discovery.sh ORG REPO          <span style="color:#637777"># org and repo name; both optional</span>
+<span style="color:#637777"># Output saved to discovery-&lt;timestamp&gt;.txt — review before sharing</span></pre>
+  </div>
+
+  <h3 style="margin-top:1.25rem;font-size:1rem">3. Score it (Claude Code)</h3>
+  <div class="copy-block">
+    <button class="copy-btn">copy</button>
+<pre><span style="color:#637777"># In your Claude Code session, hand it the prompt:</span>
+@gap-analysis.md
+<span style="color:#637777"># Or just say:</span>
+"Run gap-analysis.md against the discovery-&lt;timestamp&gt;.txt I just produced for ORG/REPO."</pre>
+  </div>
+  <p style="font-size:0.85rem;color:var(--text-faint)">Claude Code produces <code>gap-analysis-ORG-REPO-DATE.html</code> with the same Triarch branding as this page.</p>
+
+  <h3 style="margin-top:1.25rem;font-size:1rem">4. Deploy (Claude Code)</h3>
+  <div class="copy-block">
+    <button class="copy-btn">copy</button>
+<pre><span style="color:#637777"># Same Claude Code session — hand it the deploy prompt:</span>
+@deploy.md
+<span style="color:#637777"># With your findings as input:</span>
+"Use deploy.md to walk through addressing the failing items in gap-analysis-ORG-REPO-DATE.html"</pre>
+  </div>
+  <p style="font-size:0.85rem;color:var(--text-faint)"><code>deploy.md</code> never asks you to paste a token or password. When a secret is needed, it prints the <code>gh secret set</code> command for you to run yourself.</p>
+</section>
+
+<section class="container">
+  <h2 id="privacy">Credential safety guarantees</h2>
+  <div class="privacy">
+    <h3>Nothing here logs, retains, or transmits credentials.</h3>
+    <ul>
+      <li><strong>The form</strong> runs entirely in your browser. Answers are not sent anywhere — no analytics, no telemetry. Page reload clears them unless you download the deploy.md.</li>
+      <li><strong>discovery.sh</strong> only calls <code>gh</code> and <code>aws</code> commands that print metadata (plan tier, account IDs, role names, scopes, branch protection settings). It never reads, prints, or stores tokens, secrets, passwords, or keys. Output goes to a local file you control.</li>
+      <li><strong>gap-analysis.md and deploy.md</strong> are Claude Code prompts. They never instruct Claude to fetch, paste, transmit, or chat-log secret values. When a secret is required, you run <code>gh secret set</code> yourself in your terminal — the value never enters Claude Code's chat history.</li>
+      <li><strong>The findings HTML</strong> contains no secrets. Account IDs and ARNs may appear (for context); these are not credentials. Review the file before sharing.</li>
+      <li><strong>OIDC over tokens</strong> wherever cloud auth is used. The deploy prompt prefers federated identity for this exact reason — no static keys to leak.</li>
+    </ul>
+    <p style="margin-top:0.6rem;font-size:0.85rem">If anything in the deploy run feels like it's asking for a credential value to paste into chat, <strong>stop and report it</strong>. That would be a deviation from the prompt.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-brand">
+      <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" />
+      <strong>TRIARCH SECURITY ADVISORS</strong>
+      <span style="color:var(--text-faint);margin-left:0.5rem">· Walkthrough v1.0</span>
+    </div>
+    <div>
+      <a href="cicd-overview.html">Overview</a> ·
+      <a href="cicd-movie.html" style="color:var(--accent-2)">▶ Movie</a> ·
+      <a href="https://www.triarch.dev" target="_blank" rel="noopener">triarch.dev</a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast">Copied</div>
+
+<script>
+/* ============================================================
+   Questions — map to gap-analysis matrix items.
+   Each question's "fail" answer flags 1+ matrix items as needing remediation.
+============================================================ */
+const QUESTIONS = [
+  {
+    id: "q1",
+    text: "What GitHub plan is the org on?",
+    options: ["Team / Enterprise", "Free", "Don't know"],
+    maps: { "Free": [{ id:"PLAN", title:"Upgrade GitHub plan to Team", tier:"req", fix:"Free tier blocks protection rules on private repos. Upgrade to Team (~$4/user/mo)." }], "Don't know": [{ id:"PLAN-CHECK", title:"Confirm GitHub plan", tier:"req", fix:"Run: gh api orgs/$ORG --jq '.plan.name'" }] }
+  },
+  {
+    id: "q2",
+    text: "Is branch protection (or a ruleset) applied to your default branch?",
+    options: ["Yes", "No", "Don't know"],
+    maps: { "No": [{ id:"R-4", title:"Apply branch ruleset to main", tier:"req", fix:"Apply main-protection.json from the scaffold." }], "Don't know": [{ id:"R-4-CHECK", title:"Verify branch protection state", tier:"req", fix:"Run: gh api repos/$ORG/$REPO/branches/main/protection" }] }
+  },
+  {
+    id: "q3",
+    text: "Are signed commits required on the default branch?",
+    options: ["Yes", "No", "Don't know"],
+    maps: { "No": [{ id:"C-4", title:"Require signed commits", tier:"rec", fix:"Add { type: required_signatures } to the ruleset and re-apply." }], "Don't know": [{ id:"C-4-CHECK", title:"Verify signed-commits requirement", tier:"rec", fix:"Inspect the ruleset's rules array for required_signatures." }] }
+  },
+  {
+    id: "q4",
+    text: "Do PRs require code review (and CODEOWNERS approval)?",
+    options: ["Yes", "Partial — review but no CODEOWNERS", "No", "Don't know"],
+    maps: {
+      "Partial — review but no CODEOWNERS": [{ id:"C-3", title:"Add CODEOWNERS file", tier:"rec", fix:"Drop the scaffold's .github/CODEOWNERS into the repo." }],
+      "No": [{ id:"C-5", title:"Require PR reviews + CODEOWNERS", tier:"rec", fix:"Update ruleset: required_approving_review_count=1, require_code_owner_review=true, plus add CODEOWNERS file." }],
+      "Don't know": [{ id:"C-5-CHECK", title:"Verify PR review requirements", tier:"rec", fix:"Inspect ruleset's pull_request rule." }]
+    }
+  },
+  {
+    id: "q5",
+    text: "Are dev / staging / prod environments configured with reviewer protection?",
+    options: ["All three", "Some", "None", "Don't know"],
+    maps: {
+      "Some": [{ id:"C-1-PARTIAL", title:"Complete the 3-environment setup", tier:"rec", fix:"Run bootstrap.sh — it creates all 3 environments with correct protection rules." }],
+      "None": [{ id:"C-1", title:"Create 3 protected environments", tier:"rec", fix:"Run bootstrap.sh from the scaffold." }],
+      "Don't know": [{ id:"C-1-CHECK", title:"Verify environments + protection", tier:"rec", fix:"Run: gh api repos/$ORG/$REPO/environments" }]
+    }
+  },
+  {
+    id: "q6",
+    text: "Does CI authenticate to your cloud via OIDC (no static keys)?",
+    options: ["Yes — OIDC", "Static API keys / IAM access keys", "No cloud auth yet", "Don't know"],
+    maps: {
+      "Static API keys / IAM access keys": [{ id:"C-2", title:"Migrate to OIDC", tier:"rec", fix:"Apply iac/github-oidc-aws/. Delete the static AWS_ACCESS_KEY_ID secrets after." }],
+      "No cloud auth yet": [{ id:"R-5", title:"Set up deploy credentials", tier:"req", fix:"Apply the OIDC IaC, then set AWS_DEPLOY_ROLE_ARN per env." }],
+      "Don't know": [{ id:"C-2-CHECK", title:"Verify OIDC vs static keys", tier:"rec", fix:"Run: aws iam list-open-id-connect-providers; check env secrets for AWS_ACCESS_KEY_ID." }]
+    }
+  },
+  {
+    id: "q7",
+    text: "Do you have at least one security scan in CI (Semgrep, OSV, Gitleaks, etc.)?",
+    options: ["Multiple (3+)", "One or two", "None", "Don't know"],
+    maps: {
+      "One or two": [{ id:"C-6-PARTIAL", title:"Expand security scanning coverage", tier:"rec", fix:"Drop the scaffold's ci.yml — it includes Semgrep, OSV, Gitleaks, Checkov, tfsec, and threat-model drift." }],
+      "None": [{ id:"C-6", title:"Add SAST + SCA + secrets scanning", tier:"rec", fix:"Drop the scaffold's ci.yml workflow into .github/workflows/." }],
+      "Don't know": [{ id:"C-6-CHECK", title:"Inventory existing scans", tier:"rec", fix:"List .github/workflows/ and check what security actions are referenced." }]
+    }
+  },
+  {
+    id: "q8",
+    text: "Is there a threat model document in the repo?",
+    options: ["Yes", "No", "Don't know"],
+    maps: {
+      "No": [{ id:"C-9", title:"Add threat model", tier:"rec", fix:"Install the threat-modeling-toolkit Claude Code plugin or write a 1-page STRIDE table at .threatmodel/" }],
+      "Don't know": [{ id:"C-9-CHECK", title:"Look for threat model files", tier:"rec", fix:"Look for .threatmodel/, THREATMODEL.md, or docs/threat-model.md." }]
+    }
+  },
+  {
+    id: "q9",
+    text: "Are there Dependabot or Renovate updates configured?",
+    options: ["Yes", "No", "Don't know"],
+    maps: {
+      "No": [{ id:"C-7", title:"Enable Dependabot", tier:"rec", fix:"Drop the scaffold's .github/dependabot.yml." }],
+      "Don't know": [{ id:"C-7-CHECK", title:"Verify dependency-update automation", tier:"rec", fix:"Look for .github/dependabot.yml or renovate.json." }]
+    }
+  },
+  {
+    id: "q10",
+    text: "Cloud / hosting target?",
+    options: ["AWS", "GCP / Firebase", "Azure", "Cloudflare", "None / not yet"],
+    maps: {
+      "None / not yet": [{ id:"R-6", title:"Pick a hosting target", tier:"req", fix:"Walkthrough Stage 1 of the scaffold's README — sign up for the chosen cloud, then run iac/github-oidc-aws/ tofu apply." }]
+    }
+  },
+];
+
+/* ============================================================
+   State + rendering
+============================================================ */
+const state = { answers: {} };
+
+const qList = document.getElementById('qList');
+const qCount = document.getElementById('qCount');
+const generateBtn = document.getElementById('generateBtn');
+const findingsBlock = document.getElementById('findingsBlock');
+const findingsSummary = document.getElementById('findingsSummary');
+const gapList = document.getElementById('gapList');
+const formCard = document.getElementById('formCard');
+const discoverySection = document.getElementById('discovery-section');
+
+function renderQuestions() {
+  qList.innerHTML = '';
+  QUESTIONS.forEach((q, i) => {
+    const div = document.createElement('div');
+    div.className = 'question';
+    div.innerHTML = `
+      <div class="q-text"><span class="q-num">${i+1}</span><span>${q.text}</span><span class="id">${q.id}</span></div>
+      <div class="q-options">
+        ${q.options.map(o => `<div class="q-opt" data-q="${q.id}" data-val="${o}">${o}</div>`).join('')}
+      </div>
+    `;
+    qList.appendChild(div);
+  });
+  qList.querySelectorAll('.q-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      const id = opt.dataset.q;
+      qList.querySelectorAll(`[data-q="${id}"]`).forEach(x => x.classList.remove('selected'));
+      opt.classList.add('selected');
+      state.answers[id] = opt.dataset.val;
+      updateCount();
+    });
+  });
+}
+
+function updateCount() {
+  const answered = Object.keys(state.answers).length;
+  qCount.textContent = `${answered} / ${QUESTIONS.length} answered`;
+  generateBtn.disabled = answered < QUESTIONS.length;
+}
+
+function generateFindings() {
+  const items = [];
+
+  for (const q of QUESTIONS) {
+    const ans = state.answers[q.id];
+    if (!ans) continue;
+
+    const isPass = q.options.indexOf(ans) === 0; // first option is always the "good" answer
+    const isUnknown = ans === "Don't know";
+
+    if (isPass) {
+      items.push({ status:'pass', tier:'rec', id:q.id.toUpperCase(), title:`${q.text.replace(/\?$/,'')} — ${ans}`, fix:null });
+    } else if (isUnknown) {
+      const flagged = (q.maps[ans] || [])[0];
+      items.push({
+        status:'unknown',
+        tier: flagged?.tier || 'rec',
+        id: flagged?.id || q.id.toUpperCase(),
+        title: `${q.text.replace(/\?$/,'')} — needs verification`,
+        fix: flagged?.fix || null,
+      });
+    } else {
+      const flagged = (q.maps[ans] || [])[0];
+      const partial = ans.toLowerCase().startsWith('partial') || ans.toLowerCase().startsWith('some') || ans.toLowerCase().startsWith('one or two');
+      items.push({
+        status: partial ? 'partial' : 'fail',
+        tier: flagged?.tier || 'rec',
+        id: flagged?.id || q.id.toUpperCase(),
+        title: flagged?.title || `${q.text.replace(/\?$/,'')} — ${ans}`,
+        fix: flagged?.fix || null,
+      });
+    }
+  }
+
+  /* Render summary cards */
+  const counts = items.reduce((a,i) => { a[i.status]=(a[i.status]||0)+1; return a; }, {});
+  findingsSummary.innerHTML = `
+    <div class="summary-card pass"><div class="lbl">Passing</div><div class="num">${counts.pass||0}</div></div>
+    <div class="summary-card fail"><div class="lbl">Failing</div><div class="num">${counts.fail||0}</div></div>
+    <div class="summary-card partial"><div class="lbl">Partial</div><div class="num">${counts.partial||0}</div></div>
+    <div class="summary-card unknown"><div class="lbl">Unknown</div><div class="num">${counts.unknown||0}</div></div>
+  `;
+
+  /* Render items, sorted by status priority: fail → partial → unknown → pass */
+  const order = { fail:0, partial:1, unknown:2, pass:3 };
+  items.sort((a,b) => order[a.status] - order[b.status]);
+
+  gapList.innerHTML = '';
+  for (const it of items) {
+    const tierLbl = it.tier === 'req' ? 'Required' : it.tier === 'opt' ? 'Optional' : 'Recommended';
+    const div = document.createElement('div');
+    div.className = `gap-item ${it.status}`;
+    div.innerHTML = `
+      <span class="status-icon"></span>
+      <span class="gap-title">${it.title}${it.fix ? `<span class="gap-fix">${it.fix}</span>` : ''}</span>
+      <span class="tier-pill ${it.tier}">${tierLbl}</span>
+    `;
+    gapList.appendChild(div);
+  }
+
+  findingsBlock.classList.add('shown');
+  findingsBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ============================================================
+   Deploy.md generation — answers baked into a header block
+============================================================ */
+function generateDeployMd() {
+  const ts = new Date().toISOString().slice(0, 10);
+  const lines = [
+    '# Triarch CI/CD Deployment Prompt — customized',
+    '',
+    `Generated: ${ts} from the walkthrough quick-form.`,
+    '',
+    '## Findings to address',
+    '',
+    'The user answered the quick-form questions below. Treat these as initial signal, not authoritative — verify each before applying remediations.',
+    '',
+    '```yaml',
+    'walkthrough_form_answers:',
+  ];
+  for (const q of QUESTIONS) {
+    lines.push(`  ${q.id}: "${state.answers[q.id] || 'unanswered'}"  # ${q.text}`);
+  }
+  lines.push('```');
+  lines.push('');
+  lines.push('## Now follow deploy.md');
+  lines.push('');
+  lines.push('Continue with the standard deploy flow — see deploy.md for the full instruction set.');
+  lines.push('Critical reminder: never log, retain, or transmit credentials.');
+  lines.push('When a secret value is required, print the `gh secret set` command and stop. The user runs it themselves.');
+  lines.push('');
+  return lines.join('\n');
+}
+
+function downloadDeploy() {
+  const content = generateDeployMd();
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'deploy-customized.md';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+  showToast('Downloaded deploy-customized.md');
+}
+
+/* ============================================================
+   Wiring
+============================================================ */
+document.getElementById('startFormBtn').addEventListener('click', () => {
+  formCard.classList.add('open');
+  formCard.scrollIntoView({ behavior:'smooth', block:'start' });
+});
+
+document.getElementById('showDiscoveryBtn').addEventListener('click', () => {
+  discoverySection.style.display = 'block';
+  discoverySection.scrollIntoView({ behavior:'smooth', block:'start' });
+});
+
+generateBtn.addEventListener('click', generateFindings);
+document.getElementById('downloadDeployBtn').addEventListener('click', downloadDeploy);
+document.getElementById('resetBtn').addEventListener('click', () => {
+  state.answers = {};
+  qList.querySelectorAll('.q-opt.selected').forEach(x => x.classList.remove('selected'));
+  findingsBlock.classList.remove('shown');
+  updateCount();
+});
+
+/* Copy buttons in code blocks */
+document.querySelectorAll('.copy-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const pre = btn.parentElement.querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText);
+    btn.textContent = 'copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+  });
+});
+
+/* Toast helper */
+const toast = document.getElementById('toast');
+let toastTimer;
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+}
+
+/* Boot */
+renderQuestions();
+updateCount();
+</script>
+
+</body>
+</html>

@@ -6,7 +6,24 @@
 
 ---
 
-## 0. What this is
+## 0. Credential safety — read first
+
+This prompt **MUST NOT** cause you to:
+
+- Ask the user to paste an API key, token, password, or secret value into chat.
+- Log, echo, or repeat any credential value the user pastes despite this rule. If a user pastes one, immediately tell them to rotate it.
+- Write any credential value into the output HTML, into a file, or into your reasoning trace.
+- Suggest reading a file containing secrets (e.g. `.env`, raw `~/.aws/credentials`).
+
+You **MUST**:
+
+- Run only metadata-printing commands (the discovery commands below already comply).
+- Treat account IDs, ARNs, and resource names as **non-credentials** — they're identifiers, OK to include in the report. If the user's org treats them as sensitive, they redact before sharing.
+- If a check requires a credential to be present, verify its **name** in `gh secret list` output (which only shows names, never values). Never attempt to read its value.
+
+If you find yourself about to do any of the above forbidden actions, stop, surface the issue, and ask the user how to proceed.
+
+## 1. What this is
 
 You (Claude Code) are running a **gap analysis** against a customer's GitHub organization and one of their repositories, comparing the current state against the **Triarch SMB CI/CD framework**.
 
@@ -45,20 +62,82 @@ Do **not** ask for credentials. The customer must already have `gh auth login` s
 
 ## 2. Step-by-step execution
 
-### Step 1 — Confirm tooling
+### Step 1 — Confirm tooling and authentication state
+
+Print these checks to the user and confirm what's installed:
 
 ```bash
-gh --version
+gh --version          # GitHub CLI — required
 git --version
-gh auth status
+aws --version         # only if AWS in scope
+gcloud --version      # only if GCP / Firebase in scope
+firebase --version    # only if Firebase in scope
+az --version          # only if Azure in scope
 ```
 
-If `gh` is not authenticated, stop and tell the user to run:
+Then check authentication state:
+
+```bash
+gh auth status                         # required
+aws sts get-caller-identity 2>/dev/null || echo "AWS: not authenticated"
+gcloud auth list 2>/dev/null
+az account show 2>/dev/null || echo "Azure: not authenticated"
+firebase projects:list 2>/dev/null | head -3
+```
+
+If anything the user needs is **not authenticated**, stop and print the exact login command. Do not proceed with discovery — the output will be incomplete and the gap-analysis will be wrong.
+
+#### GitHub login (always required)
 
 ```bash
 gh auth login --hostname github.com --git-protocol https \
   --scopes "repo,read:org,workflow"
 ```
+
+This opens a browser. The token is stored in `~/.config/gh/`. **Triarch never sees it.** No need for the user to type or paste a token anywhere.
+
+#### AWS login (if cloud target = AWS)
+
+Pick whichever the user's org uses. Do not recommend one over the others without context.
+
+```bash
+# Option A — AWS SSO / IAM Identity Center (best for org-managed accounts)
+aws configure sso         # first time only — interactive
+aws sso login             # every ~8 hours
+
+# Option B — federated via IdP (Okta, Entra, Google) using existing tooling
+# Tools: saml2aws, granted, leapp, AWS CLI v2 with sso-session
+# Run whichever your org has standardised on.
+
+# Option C — IAM access key (last resort, manual rotation required)
+aws configure
+# CLI prompts for key + secret IN THEIR TERMINAL.
+# Never have the user paste these into chat.
+```
+
+#### GCP login (if cloud target = GCP IaaS)
+
+```bash
+gcloud auth login                              # browser flow
+gcloud config set project YOUR_PROJECT_ID
+gcloud auth application-default login          # for Terraform / SDKs
+```
+
+#### Firebase login (if cloud target = GCP + Firebase)
+
+```bash
+npm install -g firebase-tools                  # if not installed
+firebase login                                 # browser flow
+```
+
+#### Azure login (if cloud target = Azure)
+
+```bash
+az login                                       # browser flow
+az account set --subscription "Name or ID"
+```
+
+**Critical:** every login above runs in the user's terminal. Tokens land in CLI config files in their home directory. None of those values should ever appear in your chat output, your reasoning trace, or the HTML report.
 
 ### Step 2 — Run the discovery sweep
 
