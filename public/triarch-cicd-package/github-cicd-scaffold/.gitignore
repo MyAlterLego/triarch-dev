@@ -1,0 +1,23 @@
+## Bootstrap config — contains your GitHub org/repo + AWS account IDs
+bootstrap.config.env
+bootstrap.oidc.outputs.json
+
+## Tofu / Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+*.tfvars
+!example.tfvars
+
+## Audit exports
+audit-*.json
+
+## OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+## Threat model output (state is committed; reports are not)
+.threatmodel/reports/
+.threatmodel/tests/

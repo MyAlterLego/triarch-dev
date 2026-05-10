@@ -1,0 +1,2865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Triarch Security · SMB CI/CD Walkthrough</title>
+<link rel="icon" type="image/png" href="https://www.triarch.dev/triarch-logo.png" />
+<meta name="description" content="Triarch Security — interactive walkthrough for the SMB CI/CD framework: architecture, pre-flight Q&A, step-by-step deployment, credential matrix, validation." />
+<style>
+  /* ================================================================
+     Triarch SMB CI/CD walkthrough
+     Self-contained, no external dependencies, dark theme.
+  ================================================================ */
+  :root {
+    /* Triarch palette — burnt yellow with gradient accents */
+    --bg: #0a0a0f;
+    --bg-2: #14140e;
+    --panel: #1f1d14;
+    --panel-2: #2b2818;
+    --border: #3a3424;
+    --border-strong: #5a4d2c;
+    --text: #f5ecd8;
+    --text-dim: #c9b88a;
+    --text-faint: #8a7956;
+    --accent: #e8a317;          /* burnt yellow primary */
+    --accent-2: #c97d1a;        /* deeper burnt orange */
+    --accent-3: #f5cc5b;        /* warm gold highlight */
+    --accent-cool: #e8a317;     /* cyan for occasional cool contrast */
+    --accent-purple: #c97d1a;
+    --warn: #d97706;
+    --danger: #c84d4d;
+    --success: #b8a045;
+    --code-bg: #14110a;
+    --shadow: 0 8px 28px rgba(0,0,0,0.5);
+    --shadow-sm: 0 2px 10px rgba(0,0,0,0.35);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    background: var(--bg);
+    color: var(--text);
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(1100px 600px at 10% -10%, rgba(232,163,23,0.18), transparent 65%),
+      radial-gradient(800px 500px at 92% 5%, rgba(201,125,26,0.14), transparent 65%),
+      radial-gradient(1000px 600px at 50% 110%, rgba(245,204,91,0.06), transparent 65%);
+    pointer-events: none; z-index: 0;
+  }
+  main, header, nav { position: relative; z-index: 1; }
+  h1, h2, h3, h4 { color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
+  h1 { font-size: 2.4rem; margin: 0 0 0.5rem; }
+  h2 { font-size: 1.8rem; margin: 3rem 0 1rem; }
+  h3 { font-size: 1.2rem; margin: 1.5rem 0 0.5rem; }
+  h4 { font-size: 1rem; margin: 1rem 0 0.4rem; color: var(--accent); }
+  p  { margin: 0.5rem 0; color: var(--text-dim); }
+  a  { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    font-size: 0.875em;
+    background: var(--code-bg);
+    color: #c4d4ee;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+
+  /* ---------- Layout ---------- */
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 1.5rem; }
+  header.hero {
+    padding: 3rem 0 2.5rem;
+    border-bottom: 1px solid var(--border);
+    background:
+      radial-gradient(600px 250px at 80% 20%, rgba(232,163,23,0.08), transparent 70%),
+      linear-gradient(180deg, rgba(232,163,23,0.04), transparent);
+  }
+  .hero-brand {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-brand img {
+    height: 56px; width: auto;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.03);
+    padding: 4px;
+    border: 1px solid var(--border);
+  }
+  .hero-brand .brand-text {
+    display: flex; flex-direction: column; gap: 0.15rem;
+  }
+  .hero-brand .brand-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .hero-brand .brand-name .mark { color: var(--accent); }
+  .hero-brand .brand-tag {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  .badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    background: rgba(232,163,23,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(232,163,23,0.3);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 1rem;
+  }
+  .lede { font-size: 1.1rem; max-width: 820px; }
+  .signal-line {
+    margin-top: 1.5rem;
+    padding: 0.85rem 1.1rem;
+    background: rgba(232,163,23,0.05);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--text);
+    font-size: 0.92rem;
+    max-width: 820px;
+    font-style: italic;
+  }
+  .signal-line strong { color: var(--accent); font-style: normal; }
+  .hero-stats {
+    display: flex; gap: 2rem; flex-wrap: wrap;
+    margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
+  }
+  .stat { font-size: 0.875rem; color: var(--text-dim); }
+  .stat strong { display: block; font-size: 1.5rem; color: var(--text); margin-bottom: 0.1rem; font-weight: 600; }
+
+  /* ---------- Sticky nav ---------- */
+  nav.toc {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(6, 9, 18, 0.88);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav.toc .container {
+    display: flex; align-items: center; gap: 1.5rem;
+    padding: 0.5rem 1.5rem;
+    overflow-x: auto;
+  }
+  nav.toc .nav-brand {
+    display: flex; align-items: center; gap: 0.55rem;
+    margin-right: 0.5rem;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+  nav.toc .nav-brand img {
+    height: 26px;
+    width: auto;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.04);
+    padding: 2px;
+  }
+  nav.toc .nav-brand .brand-mark {
+    color: var(--accent);
+  }
+  nav.toc a {
+    color: var(--text-dim);
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  nav.toc a:hover { color: var(--text); background: var(--panel); }
+  nav.toc a.active { color: var(--accent); background: rgba(56,189,248,0.1); }
+  nav.toc .nav-progress {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .progress-pill {
+    background: var(--panel);
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    color: var(--accent-3);
+    font-weight: 600;
+    border: 1px solid var(--border);
+  }
+
+  /* ---------- Cards / panels ---------- */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+  }
+  .panel.elevated { box-shadow: var(--shadow); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  @media (max-width: 800px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Architecture explorer ---------- */
+  .arch-wrap {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1rem;
+  }
+  @media (max-width: 1000px) {
+    .arch-wrap { grid-template-columns: 1fr; }
+  }
+  .arch-svg {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  .arch-svg svg { width: 100%; height: auto; min-width: 700px; }
+  .arch-node {
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .arch-node rect, .arch-node path {
+    transition: all 0.2s;
+  }
+  .arch-node:hover rect { filter: brightness(1.3); }
+  .arch-node.active rect { stroke: var(--accent); stroke-width: 2.5; }
+  .arch-text { fill: var(--text); font-family: -apple-system, sans-serif; font-size: 12px; pointer-events: none; }
+  .arch-text-sm { fill: var(--text-dim); font-family: -apple-system, sans-serif; font-size: 10px; pointer-events: none; }
+  .arch-detail {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    min-height: 300px;
+    position: sticky;
+    top: 4.5rem;
+    align-self: start;
+  }
+  .arch-detail h4 { margin-top: 0; color: var(--accent); font-size: 1.05rem; }
+  .arch-detail .kv {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    margin-top: 1rem;
+  }
+  .arch-detail .kv dt { color: var(--text-faint); }
+  .arch-detail .kv dd { margin: 0; color: var(--text); }
+  .arch-detail .empty { color: var(--text-faint); font-style: italic; text-align: center; margin-top: 4rem; }
+
+  /* ---------- Questions form ---------- */
+  .question {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .question .q-text {
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .q-num {
+    background: var(--accent);
+    color: var(--bg);
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .q-options { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .q-opt {
+    flex: 1 1 200px;
+    padding: 0.6rem 0.9rem;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--text-dim);
+    text-align: center;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .q-opt:hover { border-color: var(--border-strong); color: var(--text); }
+  .q-opt.selected {
+    background: rgba(56,189,248,0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .q-hint { font-size: 0.8rem; color: var(--text-faint); margin-top: 0.75rem; }
+  .q-hint strong { color: var(--accent-3); }
+
+  .your-stack {
+    background: linear-gradient(180deg, rgba(167,139,250,0.08), rgba(56,189,248,0.05));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .your-stack h3 { margin-top: 0; }
+  .stack-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+  .stack-tag {
+    background: var(--panel-2);
+    border: 1px solid var(--border-strong);
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    color: var(--text);
+  }
+  .stack-tag .label { color: var(--text-faint); margin-right: 0.4rem; }
+
+  /* ---------- Step wizard ---------- */
+  .step {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+  }
+  .step.complete { border-color: rgba(34,197,94,0.4); }
+  .step-head {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .step-head:hover { background: var(--panel-2); }
+  .step-num {
+    width: 32px; height: 32px;
+    background: var(--bg-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; font-weight: 600;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .step.complete .step-num {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+  }
+  .step-title { flex: 1; font-weight: 500; }
+  .step-meta { font-size: 0.8rem; color: var(--text-faint); }
+  .step-toggle {
+    color: var(--text-faint);
+    font-size: 1.2rem;
+    transition: transform 0.2s;
+  }
+  .step.open .step-toggle { transform: rotate(90deg); }
+  .step-body {
+    display: none;
+    padding: 0 1.25rem 1.25rem 4.25rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+  .step.open .step-body { display: block; }
+  .step-actions {
+    display: flex; gap: 0.5rem; align-items: center;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+  .btn {
+    padding: 0.5rem 1rem;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.secondary {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+  }
+  .btn.success { background: var(--success); color: white; }
+  .btn.ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ---------- Code blocks ---------- */
+  .code-block {
+    position: relative;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin: 0.75rem 0;
+    overflow: hidden;
+  }
+  .code-block pre {
+    margin: 0;
+    padding: 1rem;
+    overflow-x: auto;
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: #c4d4ee;
+  }
+  .code-block .copy-btn {
+    position: absolute;
+    top: 0.5rem; right: 0.5rem;
+    background: var(--panel-2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .code-block .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .code-block .copy-btn.copied { color: var(--success); border-color: var(--success); }
+
+  /* Token highlighting */
+  .tok-cmd { color: #82aaff; }
+  .tok-flag { color: #c792ea; }
+  .tok-str { color: #ecc48d; }
+  .tok-com { color: #637777; font-style: italic; }
+  .tok-var { color: #f78c6c; }
+
+  /* ---------- Inline question in step ---------- */
+  .inline-q {
+    background: rgba(245,158,11,0.06);
+    border: 1px solid rgba(245,158,11,0.3);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem 1rem;
+    margin: 0.75rem 0;
+    font-size: 0.9rem;
+  }
+  .inline-q::before { content: '? '; color: var(--warn); font-weight: 700; }
+
+  /* ---------- Credentials matrix ---------- */
+  table.creds {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+  }
+  table.creds th, table.creds td {
+    padding: 0.65rem 0.85rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  table.creds th {
+    background: var(--bg-2);
+    color: var(--text-dim);
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  table.creds tr:last-child td { border-bottom: none; }
+  table.creds tr.checked { opacity: 0.5; }
+  table.creds tr.checked td { text-decoration: line-through; text-decoration-color: var(--text-faint); }
+  .check-cell input { cursor: pointer; transform: scale(1.2); }
+  .pill { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+  .pill.aws { background: rgba(245,158,11,0.15); color: var(--warn); }
+  .pill.gh { background: rgba(56,189,248,0.15); color: var(--accent); }
+  .pill.cloud { background: rgba(34,211,153,0.15); color: var(--accent-3); }
+  .pill.app { background: rgba(167,139,250,0.15); color: var(--accent-2); }
+
+  /* ---------- Validation cards ---------- */
+  .check-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+  @media (max-width: 800px) { .check-grid { grid-template-columns: 1fr; } }
+  .check-item {
+    display: flex; gap: 0.75rem; align-items: flex-start;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .check-item:hover { border-color: var(--border-strong); }
+  .check-item.done { background: rgba(34,197,94,0.05); border-color: rgba(34,197,94,0.3); }
+  .check-icon {
+    width: 22px; height: 22px;
+    border: 2px solid var(--border-strong);
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .check-item.done .check-icon {
+    background: var(--success);
+    border-color: var(--success);
+  }
+  .check-item.done .check-icon::after {
+    content: '✓'; color: white; font-size: 0.85rem; font-weight: 700;
+  }
+  .check-text { flex: 1; font-size: 0.875rem; }
+  .check-text strong { display: block; color: var(--text); margin-bottom: 0.1rem; }
+  .check-text span { color: var(--text-dim); font-size: 0.8rem; }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem; right: 1.5rem;
+    background: var(--panel-2);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    z-index: 100;
+    transform: translateY(150%);
+    transition: transform 0.3s;
+    font-size: 0.875rem;
+  }
+  .toast.show { transform: translateY(0); }
+
+  /* ---------- Footer ---------- */
+  footer {
+    border-top: 1px solid var(--border);
+    margin-top: 4rem;
+    padding: 2rem 0;
+    color: var(--text-faint);
+    font-size: 0.85rem;
+    background: linear-gradient(180deg, transparent, rgba(232,163,23,0.03));
+  }
+  footer .container {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 1rem; flex-wrap: wrap;
+  }
+  footer .footer-brand {
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+  footer .footer-brand img {
+    height: 24px; width: auto;
+    opacity: 0.7;
+  }
+  footer .footer-brand strong {
+    color: var(--text-dim);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  footer a { color: var(--text-dim); }
+  footer a:hover { color: var(--accent); }
+
+  /* ---------- Misc ---------- */
+  .callout {
+    background: rgba(56,189,248,0.05);
+    border-left: 3px solid var(--accent);
+    padding: 0.85rem 1rem;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    margin: 1rem 0;
+    font-size: 0.875rem;
+  }
+  .callout.warn { background: rgba(245,158,11,0.05); border-left-color: var(--warn); }
+  .callout.danger { background: rgba(248,113,113,0.05); border-left-color: var(--danger); }
+  .callout strong { display: block; margin-bottom: 0.25rem; color: var(--text); }
+  ul, ol { color: var(--text-dim); padding-left: 1.5rem; }
+  li { margin: 0.3rem 0; }
+  .reset-btn {
+    margin-left: auto;
+    background: transparent;
+    color: var(--text-faint);
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.7rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .reset-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+  /* ---------- Project detail inputs ---------- */
+  .details-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .details-card h3 { margin-top: 0; }
+  .details-card .sub { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 1rem; }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem 1rem;
+  }
+  @media (max-width: 700px) { .detail-grid { grid-template-columns: 1fr; } }
+  .detail-field { display: flex; flex-direction: column; gap: 0.3rem; }
+  .detail-field.span-2 { grid-column: span 2; }
+  @media (max-width: 700px) { .detail-field.span-2 { grid-column: auto; } }
+  .detail-label {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-weight: 500;
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+  .detail-label .req { color: var(--accent); font-weight: 700; }
+  .detail-input, .detail-select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+  }
+  .detail-select { font-family: inherit; cursor: pointer; }
+  .detail-input:focus, .detail-select:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--panel);
+    box-shadow: 0 0 0 3px rgba(232,163,23,0.12);
+  }
+  .detail-input.invalid { border-color: var(--danger); }
+  .detail-hint { font-size: 0.72rem; color: var(--text-faint); }
+  .detail-hint.error { color: var(--danger); }
+
+  /* ---------- Generated config section ---------- */
+  .gen-status {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.85rem 1.15rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+    flex-wrap: wrap;
+  }
+  .gen-status .status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--warn);
+    box-shadow: 0 0 10px var(--warn);
+  }
+  .gen-status.ready .status-dot {
+    background: var(--success);
+    box-shadow: 0 0 10px var(--success);
+  }
+  .gen-status .status-text { color: var(--text-dim); }
+  .gen-status .status-text strong { color: var(--text); }
+  .gen-status .download-all { margin-left: auto; }
+
+  .gen-files {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1rem;
+  }
+  .gen-file {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    transition: all 0.2s;
+  }
+  .gen-file.ready { border-color: rgba(34,197,94,0.4); }
+  .gen-file.disabled { opacity: 0.55; }
+  .gen-file-head {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+  }
+  .gen-file-head .filename {
+    font-family: ui-monospace, monospace;
+    font-size: 0.85rem;
+    color: var(--accent);
+    flex: 1;
+    word-break: break-all;
+  }
+  .gen-file-head .ftype {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+  }
+  .gen-file-desc { padding: 0.7rem 1rem 0; font-size: 0.82rem; color: var(--text-dim); }
+  .gen-file-preview {
+    margin: 0.65rem 1rem;
+    background: var(--code-bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    max-height: 220px;
+  }
+  .gen-file-preview pre {
+    margin: 0;
+    padding: 0.7rem 0.85rem;
+    overflow: auto;
+    max-height: 220px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.74rem;
+    line-height: 1.55;
+    color: #c4d4ee;
+  }
+  .gen-file-preview .ph { color: var(--warn); background: rgba(245,166,35,0.1); padding: 0 0.2rem; border-radius: 2px; }
+  .gen-file-actions {
+    padding: 0 1rem 1rem;
+    display: flex; gap: 0.5rem;
+  }
+
+  /* ---------- Stage labels ---------- */
+  .stage-label {
+    display: inline-block;
+    padding: 0.22rem 0.7rem;
+    background: rgba(201,125,26,0.1);
+    color: var(--accent-2);
+    border: 1px solid rgba(201,125,26,0.32);
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.6rem;
+  }
+  .stage-label + h2 { margin-top: 0.5rem; }
+
+  /* ---------- Discovery section ---------- */
+  .discovery-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  @media (max-width: 950px) {
+    .discovery-grid { grid-template-columns: 1fr; }
+  }
+  .discovery-grid > .panel { padding: 1.25rem 1.5rem; }
+  .qchecklist {
+    list-style: none;
+    padding: 0;
+    margin: 0.6rem 0 0;
+    font-size: 0.87rem;
+    color: var(--text-dim);
+  }
+  .qchecklist li {
+    padding: 0.3rem 0 0.3rem 1.4rem;
+    position: relative;
+  }
+  .qchecklist li::before {
+    content: '?';
+    position: absolute;
+    left: 0;
+    top: 0.3rem;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .qchecklist li.qtopic {
+    margin-top: 0.85rem;
+    padding-left: 0;
+    color: var(--accent-3);
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  .qchecklist li.qtopic::before { content: ''; }
+  .qchecklist li.qtopic:first-child { margin-top: 0.2rem; }
+
+  /* ---------- Gradient enhancements (matched to movie style) ---------- */
+  .hero-brand img, footer .footer-brand img, nav.toc .nav-brand img {
+    box-shadow:
+      0 0 0 2px rgba(232,163,23,0.35),
+      0 0 0 5px rgba(201,125,26,0.1),
+      0 0 24px rgba(232,163,23,0.15);
+    background: linear-gradient(135deg, rgba(232,163,23,0.06), rgba(201,125,26,0.06));
+  }
+  .badge {
+    background: linear-gradient(135deg, rgba(232,163,23,0.12), rgba(201,125,26,0.08));
+  }
+  /* stage labels get a gradient feel */
+  .stage-label {
+    background: linear-gradient(135deg, rgba(201,125,26,0.14), rgba(232,163,23,0.06));
+  }
+  /* primary buttons use gradient */
+  .btn:not(.secondary):not(.ghost) {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    color: var(--bg);
+    border: none;
+    box-shadow: 0 4px 16px rgba(232,163,23,0.25);
+  }
+  .btn:not(.secondary):not(.ghost):hover {
+    background: linear-gradient(135deg, var(--accent-2) 0%, var(--accent) 100%);
+    box-shadow: 0 6px 24px rgba(201,125,26,0.35);
+  }
+
+  /* Architecture bubbles + line glow (matched to movie) */
+  .arch-svg .arch-line {
+    filter: drop-shadow(0 0 3px rgba(232,163,23,0.4));
+  }
+  .arch-svg .arch-bubble {
+    filter: drop-shadow(0 0 6px var(--accent)) drop-shadow(0 0 12px rgba(232,163,23,0.5));
+  }
+  .muted { color: var(--text-faint); font-size: 0.83rem; margin: 0.2rem 0 0; }
+  .discovery-cta {
+    margin-top: 1.25rem;
+    background: rgba(232,163,23,0.05);
+    border: 1px solid rgba(232,163,23,0.25);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    font-size: 0.9rem;
+  }
+  .discovery-cta strong { color: var(--text); }
+
+  /* Top-of-page link to overview */
+  .overview-link {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    color: var(--accent);
+    font-size: 0.85rem;
+    margin-top: 1rem;
+  }
+  .overview-link:hover { text-decoration: underline; }
+
+  /* ---------- Required / Recommended / Optional tier badges ---------- */
+  .tier-req, .tier-rec, .tier-opt {
+    display: inline-block;
+    padding: 0.12rem 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    border: 1px solid;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+  .tier-req {
+    background: rgba(248,113,113,0.1);
+    color: var(--danger);
+    border-color: rgba(248,113,113,0.35);
+  }
+  .tier-rec {
+    background: rgba(245,204,91,0.1);
+    color: var(--accent-3);
+    border-color: rgba(245,204,91,0.35);
+  }
+  .tier-opt {
+    background: rgba(95,113,145,0.12);
+    color: var(--text-faint);
+    border-color: rgba(95,113,145,0.3);
+  }
+
+  /* ---------- Tiers section ---------- */
+  .tiers-callout {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .tiers-callout h3 { margin-top: 0; }
+  .tier-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.75rem;
+    margin-top: 0.85rem;
+  }
+  @media (max-width: 800px) { .tier-grid { grid-template-columns: 1fr; } }
+  .tier-col h4 {
+    margin: 0 0 0.4rem;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .tier-col.req h4 { color: var(--danger); }
+  .tier-col.rec h4 { color: var(--accent-3); }
+  .tier-col.opt h4 { color: var(--text-faint); }
+  .tier-col ul {
+    margin: 0; padding: 0; list-style: none;
+    font-size: 0.83rem;
+    color: var(--text-dim);
+  }
+  .tier-col li {
+    padding: 0.2rem 0 0.2rem 1rem;
+    position: relative;
+  }
+  .tier-col li::before {
+    content: '·';
+    position: absolute;
+    left: 0;
+    color: var(--text-faint);
+  }
+</style>
+</head>
+<body>
+
+<!-- =============== Sticky nav =============== -->
+<nav class="toc">
+  <div class="container">
+    <a href="#overview" class="nav-brand" style="text-decoration:none">
+      <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch Security" />
+      <span><span class="brand-mark">TRIARCH</span> · CI/CD</span>
+    </a>
+    <a href="#overview" class="active">Overview</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#discovery">Discovery</a>
+    <a href="#questions">Decide</a>
+    <a href="#config">Generate</a>
+    <a href="#walkthrough">Build</a>
+    <a href="#credentials">Credentials</a>
+    <a href="#validation">Validate</a>
+    <a href="cicd-movie.html" style="color:var(--accent-2)">▶ Movie</a>
+    <span class="nav-progress">
+      <span class="progress-pill" id="progressPill">0 / 7</span>
+      <button class="reset-btn" id="resetBtn" title="Clear saved progress">reset</button>
+    </span>
+  </div>
+</nav>
+
+<!-- =============== Hero =============== -->
+<header class="hero" id="overview">
+  <div class="container">
+    <div class="hero-brand">
+      <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch Security" />
+      <div class="brand-text">
+        <span class="brand-name"><span class="mark">TRIARCH</span> · SECURITY ADVISORS</span>
+        <span class="brand-tag">In a market full of noise, we provide the signal.</span>
+      </div>
+    </div>
+    <span class="badge">Interactive walkthrough · greenfield-first</span>
+    <h1>SMB CI/CD — from a React repo to first prod release</h1>
+    <p class="lede">Assumed starting state: <strong>GitHub + a React app</strong>. The walkthrough maps what you have, names what you don't, and provisions the rest — hardened ruleset, three protected environments, OIDC, signed builds, security on every gate. Answers customize the commands and config files live.</p>
+    <div class="signal-line"><strong>Triarch principle:</strong> security is a left-shifted gate, not a right-shifted audit.</div>
+    <div class="hero-stats">
+      <div class="stat"><strong>GitHub + React</strong>nothing else assumed</div>
+      <div class="stat"><strong>5</strong>stages</div>
+      <div class="stat"><strong>3</strong>protected environments</div>
+      <div class="stat"><strong>0</strong>long-lived cloud creds</div>
+      <div class="stat"><strong>7</strong>required CI checks</div>
+    </div>
+    <p style="margin-top:1rem;font-size:0.85rem;color:var(--text-faint)">
+      For exec / sponsor stakeholders: <a href="cicd-overview.html">read the overview</a> or <a href="cicd-movie.html" style="color:var(--accent-2)">▶ watch the interactive movie</a>.
+    </p>
+  </div>
+</header>
+
+<main>
+
+<!-- =============== Architecture =============== -->
+<section class="container" id="architecture">
+  <div class="stage-label">Stage 1 — Understand</div>
+  <h2>1. Architecture — the target state</h2>
+  <p>This is what you're going to have when you're done. Click any component for details, credentials it touches, and dependencies. The shape stays the same regardless of which cloud or auth provider you pick — only the implementations swap.</p>
+
+  <div class="arch-wrap">
+    <div class="arch-svg">
+      <svg viewBox="0 0 920 540" xmlns="http://www.w3.org/2000/svg" aria-label="CI/CD architecture">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7eb0" />
+          </marker>
+          <linearGradient id="ghGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1e2742" />
+            <stop offset="100%" stop-color="#161e30" />
+          </linearGradient>
+        </defs>
+
+        <!-- swimlanes -->
+        <text x="120" y="25" class="arch-text-sm" text-anchor="middle">DEVELOPER</text>
+        <text x="460" y="25" class="arch-text-sm" text-anchor="middle">GITHUB (system of record)</text>
+        <text x="800" y="25" class="arch-text-sm" text-anchor="middle">CLOUD (per environment)</text>
+
+        <line x1="240" y1="40" x2="240" y2="520" stroke="#243049" stroke-dasharray="4,4" />
+        <line x1="680" y1="40" x2="680" y2="520" stroke="#243049" stroke-dasharray="4,4" />
+
+        <!-- Developer column -->
+        <g class="arch-node" data-node="dev">
+          <rect x="40" y="60" width="160" height="80" rx="8" fill="url(#ghGrad)" stroke="#334067" stroke-width="1.5" />
+          <text x="120" y="90" class="arch-text" text-anchor="middle">Claude Code / Cursor</text>
+          <text x="120" y="108" class="arch-text-sm" text-anchor="middle">slash commands</text>
+          <text x="120" y="122" class="arch-text-sm" text-anchor="middle">sub-agents</text>
+        </g>
+        <g class="arch-node" data-node="precommit">
+          <rect x="40" y="160" width="160" height="60" rx="8" fill="url(#ghGrad)" stroke="#334067" stroke-width="1.5" />
+          <text x="120" y="186" class="arch-text" text-anchor="middle">pre-commit hooks</text>
+          <text x="120" y="204" class="arch-text-sm" text-anchor="middle">gitleaks · semgrep · checkov</text>
+        </g>
+
+        <!-- GitHub column -->
+        <g class="arch-node" data-node="repo">
+          <rect x="290" y="60" width="180" height="60" rx="8" fill="url(#ghGrad)" stroke="#334067" stroke-width="1.5" />
+          <text x="380" y="86" class="arch-text" text-anchor="middle">Repo + IaC + .threatmodel/</text>
+          <text x="380" y="104" class="arch-text-sm" text-anchor="middle">signed commits, ruleset</text>
+        </g>
+        <g class="arch-node" data-node="actions">
+          <rect x="290" y="140" width="180" height="60" rx="8" fill="url(#ghGrad)" stroke="#334067" stroke-width="1.5" />
+          <text x="380" y="166" class="arch-text" text-anchor="middle">GitHub Actions</text>
+          <text x="380" y="184" class="arch-text-sm" text-anchor="middle">CI · build · sign · deploy</text>
+        </g>
+        <g class="arch-node" data-node="ghcr">
+          <rect x="290" y="220" width="180" height="50" rx="8" fill="url(#ghGrad)" stroke="#334067" stroke-width="1.5" />
+          <text x="380" y="242" class="arch-text" text-anchor="middle">GHCR</text>
+          <text x="380" y="258" class="arch-text-sm" text-anchor="middle">cosign-signed + SLSA attested</text>
+        </g>
+        <g class="arch-node" data-node="env-dev">
+          <rect x="500" y="140" width="160" height="40" rx="6" fill="rgba(56,189,248,0.08)" stroke="#38bdf8" stroke-width="1.5" />
+          <text x="580" y="165" class="arch-text" text-anchor="middle">env: dev</text>
+        </g>
+        <g class="arch-node" data-node="env-staging">
+          <rect x="500" y="190" width="160" height="40" rx="6" fill="rgba(245,158,11,0.08)" stroke="#f59e0b" stroke-width="1.5" />
+          <text x="580" y="215" class="arch-text" text-anchor="middle">env: staging — 1 reviewer</text>
+        </g>
+        <g class="arch-node" data-node="env-prod">
+          <rect x="500" y="240" width="160" height="40" rx="6" fill="rgba(248,113,113,0.08)" stroke="#f87171" stroke-width="1.5" />
+          <text x="580" y="265" class="arch-text" text-anchor="middle">env: prod — 2 reviewers</text>
+        </g>
+        <g class="arch-node" data-node="audit">
+          <rect x="290" y="300" width="370" height="50" rx="8" fill="url(#ghGrad)" stroke="#334067" stroke-width="1.5" />
+          <text x="475" y="322" class="arch-text" text-anchor="middle">Audit log (deploys, approvals, security events)</text>
+          <text x="475" y="338" class="arch-text-sm" text-anchor="middle">streaming → S3 Object Lock</text>
+        </g>
+
+        <!-- Cloud column -->
+        <g class="arch-node" data-node="oidc">
+          <rect x="710" y="60" width="170" height="60" rx="8" fill="url(#ghGrad)" stroke="#334067" stroke-width="1.5" />
+          <text x="795" y="86" class="arch-text" text-anchor="middle">OIDC trust + IAM Role</text>
+          <text x="795" y="104" class="arch-text-sm" text-anchor="middle">per env, repo-scoped</text>
+        </g>
+        <g class="arch-node" data-node="runtime">
+          <rect x="710" y="140" width="170" height="80" rx="8" fill="url(#ghGrad)" stroke="#334067" stroke-width="1.5" />
+          <text x="795" y="166" class="arch-text" text-anchor="middle">App runtime</text>
+          <text x="795" y="184" class="arch-text-sm" text-anchor="middle">Container/Lambda/Static</text>
+          <text x="795" y="200" class="arch-text-sm" text-anchor="middle">behind CDN + WAF</text>
+        </g>
+        <g class="arch-node" data-node="db">
+          <rect x="710" y="240" width="170" height="50" rx="8" fill="url(#ghGrad)" stroke="#334067" stroke-width="1.5" />
+          <text x="795" y="262" class="arch-text" text-anchor="middle">Database</text>
+          <text x="795" y="278" class="arch-text-sm" text-anchor="middle">creds in Secrets Manager</text>
+        </g>
+        <g class="arch-node" data-node="idp">
+          <rect x="710" y="310" width="170" height="50" rx="8" fill="url(#ghGrad)" stroke="#334067" stroke-width="1.5" />
+          <text x="795" y="332" class="arch-text" text-anchor="middle">IDP</text>
+          <text x="795" y="348" class="arch-text-sm" text-anchor="middle">WorkOS / Auth0 / Cognito</text>
+        </g>
+        <g class="arch-node" data-node="obs">
+          <rect x="710" y="380" width="170" height="50" rx="8" fill="url(#ghGrad)" stroke="#334067" stroke-width="1.5" />
+          <text x="795" y="402" class="arch-text" text-anchor="middle">Observability + audit</text>
+          <text x="795" y="418" class="arch-text-sm" text-anchor="middle">Grafana Cloud / Better Stack</text>
+        </g>
+
+        <!-- Threat model node -->
+        <g class="arch-node" data-node="threatmodel">
+          <rect x="290" y="450" width="370" height="50" rx="8" fill="url(#ghGrad)" stroke="#a78bfa" stroke-width="1.5" />
+          <text x="475" y="472" class="arch-text" text-anchor="middle" fill="#c4b5fd">Threat model (.threatmodel/)</text>
+          <text x="475" y="488" class="arch-text-sm" text-anchor="middle">STRIDE · OWASP · SOC2 mapping · drift gate</text>
+        </g>
+
+        <!-- ===== Connection lines — orthogonal (90-degree) routing, no diagonals ===== -->
+
+        <!-- Developer → Repo (orthogonal via junction x=240) -->
+        <path class="arch-line" d="M 200 100 L 240 100 L 240 90 L 290 90" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
+        <text x="245" y="82" class="arch-text-sm" text-anchor="middle">push</text>
+
+        <!-- Pre-commit → Repo (orthogonal via junction x=265) -->
+        <path class="arch-line" d="M 200 190 L 265 190 L 265 100 L 290 100" stroke="#e8a317" stroke-width="1.2" stroke-dasharray="2,4" stroke-linecap="round" fill="none" opacity="0.7" />
+        <text x="270" y="160" class="arch-text-sm" text-anchor="middle" opacity="0.85">pre-push</text>
+
+        <!-- Internal GitHub flow: Repo → Actions → GHCR (verticals) -->
+        <line class="arch-line" x1="380" y1="120" x2="380" y2="140" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
+        <line class="arch-line" x1="380" y1="200" x2="380" y2="220" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
+
+        <!-- Actions → 3 environments (right out, down, right in) -->
+        <path class="arch-line" d="M 470 165 L 485 165 L 485 160 L 500 160" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
+        <path class="arch-line" d="M 470 170 L 485 170 L 485 210 L 500 210" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
+        <path class="arch-line" d="M 470 175 L 485 175 L 485 260 L 500 260" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
+
+        <!-- envs → OIDC (cross-column, orthogonal up) -->
+        <path class="arch-line" d="M 660 210 L 690 210 L 690 90 L 710 90" stroke="#c97d1a" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
+        <text x="700" y="155" class="arch-text-sm" text-anchor="middle">OIDC</text>
+
+        <!-- Cloud chain: OIDC → Runtime → DB (verticals) -->
+        <line class="arch-line" x1="795" y1="120" x2="795" y2="140" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
+        <line class="arch-line" x1="795" y1="220" x2="795" y2="240" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
+
+        <!-- Runtime → IDP (orthogonal corridor outside cloud column, around DB) -->
+        <path class="arch-line" d="M 880 180 L 895 180 L 895 335 L 880 335" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
+
+        <!-- Runtime → Observability (corridor at x=910, further out) -->
+        <path class="arch-line" d="M 880 165 L 910 165 L 910 405 L 880 405" stroke="#e8a317" stroke-width="1.2" stroke-dasharray="2,4" stroke-linecap="round" fill="none" opacity="0.75" />
+
+        <!-- Audit log feeders (dashed, from GHCR / envs / Obs) -->
+        <line class="arch-line" x1="380" y1="270" x2="380" y2="300" stroke="#c97d1a" stroke-width="1" stroke-dasharray="2,4" opacity="0.6" />
+        <line class="arch-line" x1="580" y1="280" x2="580" y2="300" stroke="#c97d1a" stroke-width="1" stroke-dasharray="2,4" opacity="0.6" />
+        <path class="arch-line" d="M 710 405 L 685 405 L 685 325 L 660 325" stroke="#c97d1a" stroke-width="1" stroke-dasharray="2,4" stroke-linecap="round" fill="none" opacity="0.6" />
+
+        <!-- Threat model wraps repo (orthogonal up: out left, up, in to repo) -->
+        <path class="arch-line" d="M 290 475 L 270 475 L 270 90 L 290 90" stroke="#c97d1a" stroke-width="1" stroke-dasharray="2,4" stroke-linecap="round" fill="none" opacity="0.5" />
+        <text x="290" y="430" class="arch-text-sm" text-anchor="start" opacity="0.7" fill="#c97d1a">covers entire pipeline ↑</text>
+
+        <!-- Traveling bubbles — every line gets one, paths follow the orthogonal routing -->
+        <circle class="arch-bubble" r="4" fill="#e8a317">
+          <animateMotion dur="2.0s" begin="0s" repeatCount="indefinite" path="M 200 100 L 240 100 L 240 90 L 290 90" />
+        </circle>
+        <circle class="arch-bubble" r="3" fill="#e8a317">
+          <animateMotion dur="3.0s" begin="0.5s" repeatCount="indefinite" path="M 200 190 L 265 190 L 265 100 L 290 100" />
+        </circle>
+        <circle class="arch-bubble" r="3" fill="#e8a317">
+          <animateMotion dur="0.6s" begin="0.6s" repeatCount="indefinite" path="M 380 120 L 380 140" />
+        </circle>
+        <circle class="arch-bubble" r="3" fill="#e8a317">
+          <animateMotion dur="0.6s" begin="0.8s" repeatCount="indefinite" path="M 380 200 L 380 220" />
+        </circle>
+        <circle class="arch-bubble" r="4" fill="#e8a317">
+          <animateMotion dur="1.4s" begin="1.0s" repeatCount="indefinite" path="M 470 165 L 485 165 L 485 160 L 500 160" />
+        </circle>
+        <circle class="arch-bubble" r="4" fill="#e8a317">
+          <animateMotion dur="1.8s" begin="1.2s" repeatCount="indefinite" path="M 470 170 L 485 170 L 485 210 L 500 210" />
+        </circle>
+        <circle class="arch-bubble" r="4" fill="#e8a317">
+          <animateMotion dur="2.2s" begin="1.4s" repeatCount="indefinite" path="M 470 175 L 485 175 L 485 260 L 500 260" />
+        </circle>
+        <circle class="arch-bubble" r="4.5" fill="#c97d1a">
+          <animateMotion dur="2.8s" begin="1.6s" repeatCount="indefinite" path="M 660 210 L 690 210 L 690 90 L 710 90" />
+        </circle>
+        <circle class="arch-bubble" r="3.5" fill="#e8a317">
+          <animateMotion dur="0.9s" begin="1.8s" repeatCount="indefinite" path="M 795 120 L 795 140" />
+        </circle>
+        <circle class="arch-bubble" r="3.5" fill="#e8a317">
+          <animateMotion dur="0.9s" begin="2.0s" repeatCount="indefinite" path="M 795 220 L 795 240" />
+        </circle>
+        <circle class="arch-bubble" r="3.5" fill="#e8a317">
+          <animateMotion dur="3.5s" begin="2.2s" repeatCount="indefinite" path="M 880 180 L 895 180 L 895 335 L 880 335" />
+        </circle>
+        <circle class="arch-bubble" r="3" fill="#e8a317" opacity="0.85">
+          <animateMotion dur="5.0s" begin="2.4s" repeatCount="indefinite" path="M 880 165 L 910 165 L 910 405 L 880 405" />
+        </circle>
+        <!-- Audit feeders (smaller, slower, deeper-burnt) -->
+        <circle class="arch-bubble" r="2.5" fill="#c97d1a" opacity="0.85">
+          <animateMotion dur="2.0s" begin="2.6s" repeatCount="indefinite" path="M 380 270 L 380 300" />
+        </circle>
+        <circle class="arch-bubble" r="2.5" fill="#c97d1a" opacity="0.85">
+          <animateMotion dur="2.0s" begin="2.8s" repeatCount="indefinite" path="M 580 280 L 580 300" />
+        </circle>
+        <circle class="arch-bubble" r="2.5" fill="#c97d1a" opacity="0.85">
+          <animateMotion dur="3.0s" begin="3.0s" repeatCount="indefinite" path="M 710 405 L 685 405 L 685 325 L 660 325" />
+        </circle>
+      </svg>
+    </div>
+
+    <aside class="arch-detail" id="archDetail">
+      <p class="empty">Click a component on the diagram to see details, credentials, and dependencies.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- =============== Discovery =============== -->
+<section class="container" id="discovery">
+  <div class="stage-label">Stage 1 — Understand</div>
+  <h2>2. Discovery — what exists, and what doesn't</h2>
+  <p>Confirm what's actually in place before customizing anything. Commands below print <strong>metadata only</strong> — no secrets, no tokens, no credentials. <strong>"We don't have one yet" is a valid answer to most of these.</strong> Stage 2 picks defaults for gaps; Stage 4 provisions them.</p>
+
+  <div class="tiers-callout">
+    <h3>What's actually required vs what's strongly recommended vs optional</h3>
+    <p class="muted">Three tiers. The walkthrough below uses these badges to flag each step or sub-section.</p>
+    <div class="tier-grid">
+      <div class="tier-col req">
+        <h4><span class="tier-req">REQUIRED</span> Without these you don't have CI/CD</h4>
+        <ul>
+          <li>GitHub repo with Actions enabled</li>
+          <li>At least one CI workflow (lint/test/scan on PR)</li>
+          <li>At least one deploy workflow</li>
+          <li>Branch protection of some form on <code>main</code></li>
+          <li>Deploy credentials of some form (OIDC <em>or</em> API token)</li>
+          <li>A target hosting environment</li>
+        </ul>
+      </div>
+      <div class="tier-col rec">
+        <h4><span class="tier-rec">RECOMMENDED</span> Default in this framework — skip only with reason</h4>
+        <ul>
+          <li>3 protected environments (vs 1)</li>
+          <li>OIDC to cloud (vs long-lived tokens)</li>
+          <li>Required code review + CODEOWNERS</li>
+          <li>Required signed commits</li>
+          <li>SAST + SCA + secrets scanning</li>
+          <li>Threat model checked into repo</li>
+          <li>IaC for cloud setup (vs click-ops)</li>
+          <li>Audit log captured to immutable storage</li>
+        </ul>
+      </div>
+      <div class="tier-col opt">
+        <h4><span class="tier-opt">OPTIONAL</span> Add when capacity allows</h4>
+        <ul>
+          <li>SLSA build provenance + cosign signing</li>
+          <li>Threat-model drift gate in CI</li>
+          <li>DAST scanning</li>
+          <li>DR drill workflow</li>
+          <li>Cost guardrail alerts</li>
+          <li>License compliance check</li>
+          <li>Full observability stack (Grafana/Datadog)</li>
+          <li>Multiple SAST scanners (CodeQL + Semgrep)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="discovery-grid">
+    <div class="panel">
+      <h3>Questions to ask</h3>
+      <p class="muted">Walk these with the customer's eng/ops lead. Answers feed the decisions in Stage 2.</p>
+      <ul class="qchecklist">
+        <li class="qtopic">Source control &amp; deployment</li>
+        <li>Confirmed: source code lives in GitHub. <em>Org or just personal repos?</em></li>
+        <li>Is there an existing GitHub organization, or do we need to create one?</li>
+        <li>What plan is the GitHub account on? (Free / Team / Enterprise)</li>
+        <li>How is the app deployed today, if at all? (Manual? Vercel/Netlify free tier? Nothing?)</li>
+        <li>Any existing CI tool we'd need to retire? (CircleCI, Jenkins, Travis — most SMBs have nothing)</li>
+
+        <li class="qtopic">Cloud &amp; infrastructure</li>
+        <li>Is there a cloud account today? (AWS / Azure / GCP / Cloudflare / <strong>none</strong>)</li>
+        <li>If yes — how many accounts / subscriptions / projects exist?</li>
+        <li>Where is the app actually hosted right now, if anywhere? (Vercel? localhost? a VPS?)</li>
+        <li>Is there any existing IaC? (Terraform / CDK / Pulumi / OpenTofu / <strong>none</strong>)</li>
+        <li>Is the domain registered yet? With which registrar?</li>
+
+        <li class="qtopic">Identity &amp; auth</li>
+        <li>Is there an end-user IDP today? (WorkOS / Auth0 / Cognito / custom / <strong>none</strong>)</li>
+        <li>Is there a developer IDP for company logins? (Okta / Entra / Google Workspace / GitHub-only)</li>
+        <li>Is 2FA enforced for human accounts today?</li>
+
+        <li class="qtopic">Application stack</li>
+        <li>React variant in use? (CRA / Vite / Next.js / Remix)</li>
+        <li>Is there a backend yet? Language and framework, if so.</li>
+        <li>Is there a database today? Anything beyond a local dev DB?</li>
+        <li>Container, serverless, or static-only?</li>
+
+        <li class="qtopic">Security &amp; compliance</li>
+        <li>Is there a compliance program in scope? (SOC 2 / HIPAA / PCI / GDPR / CCPA / <strong>none yet</strong>)</li>
+        <li>Any existing security tooling? (SAST / SCA / secrets / container scanning — most SMBs have <strong>none</strong>)</li>
+        <li>Are there audit log retention requirements?</li>
+        <li>Is there an observability stack today? (Datadog / Grafana / CloudWatch only / <strong>none</strong>)</li>
+
+        <li class="qtopic">Operations</li>
+        <li>Team size? Is there an on-call rotation?</li>
+        <li>Change-management ticket system and prefix? (Jira <code>OPS-</code>, Linear, ServiceNow, <strong>none yet</strong>)</li>
+        <li>Is there an incident response process or tabletop drill cadence?</li>
+        <li>Backup or DR posture today, if any?</li>
+      </ul>
+    </div>
+
+    <div class="panel">
+      <h3>Safe commands — print metadata only</h3>
+      <p class="muted">Replace <code>ORG</code> and <code>REPO</code> as appropriate. None of these output tokens, keys, or passwords.</p>
+
+      <h4>GitHub</h4>
+      <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-com"># Auth state — shows scopes, never prints the token</span>
+<span class="tok-cmd">gh</span> auth status
+
+<span class="tok-com"># Your user + plan</span>
+<span class="tok-cmd">gh</span> api user --jq <span class="tok-str">'{login, id, plan: .plan.name}'</span>
+
+<span class="tok-com"># Orgs you can see</span>
+<span class="tok-cmd">gh</span> api user/orgs --jq <span class="tok-str">'.[].login'</span>
+
+<span class="tok-com"># Org info (replace ORG)</span>
+<span class="tok-cmd">gh</span> api orgs/<span class="tok-var">ORG</span> --jq <span class="tok-str">'{login, plan:.plan.name, public_repos, total_private_repos, two_factor_requirement_enabled}'</span>
+
+<span class="tok-com"># Top 100 repos in the org</span>
+<span class="tok-cmd">gh</span> repo list <span class="tok-var">ORG</span> --limit 100 --json name,visibility,isArchived,pushedAt
+
+<span class="tok-com"># Teams</span>
+<span class="tok-cmd">gh</span> api orgs/<span class="tok-var">ORG</span>/teams --jq <span class="tok-str">'.[].slug'</span>
+
+<span class="tok-com"># Existing branch protection on a repo</span>
+<span class="tok-cmd">gh</span> api repos/<span class="tok-var">ORG/REPO</span>/branches/main/protection 2&gt;/dev/null || echo <span class="tok-str">"(no protection)"</span>
+
+<span class="tok-com"># Existing environments + rulesets + workflows</span>
+<span class="tok-cmd">gh</span> api repos/<span class="tok-var">ORG/REPO</span>/environments --jq <span class="tok-str">'.environments[].name'</span> 2&gt;/dev/null
+<span class="tok-cmd">gh</span> api repos/<span class="tok-var">ORG/REPO</span>/rulesets --jq <span class="tok-str">'.[].name'</span> 2&gt;/dev/null
+<span class="tok-cmd">gh</span> api repos/<span class="tok-var">ORG/REPO</span>/contents/.github/workflows --jq <span class="tok-str">'.[].name'</span> 2&gt;/dev/null
+
+<span class="tok-com"># Org-level allowed-actions policy</span>
+<span class="tok-cmd">gh</span> api orgs/<span class="tok-var">ORG</span>/actions/permissions 2&gt;/dev/null</pre></div>
+
+      <h4>AWS</h4>
+      <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-com"># Current identity (account ID + ARN, no secrets)</span>
+<span class="tok-cmd">aws</span> sts get-caller-identity
+
+<span class="tok-com"># AWS Org structure (if accessible)</span>
+<span class="tok-cmd">aws</span> organizations list-accounts --query <span class="tok-str">'Accounts[*].{Id:Id,Name:Name,Status:Status}'</span> --output table
+
+<span class="tok-com"># Existing OIDC providers</span>
+<span class="tok-cmd">aws</span> iam list-open-id-connect-providers
+
+<span class="tok-com"># Existing GitHub Actions roles (we don't want to collide)</span>
+<span class="tok-cmd">aws</span> iam list-roles --query <span class="tok-str">'Roles[?starts_with(RoleName, `github`)].{Name:RoleName,Arn:Arn}'</span> --output table
+
+<span class="tok-com"># Default region + available regions</span>
+<span class="tok-cmd">aws</span> configure get region
+<span class="tok-cmd">aws</span> ec2 describe-regions --query <span class="tok-str">'Regions[*].RegionName'</span> --output text</pre></div>
+
+      <h4>Local tooling</h4>
+      <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-cmd">gh</span>      --version
+<span class="tok-cmd">git</span>     --version
+<span class="tok-cmd">tofu</span>    -version || <span class="tok-cmd">terraform</span> -version
+<span class="tok-cmd">aws</span>     --version
+<span class="tok-cmd">docker</span>  --version
+<span class="tok-cmd">node</span>    --version</pre></div>
+    </div>
+  </div>
+
+  <div class="discovery-cta">
+    <div style="flex:1;min-width:240px">
+      <strong>Or run all of it as one script.</strong>
+      <div style="color:var(--text-dim);font-size:0.85rem;margin-top:0.3rem">Captures all output to <code>discovery-&lt;timestamp&gt;.txt</code> for the project log. Run as <code>./discovery.sh ORG REPO</code> (both args optional). Still secret-safe.</div>
+    </div>
+    <button class="btn" id="downloadDiscoveryBtn">Download discovery.sh</button>
+  </div>
+</section>
+
+<!-- =============== Decisions (was Pre-flight) =============== -->
+<section class="container" id="questions">
+  <div class="stage-label">Stage 2 — Decide</div>
+  <h2>3. Decisions — customize for your stack</h2>
+  <p>Now that you know what's already there, make seven choices and fill in your project details. The walkthrough commands and the generated config files (Stage 3) update live as you go.</p>
+
+  <div class="your-stack" id="yourStack">
+    <h3>Your stack so far</h3>
+    <p style="font-size:0.9rem">Your selections appear here. They customize the walkthrough commands and generate downloadable config files in the next section.</p>
+    <div class="stack-tags" id="stackTags"></div>
+  </div>
+
+  <div id="questionsList"></div>
+
+  <div class="details-card" id="detailsCard">
+    <h3>Project details</h3>
+    <p class="sub">These are the values that get baked into <code>bootstrap.config.env</code>, <code>terraform.tfvars</code>, and the <code>gh</code> commands. Fields marked <span style="color:var(--accent);font-weight:700">●</span> are required to generate the config files.</p>
+    <div class="detail-grid" id="detailGrid"></div>
+  </div>
+</section>
+
+<!-- =============== Generated configuration =============== -->
+<section class="container" id="config">
+  <div class="stage-label">Stage 3 — Generate</div>
+  <h2>4. Your generated configuration</h2>
+  <p>Live previews built from your answers. When all required fields are filled, click <strong>Download</strong> on each file (or <strong>Download all</strong>) and drop them into your repo.</p>
+
+  <div class="gen-status" id="genStatus">
+    <span class="status-dot"></span>
+    <span class="status-text" id="genStatusText">Fill in the required project details above to enable downloads.</span>
+    <button class="btn download-all" id="downloadAllBtn" disabled>Download all 3 files</button>
+  </div>
+
+  <div class="gen-files" id="genFiles"></div>
+
+  <div class="callout" style="margin-top:1.5rem">
+    <strong>What you do with these files</strong>
+    Drop <code>bootstrap.config.env</code> at the repo root (it's gitignored). Drop <code>terraform.tfvars</code> into <code>iac/github-oidc-aws/</code>. Keep <code>setup-cheatsheet.md</code> open in another window — every command in it has your values already substituted.
+  </div>
+</section>
+
+<!-- =============== Walkthrough =============== -->
+<section class="container" id="walkthrough">
+  <div class="stage-label">Stage 4 — Build</div>
+  <h2>5. Step-by-step walkthrough</h2>
+  <p>Click a step to expand. Commands are pre-populated with your project details from Stage 2. Mark complete as you go — progress is saved across reloads.</p>
+  <div id="stepsList"></div>
+</section>
+
+<!-- =============== Credentials =============== -->
+<section class="container" id="credentials">
+  <div class="stage-label">Stage 4 — Build · reference</div>
+  <h2>6. Credentials &amp; permissions</h2>
+  <p>Every credential the pipeline touches, where it lives, who can rotate it, and how the workflows access it.</p>
+  <table class="creds" id="credsTable">
+    <thead>
+      <tr><th></th><th>Credential</th><th>Lives in</th><th>Scope</th><th>Rotation</th><th>How workflows get it</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<!-- =============== Validation =============== -->
+<section class="container" id="validation">
+  <div class="stage-label">Stage 5 — Validate</div>
+  <h2>7. Validation — does it actually work?</h2>
+  <p>Run through this checklist after the first PR and the first tag. Click each to mark done.</p>
+  <div class="check-grid" id="checkGrid"></div>
+
+  <div class="callout" style="margin-top:2rem">
+    <strong>If everything is green:</strong>
+    Hand the repo to the customer's engineering team with the README, the Makefile day-2 commands, and the threat-model toolkit installed. The pipeline is now self-policing.
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-brand">
+      <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch Security" />
+      <strong>TRIARCH SECURITY ADVISORS</strong>
+      <span style="color:var(--text-faint);margin-left:0.5rem">· SMB CI/CD framework v1.0</span>
+    </div>
+    <div>
+      Pairs with <code>SMB-CICD-Framework.md</code> + <code>github-cicd-scaffold/</code>
+      · <a href="https://triarchsecurity.com" target="_blank" rel="noopener">triarchsecurity.com</a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast">Copied to clipboard</div>
+
+<script>
+/* ============================================================
+   Data: architecture nodes
+============================================================ */
+const NODES = {
+  dev: {
+    title: "Claude Code / Cursor",
+    desc: "The developer's IDE. Slash commands and sub-agents run the same security rules locally that CI runs in GitHub.",
+    creds: "None. Reads repo files only.",
+    depends: "Plugin marketplace (triarch-cc-plugins) installed via /plugin install",
+    why: "Same finding, same verdict — locally and in CI. No 'works on my machine' security drift.",
+  },
+  precommit: {
+    title: "pre-commit hooks",
+    desc: "Local git hooks: gitleaks, semgrep diff, checkov, tfsec, conventional commits, signed-commit check, threat-model drift warning.",
+    creds: "None.",
+    depends: "pre-commit installed; .pre-commit-config.yaml in repo root.",
+    why: "Catches secrets and dangerous patterns before they leave the laptop.",
+  },
+  repo: {
+    title: "GitHub repository",
+    desc: "Source code, IaC, threat model, workflow files. Branch ruleset enforces signed commits, linear history, CODEOWNERS reviews.",
+    creds: "Signed commits require GPG/SSH signing key on developer machine.",
+    depends: "GitHub Team plan or higher for rulesets.",
+    why: "If it isn't enforceable in the repo, it isn't a control.",
+  },
+  actions: {
+    title: "GitHub Actions",
+    desc: "All CI/CD jobs run here. Every workflow declares 'permissions: {}' at the top and opts in per-job to the minimum.",
+    creds: "Auto-injected GITHUB_TOKEN (per-run, scoped). OIDC ID token minted per job when 'id-token: write' is set.",
+    depends: "Repo, runners (GitHub-hosted by default).",
+    why: "Zero long-lived cloud credentials. OIDC exchange replaces every static AWS/Azure key.",
+  },
+  ghcr: {
+    title: "GHCR (container registry)",
+    desc: "Built containers pushed here, signed with cosign keyless via Sigstore, with SLSA build provenance attestations.",
+    creds: "GITHUB_TOKEN with packages: write. Cosign uses OIDC — no keys to manage.",
+    depends: "Build workflow.",
+    why: "Prod refuses to deploy unsigned/un-attested artefacts.",
+  },
+  "env-dev": {
+    title: "Environment: dev",
+    desc: "Auto-deploys on every merge to main. No reviewers. Branch policy: main only.",
+    creds: "AWS_DEPLOY_ROLE_ARN (env secret). DB creds read at runtime from cloud Secrets Manager via the IAM role.",
+    depends: "OIDC trust to dev AWS account.",
+    why: "Fast feedback for devs — but still gated by all CI checks.",
+  },
+  "env-staging": {
+    title: "Environment: staging",
+    desc: "1 required reviewer (engineering team), prevent self-review, 5-min wait timer.",
+    creds: "AWS_DEPLOY_ROLE_ARN (different from dev), plus integration-test fixtures.",
+    depends: "Manual workflow_dispatch with SHA + change summary.",
+    why: "Cooling-off period catches mistakes humans make at speed.",
+  },
+  "env-prod": {
+    title: "Environment: prod",
+    desc: "2 required reviewers (one from release-managers), prevent self-review, 30-min wait, tag-only (v*.*.*) deploys, change-ticket required.",
+    creds: "AWS_DEPLOY_ROLE_ARN scoped to prod. Trust policy also requires job_workflow_ref to match a v* tag.",
+    depends: "SLSA provenance attestation + cosign signature on the artefact (verified at deploy).",
+    why: "Two pairs of eyes + immutable artefact + verifiable provenance.",
+  },
+  audit: {
+    title: "Audit log",
+    desc: "Every deploy, approval, security finding, secret rotation, and admin action emits a structured event.",
+    creds: "GitHub audit log streaming endpoint (Enterprise) or polling via gh API (Team).",
+    depends: "S3 bucket with Object Lock for immutable retention. Forwarded to Loki / SIEM.",
+    why: "Audit reconstruction works from git + gh CLI alone.",
+  },
+  oidc: {
+    title: "OIDC trust + IAM Role (per env)",
+    desc: "AWS IAM OIDC provider for token.actions.githubusercontent.com. One role per environment, trust policy bound to repo + environment.",
+    creds: "Created by iac/github-oidc-aws/. No long-lived AWS keys exist.",
+    depends: "AWS account per env (recommended) or scoped role per env in single account.",
+    why: "Compromised CI run can only do what *that environment's* role allows. Prod role additionally scoped to v* tag refs.",
+  },
+  runtime: {
+    title: "App runtime",
+    desc: "Container (ECS/Cloud Run/AKS), serverless (Lambda/Workers), or static site (Pages/S3+CloudFront). Customer choice.",
+    creds: "Reads DB / cache / 3rd-party API keys from cloud Secrets Manager via the runtime IAM role at boot.",
+    depends: "Network: VPC/subnets, ALB/CDN, WAF.",
+    why: "Cloud-portable — different module per cloud, same workflow contract.",
+  },
+  db: {
+    title: "Database",
+    desc: "Postgres (default), CockroachDB, MySQL, or vendor-specific. Per-environment instance — no shared DB with row filtering.",
+    creds: "Connection string in cloud Secrets Manager, read at runtime by the app's IAM role. Never in GitHub.",
+    depends: "Subnet group, encryption at rest, automated backups, point-in-time recovery.",
+    why: "Backup KMS key in a separate account so ransomware can't re-encrypt your backups.",
+  },
+  idp: {
+    title: "Identity provider",
+    desc: "WorkOS (B2B SaaS default), Auth0 (B2C/complex flows), or Cognito (AWS-native shops). Username+password, IDP federation (Okta/Entra/Google), 2FA mandatory.",
+    creds: "Admin API key per env tenant — GitHub environment secret. Rotated quarterly.",
+    depends: "DNS, TLS cert, SCIM endpoint if B2B.",
+    why: "SAML + SCIM out of the box; passkeys preferred over TOTP.",
+  },
+  obs: {
+    title: "Observability + audit",
+    desc: "Grafana Cloud (default): logs, metrics, traces. Audit log archived to S3 with Object Lock, queryable via Loki or SIEM.",
+    creds: "Grafana Cloud API token per stack (env secret).",
+    depends: "OTel collector or direct Loki/Prometheus push.",
+    why: "DORA + security-DORA dashboards out of the box: deploy frequency, change failure rate, MTTR, % deploys with critical findings.",
+  },
+  threatmodel: {
+    title: "Threat model (.threatmodel/)",
+    desc: "Lives in the repo. Generated and maintained via the josemlopez/threat-modeling-toolkit Claude Code plugin: STRIDE threats, OWASP/SOC2 control mapping, file-and-line evidence.",
+    creds: "None.",
+    depends: "Threat-modeling-toolkit plugin installed in Claude Code.",
+    why: "Drift check fails the build if architecture changed without updating the model. Compliance % surfaces in the prod approval summary.",
+  },
+};
+
+/* ============================================================
+   Data: pre-flight questions
+============================================================ */
+const QUESTIONS = [
+  {
+    id: "cloud",
+    text: "Target cloud / hosting platform?",
+    options: ["AWS — full IaaS", "GCP — full IaaS", "GCP + Firebase (simplest SMB path)", "Azure", "Cloudflare-only", "Don't know — recommend"],
+    default: "GCP + Firebase (simplest SMB path)",
+    hint: o => o.startsWith("AWS") ? "<strong>Most-trodden enterprise path.</strong> Best when B2B compliance / SCIM matters. The OIDC IaC module ships AWS-first." : o.startsWith("GCP — full IaaS") ? "Cloud Run + Cloud SQL + Cloud Storage. OIDC via Workload Identity Federation. Good fit if you're already on Google Workspace." : o.startsWith("GCP + Firebase") ? "<strong>Simplest path for an SMB React app.</strong> Firebase bundles hosting + auth + Firestore in one console. Trade-off: lock-in to Google; less B2B-friendly (no native SCIM). The OIDC IaC scaffold needs adaptation — Firebase deploys via the firebase CLI authenticated through GCP Workload Identity Federation." : o.startsWith("Azure") ? "Best when customer is already deep in M365/Entra. OIDC trust similar to AWS. Plan to adapt the scaffold." : o.startsWith("Cloudflare") ? "Cheapest path: Pages + Workers + D1. Skips most cloud-account complexity. Limits backend depth." : "<strong>If you have no preference</strong>: pick GCP+Firebase for simplicity, or AWS if you're heading toward B2B SaaS / SOC 2."
+  },
+  {
+    id: "existing_cloud",
+    text: "What cloud infrastructure already exists?",
+    options: ["Nothing — clean slate (typical SMB)", "Some accounts/subs/projects exist", "Multiple already in place"],
+    default: "Nothing — clean slate (typical SMB)",
+    hint: o => o.startsWith("Nothing") ? "<strong>Most common starting point.</strong> Stage 4 includes creating cloud accounts before OIDC bootstrap. Project-detail account-ID fields stay blank for now." : o.startsWith("Some") ? "We'll integrate with what's there. Provide IDs in Project details. Anything missing — Stage 4 will create it." : "We'll integrate with all existing accounts. Provide IDs in Project details below."
+  },
+  {
+    id: "accounts",
+    text: "Target environment isolation (regardless of what exists today)?",
+    options: ["3 accounts/subs/projects (best — we'll create if needed)", "1 account with role-based separation"],
+    default: "3 accounts/subs/projects (best — we'll create if needed)",
+    hint: o => o.startsWith("3") ? "<strong>Best blast-radius separation.</strong> Compromise of dev cannot touch prod. Stage 4 creates accounts you don't already have." : "Acceptable. Each env gets its own role with strict path/resource conditions. Review carefully with security."
+  },
+  {
+    id: "auth",
+    text: "End-user authentication?",
+    options: ["Firebase Auth (bundled with Firebase)", "Don't have one — recommend WorkOS (B2B)", "Don't have one — recommend Auth0 (B2C/complex)", "Existing — WorkOS", "Existing — Auth0", "Existing — AWS Cognito", "Don't need user auth (internal tool)", "Decide later"],
+    default: "Firebase Auth (bundled with Firebase)",
+    hint: o => o.startsWith("Firebase Auth") ? "<strong>Simplest if you picked Firebase.</strong> Native Google/Email/Phone/SAML/OIDC providers. Trade-off: SCIM not native, harder for enterprise B2B procurement." : o.startsWith("Don't have one — recommend WorkOS") ? "<strong>Best for B2B SaaS</strong> with enterprise customers. SAML + SCIM + audit + passkeys; generous free tier." : o.startsWith("Don't have one — recommend Auth0") ? "Best for B2C or complex flows. Stage 4 includes creating a free Auth0 tenant + M2M apps per env." : o.startsWith("Existing") ? "We'll integrate with your existing tenants. Provide API keys when you reach Stage 4." : o.startsWith("Don't need") ? "Skip auth-related steps entirely. Pipeline still works." : "We'll stub the secrets and skip auth-specific steps; fill in later."
+  },
+  {
+    id: "db",
+    text: "Database?",
+    options: ["Firestore (bundled with Firebase)", "Don't have one — recommend Postgres (Neon free tier)", "Don't have one — recommend Postgres (Cloud SQL)", "Don't have one — recommend Postgres (RDS)", "Existing Postgres", "Existing other (MySQL, MongoDB, etc.)", "Don't need a DB", "Decide later"],
+    default: "Firestore (bundled with Firebase)",
+    hint: o => o.startsWith("Firestore") ? "<strong>Simplest if you picked Firebase.</strong> Document-store, scales to zero, free tier covers SMB through MVP. Trade-off: not relational; learning curve if your devs know SQL." : o.startsWith("Don't have one — recommend Postgres (Neon") ? "<strong>Cheapest cross-cloud path.</strong> Free tier covers SMB through MVP. Per-env branches." : o.startsWith("Don't have one — recommend Postgres (Cloud SQL)") ? "Postgres on GCP. Pairs well with Firebase or full GCP IaaS." : o.startsWith("Don't have one — recommend Postgres (RDS)") ? "Pick if you want everything inside AWS. Per-env RDS instance via the IaC module." : o.startsWith("Existing Postgres") ? "We'll integrate via cloud Secrets Manager — no migration needed." : o.startsWith("Existing other") ? "Fine — Semgrep/OSV reach is the same. We'll wire credentials via Secrets Manager." : o.startsWith("Don't need") ? "Static-site path. Skip DB provisioning entirely." : "DB choice stays abstract. The pipeline still works."
+  },
+  {
+    id: "ghplan",
+    text: "GitHub plan?",
+    options: ["Free (need to upgrade)", "Team (already on it)", "Enterprise (already on it)", "Not sure — let's check"],
+    default: "Not sure — let's check",
+    hint: o => o.startsWith("Free") ? "<strong>Action required:</strong> upgrade to Team before bootstrapping. Free tier doesn't allow protection rules on private repos. ~$4/user/month." : o.startsWith("Team") ? "<strong>Minimum required.</strong> Gives you environments + protection rules + rulesets." : o.startsWith("Enterprise") ? "You get audit log streaming, SAML SSO, IP allow lists. We'll wire those into bootstrap." : "Run <code>gh api orgs/&lt;ORG&gt; --jq .plan.name</code> in Stage 1 Discovery to confirm. If Free, plan to upgrade."
+  },
+  {
+    id: "compliance",
+    text: "Compliance program in scope?",
+    options: ["None yet (typical SMB)", "SOC 2 — planned", "SOC 2 — in progress", "HIPAA", "PCI", "Multiple / EU + US"],
+    default: "None yet (typical SMB)",
+    hint: o => o === "None yet (typical SMB)" ? "Default settings cover OWASP Top 10. Nothing else changes today; the framework is SOC2-ready when you decide to pursue it." : "<strong>Adds:</strong> mandatory audit log retention to S3 Object Lock, encryption-at-rest verification job, threat-model toolkit's compliance mapping for your framework."
+  },
+  {
+    id: "teams",
+    text: "GitHub teams (engineering, release-managers, security)?",
+    options: ["None yet — create all (typical SMB)", "Some exist", "All three exist"],
+    default: "None yet — create all (typical SMB)",
+    hint: o => o.startsWith("None yet") ? "Set <code>CREATE_TEAMS=1</code>. Bootstrap creates them. <strong>You need ≥1 person other than yourself</strong> in <code>engineering</code> for prevent-self-review to work." : "<strong>Action:</strong> create missing teams as <em>closed</em> visibility before running bootstrap."
+  },
+];
+
+/* ============================================================
+   Data: project detail input fields
+============================================================ */
+const AWS_REGIONS = [
+  "us-east-1","us-east-2","us-west-1","us-west-2",
+  "eu-west-1","eu-west-2","eu-central-1",
+  "ap-southeast-1","ap-southeast-2","ap-northeast-1","ap-northeast-2",
+];
+
+const DETAIL_FIELDS = [
+  { id:"github_org", label:"GitHub organization (or 'create new' if none)", placeholder:"acme-corp", required:true,
+    validate: v => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(v),
+    err:"1–39 chars: letters, digits, hyphens (no leading hyphen)." },
+  { id:"github_repo", label:"GitHub repository", placeholder:"acme-app", required:true,
+    validate: v => /^[A-Za-z0-9._-]{1,100}$/.test(v),
+    err:"Letters, digits, dots, hyphens, underscores." },
+  { id:"aws_account_dev", label:"AWS account ID — dev (leave blank if creating in Stage 4)", placeholder:"111111111111",
+    validate: v => !v || /^[0-9]{12}$/.test(v), err:"12 digits if provided." },
+  { id:"aws_account_staging", label:"AWS account ID — staging (leave blank if creating)", placeholder:"222222222222",
+    validate: v => !v || /^[0-9]{12}$/.test(v), err:"12 digits if provided." },
+  { id:"aws_account_prod", label:"AWS account ID — prod (leave blank if creating)", placeholder:"333333333333",
+    validate: v => !v || /^[0-9]{12}$/.test(v), err:"12 digits if provided." },
+  { id:"aws_region", label:"AWS region (target)", select:AWS_REGIONS, default:"us-east-1" },
+  { id:"app_domain", label:"App domain (optional — can be added later)", placeholder:"example.com",
+    validate: v => !v || /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(v), err:"e.g. example.com" },
+  { id:"change_ticket_prefix", label:"Change-ticket prefix (optional — defaults to CHG-)", placeholder:"CHG-", default:"CHG-",
+    validate: v => !v || /^[A-Z]{2,8}-?$/.test(v), err:"2–8 uppercase letters, optional dash." },
+];
+
+function isFieldRequired(f) {
+  if (f.required) return true;
+  if (f.requiredIf) {
+    for (const k of Object.keys(f.requiredIf)) {
+      if (state.answers[k] === f.requiredIf[k]) return true;
+    }
+    return false;
+  }
+  return false;
+}
+
+function getDetail(id) {
+  const f = DETAIL_FIELDS.find(x => x.id === id);
+  if (state.details && state.details[id]) return state.details[id];
+  return (f && f.default) || '';
+}
+
+/* ============================================================
+   Data: walkthrough steps (content adapts to answers + project details)
+============================================================ */
+function buildSteps(answers) {
+  const cloud = answers.cloud || "GCP + Firebase (simplest SMB path)";
+  const accounts = answers.accounts || "3";
+  const auth = answers.auth || "";
+  const db = answers.db || "";
+  const ghplan = answers.ghplan || "";
+  const teams = answers.teams || "";
+
+  const isAws       = cloud.startsWith("AWS");
+  const isGcpIaas   = cloud.startsWith("GCP — full");
+  const isFirebase  = cloud.includes("Firebase");
+  const isAzure     = cloud.startsWith("Azure");
+  const isCloudflare = cloud.startsWith("Cloudflare");
+
+  const greenfieldCloud = (answers.existing_cloud && answers.existing_cloud.startsWith("Nothing")) || (!getDetail('aws_account_dev') && isAws);
+  const greenfieldAuth  = auth.startsWith("Don't have one");
+  const greenfieldGhPlan = ghplan.startsWith("Free");
+  const greenfieldTeams = teams.startsWith("None yet");
+  const isWorkOS = auth.includes("WorkOS");
+  const isAuth0  = auth.includes("Auth0");
+  const isFirebaseAuth = auth.startsWith("Firebase Auth");
+  const isFirestore = db.startsWith("Firestore");
+
+  const org    = getDetail('github_org')      || '<your-org>';
+  const repo   = getDetail('github_repo')     || '<your-repo>';
+  const accDev = getDetail('aws_account_dev') || '<dev-account-id>';
+  const accStg = getDetail('aws_account_staging') || '<staging-account-id>';
+  const accPrd = getDetail('aws_account_prod')    || '<prod-account-id>';
+  const region = getDetail('aws_region')      || 'us-east-1';
+  const domain = getDetail('app_domain')      || 'example.com';
+  const ctp    = getDetail('change_ticket_prefix') || 'CHG-';
+  const repoFull = `${org}/${repo}`;
+
+  const authBlock = auth.startsWith("WorkOS") ? `
+        <h4>WorkOS API keys</h4>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-com"># Get one tenant per environment from WorkOS dashboard</span>
+<span class="tok-cmd">gh</span> secret set WORKOS_API_KEY <span class="tok-flag">--env</span> dev     <span class="tok-flag">--body</span> <span class="tok-str">'sk_test_...'</span> <span class="tok-flag">--repo</span> ${repoFull}
+<span class="tok-cmd">gh</span> secret set WORKOS_API_KEY <span class="tok-flag">--env</span> staging <span class="tok-flag">--body</span> <span class="tok-str">'sk_test_...'</span> <span class="tok-flag">--repo</span> ${repoFull}
+<span class="tok-cmd">gh</span> secret set WORKOS_API_KEY <span class="tok-flag">--env</span> prod    <span class="tok-flag">--body</span> <span class="tok-str">'sk_live_...'</span> <span class="tok-flag">--repo</span> ${repoFull}</pre></div>
+        ` : auth.startsWith("Auth0") ? `
+        <h4>Auth0 M2M credentials</h4>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-cmd">gh</span> secret set AUTH0_CLIENT_ID     <span class="tok-flag">--env</span> dev <span class="tok-flag">--body</span> <span class="tok-str">'...'</span> <span class="tok-flag">--repo</span> ${repoFull}
+<span class="tok-cmd">gh</span> secret set AUTH0_CLIENT_SECRET <span class="tok-flag">--env</span> dev <span class="tok-flag">--body</span> <span class="tok-str">'...'</span> <span class="tok-flag">--repo</span> ${repoFull}
+<span class="tok-com"># Repeat for staging, prod with their respective tenant credentials</span></pre></div>
+        ` : '';
+
+  return [
+    {
+      id: "step-prereq",
+      title: "Foundation — install tools, authenticate, provision what's missing",
+      meta: greenfieldCloud ? "~30–90 min if creating cloud accounts; ~5 min otherwise" : "~5 min",
+      body: `
+        <p>Install local tools, authenticate to GitHub, and provision any foundation pieces that don't exist yet so the rest of the walkthrough has somewhere to land.</p>
+
+        <h4>1. Local tools</h4>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-com"># macOS</span>
+<span class="tok-cmd">brew</span> install gh git jq opentofu awscli pre-commit cosign
+
+<span class="tok-com"># verify versions</span>
+<span class="tok-cmd">gh</span> --version    <span class="tok-com"># &gt;= 2.55</span>
+<span class="tok-cmd">tofu</span> -version   <span class="tok-com"># &gt;= 1.7</span>
+<span class="tok-cmd">cosign</span> version <span class="tok-com"># &gt;= 2.2</span></pre></div>
+
+        <h4>2. Authenticate <code>gh</code> with the right scopes</h4>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-cmd">gh</span> auth login <span class="tok-flag">--hostname</span> github.com <span class="tok-flag">--git-protocol</span> https <span class="tok-flag">\\</span>
+  <span class="tok-flag">--scopes</span> <span class="tok-str">"repo,workflow,admin:org,write:packages,read:packages,admin:repo_hook"</span></pre></div>
+
+        <h4>3. Confirm GitHub plan</h4>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-cmd">gh</span> api orgs/${org} --jq <span class="tok-str">'.plan.name'</span></pre></div>
+        <p>Required: <code>team</code> or <code>enterprise</code>. If <code>free</code>, the bootstrap will fail because Free tier doesn't allow environment protection rules on private repos.</p>
+        ${greenfieldGhPlan ? `<div class="callout warn"><strong>Action:</strong> upgrade to Team (~$4/user/month) before bootstrapping. Free tier blocks protection rules on private repos.</div>` : ''}
+
+        ${greenfieldCloud ? `<h4>4. Provision your cloud — greenfield <span class="tier-req">REQUIRED</span></h4>
+        <p>No cloud account exists yet. Provision now so OIDC trust (later step) has somewhere to land. <strong>This is the longest part of the whole walkthrough</strong> — most of the time is email verification while the cloud creates accounts.</p>
+        ${isFirebase ? `<ol>
+          <li><a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Sign in to the Firebase Console</a> with a Google account (free).</li>
+          <li>Create three Firebase projects: <code>${repo}-dev</code>, <code>${repo}-staging</code>, <code>${repo}-prod</code>. Each takes ~30 seconds.</li>
+          <li>For each project: enable <strong>Hosting</strong>, <strong>Authentication</strong>, and <strong>Firestore</strong> (Native mode). If you need backend code, also enable <strong>Functions</strong> (requires Blaze plan — ~$0/mo for SMB usage).</li>
+          <li>Install the Firebase CLI locally: <code>npm install -g firebase-tools</code> then <code>firebase login</code>.</li>
+          <li>Note each project's <strong>Project ID</strong> and <strong>Project Number</strong> from <em>Project Settings</em>.</li>
+        </ol>
+        <div class="callout"><strong>Why Firebase is simpler:</strong> hosting, auth, and DB are all enabled with one click each. No separate IAM, no VPC, no load balancer. Trade-off: vendor lock-in and Firebase Auth lacks native SCIM (matters for B2B enterprise procurement).</div>
+        <div class="callout warn"><strong>OIDC adaptation needed:</strong> the included IaC module is AWS-first. For Firebase you'll use <a href="https://github.com/google-github-actions/auth" target="_blank" rel="noopener">google-github-actions/auth</a> with Workload Identity Federation. Add a small Terraform module to provision the WIF pool + service accounts per project. <span class="tier-rec">RECOMMENDED — see optional path below for token-based fallback.</span></div>` :
+        isAws ? `<ol>
+          <li><a href="https://portal.aws.amazon.com/billing/signup" target="_blank" rel="noopener">Sign up for AWS</a> — billing card required, takes ~10 min including phone verification.</li>
+          <li>From the AWS console: <strong>AWS Organizations</strong> → Create organization → ALL features.</li>
+          <li>Add three member accounts. Suggested names: <code>${repo}-dev</code>, <code>${repo}-staging</code>, <code>${repo}-prod</code>. Each takes ~5 min and triggers an email.</li>
+          <li>Once each account is "ACTIVE", grab its 12-digit ID. Update Project Details (Stage 2) with the three IDs.</li>
+          <li>Re-download <code>bootstrap.config.env</code> and <code>terraform.tfvars</code> from Stage 3 (now populated with real IDs).</li>
+        </ol>
+        <div class="callout">Verify with <code>aws organizations list-accounts</code> from a CLI in the management account once IAM Identity Center is wired up.</div>` :
+        isAzure ? `<ol>
+          <li><a href="https://azure.microsoft.com/free/" target="_blank" rel="noopener">Sign up for Azure</a> — credit card required, free credits for first month.</li>
+          <li>Create an Entra ID tenant if one doesn't already exist.</li>
+          <li>In the Azure portal: <strong>Subscriptions</strong> → create three: <code>${repo}-dev</code>, <code>${repo}-staging</code>, <code>${repo}-prod</code>.</li>
+          <li>Note the Subscription IDs and Tenant ID.</li>
+        </ol>
+        <div class="callout warn">The OIDC IaC module ships AWS-first. You'll need to adapt to <code>azurerm_</code> resources and federated credentials. Plan extra time.</div>` :
+        isGcpIaas ? `<ol>
+          <li><a href="https://console.cloud.google.com/freetrial" target="_blank" rel="noopener">Sign up for GCP</a> — credit card required, $300 free credits for 90 days.</li>
+          <li>Create a GCP Organization (Workspace or Cloud Identity Free required).</li>
+          <li>Create three projects: <code>${repo}-dev</code>, <code>${repo}-staging</code>, <code>${repo}-prod</code>. Note Project IDs.</li>
+          <li>Enable APIs you need (Cloud Run, Cloud SQL, Secret Manager) in each project.</li>
+        </ol>
+        <div class="callout warn">OIDC module is AWS-first. You'll need to adapt to GCP <strong>Workload Identity Federation</strong>: a workload identity pool + provider per project, plus service accounts the GitHub Actions identity can impersonate.</div>` :
+        isCloudflare ? `<ol>
+          <li><a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">Sign up for Cloudflare</a> — free.</li>
+          <li>Workers Paid ($5/mo) recommended for production traffic.</li>
+          <li>Cloudflare doesn't support OIDC from GitHub Actions. You'll use scoped <strong>API tokens</strong> instead — less secure than OIDC but simpler.</li>
+        </ol>` : `<p>Pick a cloud first (Stage 2 → first question), then this section will populate.</p>`}
+        <div class="callout"><strong>Single-account fallback:</strong> if creating three is blocked, point all three IDs at the same one. OIDC trust still varies per env (sub claim differs), so a dev workflow can't assume the staging role — but blast-radius separation does not hold.</div>
+        ` : isAws ? `<h4>4. Verify existing cloud access <span class="tier-req">REQUIRED</span></h4>
+        <p>You said cloud accounts exist. Confirm you can <code>sts:AssumeRole</code> into each — bootstrap needs this to read the OIDC outputs.</p>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-cmd">aws</span> sts get-caller-identity
+
+<span class="tok-com"># Test cross-account assume into each env account:</span>
+<span class="tok-cmd">aws</span> sts assume-role <span class="tok-flag">\\</span>
+  <span class="tok-flag">--role-arn</span> arn:aws:iam::<span class="tok-var">${accDev}</span>:role/OrganizationAccountAccessRole <span class="tok-flag">\\</span>
+  <span class="tok-flag">--role-session-name</span> bootstrap-test</pre></div>` : `<h4>4. Verify cloud access <span class="tier-req">REQUIRED</span></h4>
+        <p>Confirm you can authenticate to your existing accounts via your cloud's CLI.</p>`}
+
+        ${greenfieldAuth ? `<h4>5. Provision IDP tenant — greenfield</h4>
+        <p>No end-user IDP today. Sign up now so the deployed app has somewhere to send sign-in flows. (You can also defer this until first user — not blocking the pipeline build.)</p>
+        ${isWorkOS ? `<ol>
+          <li><a href="https://dashboard.workos.com/signup" target="_blank" rel="noopener">Sign up for WorkOS</a> — free up to 1M MAU.</li>
+          <li>Create three environments in the dashboard: <code>${repo}-dev</code>, <code>${repo}-staging</code>, <code>${repo}-prod</code>.</li>
+          <li>Generate an API key per environment. Store them in Stage 4 step 5 (env secrets).</li>
+        </ol>` : isAuth0 ? `<ol>
+          <li><a href="https://auth0.com/signup" target="_blank" rel="noopener">Sign up for Auth0</a> — free tier sufficient for development.</li>
+          <li>Create three tenants (one per env, named clearly), each with a Universal Login app and an M2M app for management API.</li>
+          <li>Capture <code>AUTH0_DOMAIN</code>, <code>AUTH0_CLIENT_ID</code>, <code>AUTH0_CLIENT_SECRET</code> per env.</li>
+        </ol>` : `<p>Set up your chosen IDP now or defer.</p>`}
+        ` : ''}
+
+        ${greenfieldTeams ? `<h4>${greenfieldAuth ? '6' : '5'}. Confirm there's at least one other person</h4>
+        <p>The branch ruleset enforces <strong>prevent-self-review</strong>. If you're the only human in the engineering team, no PR can ever be approved. <strong>Add at least one collaborator</strong> to the org before running bootstrap.</p>
+        ` : ''}
+
+        <div class="inline-q"><strong>Decision — token type:</strong> a Personal Access Token works for one-time bootstrap. For ongoing automation, create a <strong>GitHub App</strong> with the same fine-grained permissions and store its installation token. Apps are easier to rotate and audit.</div>
+      `,
+    },
+    {
+      id: "step-config",
+      title: "Place your generated config files",
+      meta: "~2 min",
+      body: `
+        <p>Use the files generated in <a href="#config">Section 3</a>. <strong>Drop them in the right place</strong>:</p>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-com"># From the directory where you downloaded the files:</span>
+<span class="tok-cmd">mv</span> bootstrap.config.env  &lt;path-to-your-repo&gt;/
+<span class="tok-cmd">mv</span> terraform.tfvars      &lt;path-to-your-repo&gt;/iac/github-oidc-aws/
+<span class="tok-cmd">mv</span> setup-cheatsheet.md   &lt;path-to-your-repo&gt;/docs/   <span class="tok-com"># or wherever you keep notes</span></pre></div>
+
+        <h4>What's inside <code>bootstrap.config.env</code></h4>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-var">GITHUB_ORG</span>=<span class="tok-str">"${org}"</span>
+<span class="tok-var">GITHUB_REPO</span>=<span class="tok-str">"${repo}"</span>
+<span class="tok-var">DEFAULT_BRANCH</span>=<span class="tok-str">"main"</span>
+${isAws ? `<span class="tok-var">AWS_ACCOUNT_ID_DEV</span>=<span class="tok-str">"${accDev}"</span>
+<span class="tok-var">AWS_ACCOUNT_ID_STAGING</span>=<span class="tok-str">"${accStg}"</span>
+<span class="tok-var">AWS_ACCOUNT_ID_PROD</span>=<span class="tok-str">"${accPrd}"</span>
+<span class="tok-var">AWS_REGION</span>=<span class="tok-str">"${region}"</span>` : `<span class="tok-com"># cloud-specific vars (Azure subscription IDs, GCP project IDs, etc.)</span>`}
+<span class="tok-var">CREATE_TEAMS</span>=${answers.teams === 'Create them all' ? 1 : 0}
+<span class="tok-var">CHANGE_TICKET_PREFIX</span>=<span class="tok-str">"${ctp}"</span></pre></div>
+
+        ${accounts.startsWith("1") ? `<div class="callout warn"><strong>Single-account mode:</strong> all three <code>AWS_ACCOUNT_ID_*</code> point at the same account. The OIDC trust policies still differ per env (sub claim is bound to environment), so a dev workflow run can't assume the staging role.</div>` : ''}
+      `,
+    },
+    {
+      id: "step-oidc",
+      title: `${isAws ? "AWS" : isFirebase ? "Firebase / GCP" : isGcpIaas ? "GCP" : isAzure ? "Azure" : "Cloud"} OIDC trust — IaC apply`,
+      meta: "~10 min · IaC recommended; API-token fallback noted below",
+      body: `
+        <p><span class="tier-rec">RECOMMENDED</span> Set up federated identity from GitHub Actions to your cloud so workflows authenticate without any long-lived secrets.</p>
+
+        ${isAws ? `<h4>If you're using the included AWS scaffold</h4>
+        <p>This creates the OIDC identity provider and three IAM roles (one per environment) with trust policies bound to <code>${repoFull}</code> + environment.</p>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-cmd">cd</span> iac/github-oidc-aws
+
+<span class="tok-cmd">tofu</span> init
+<span class="tok-cmd">tofu</span> plan
+<span class="tok-cmd">tofu</span> apply
+
+<span class="tok-com"># Capture outputs for bootstrap.sh to consume</span>
+<span class="tok-cmd">tofu</span> output <span class="tok-flag">-json</span> &gt; ../../bootstrap.oidc.outputs.json</pre></div>` : isFirebase || isGcpIaas ? `<h4>GCP Workload Identity Federation (adapt the IaC)</h4>
+        <p>For Firebase / GCP you'll create a <strong>Workload Identity Pool</strong> + <strong>Provider</strong> per project, plus a service account that GitHub Actions can impersonate. Approximate Terraform:</p>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-cmd">resource</span> <span class="tok-str">"google_iam_workload_identity_pool"</span> <span class="tok-str">"github"</span> {
+  workload_identity_pool_id = <span class="tok-str">"github-actions"</span>
+}
+
+<span class="tok-cmd">resource</span> <span class="tok-str">"google_iam_workload_identity_pool_provider"</span> <span class="tok-str">"github"</span> {
+  workload_identity_pool_id          = google_iam_workload_identity_pool.github.id
+  workload_identity_pool_provider_id = <span class="tok-str">"github"</span>
+  attribute_mapping = {
+    <span class="tok-str">"google.subject"</span>             = <span class="tok-str">"assertion.sub"</span>
+    <span class="tok-str">"attribute.repository"</span>       = <span class="tok-str">"assertion.repository"</span>
+    <span class="tok-str">"attribute.environment"</span>      = <span class="tok-str">"assertion.environment"</span>
+  }
+  attribute_condition = <span class="tok-str">"assertion.repository == '${repoFull}'"</span>
+  oidc { issuer_uri = <span class="tok-str">"https://token.actions.githubusercontent.com"</span> }
+}</pre></div>
+        <p>In your workflow:</p>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-cmd">- uses:</span> google-github-actions/auth@v2
+  <span class="tok-cmd">with:</span>
+    workload_identity_provider: projects/<span class="tok-var">PROJECT_NUM</span>/locations/global/workloadIdentityPools/github-actions/providers/github
+    service_account: github-actions@<span class="tok-var">PROJECT_ID</span>.iam.gserviceaccount.com</pre></div>` : `<h4>Adapt to your cloud</h4>
+        <p>The shipped IaC is AWS-first. ${isAzure ? "For Azure, use federated credentials on a User-Assigned Managed Identity per env subscription." : isCloudflare ? "Cloudflare doesn't support GitHub OIDC — see API-token fallback below." : "Refer to your cloud's GitHub OIDC documentation."}</p>`}
+
+        <h4>API-token fallback <span class="tier-opt">OPTIONAL ALTERNATIVE</span></h4>
+        <p>If OIDC is too complex right now, you can skip this entire step and use scoped API tokens stored as GitHub Environment secrets. <strong>Less secure</strong> (long-lived, leakage risk) but functional. Plan to migrate to OIDC later.</p>
+        <ul style="font-size:0.85rem;color:var(--text-dim)">
+          <li>${isFirebase ? "Firebase service account JSON key per project, stored as <code>FIREBASE_SERVICE_ACCOUNT_DEV</code> etc." : isAws ? "IAM access key for a deploy user, stored as <code>AWS_ACCESS_KEY_ID</code> + <code>AWS_SECRET_ACCESS_KEY</code> per env" : isAzure ? "Service principal client secret per env" : isCloudflare ? "<strong>Cloudflare API token</strong> (this is the only option — Cloudflare doesn't support OIDC from Actions)" : "Cloud-native API token"}</li>
+          <li>Rotate quarterly. Set a calendar reminder.</li>
+          <li>Document this decision and date in your threat model so a future auditor can see it was a deliberate trade-off.</li>
+        </ul>
+
+        ${isAws ? `<h4>What gets created (AWS scaffold)</h4>
+        <ul>
+          <li>3× <code>aws_iam_openid_connect_provider</code> for <code>token.actions.githubusercontent.com</code></li>
+          <li>3× IAM Role: <code>github-actions-{dev,staging,prod}</code></li>
+          <li>Each role's trust policy binds: <code>repo:${repoFull}:environment:&lt;env&gt;</code></li>
+          <li>Prod additionally requires <code>job_workflow_ref</code> matching <code>refs/tags/v*</code></li>
+        </ul>
+
+        <div class="callout"><strong>Verify trust policies:</strong> after apply, look at one of the roles in IAM and confirm the <code>StringEquals</code> condition includes both <code>repo:${repoFull}</code> AND the environment name. If it doesn't, a workflow in a different repo could assume this role.</div>` : ''}
+
+        <div class="inline-q"><strong>Decision — IaC or click-ops:</strong> <span class="tier-rec">IaC RECOMMENDED</span> for reproducibility, code review of cloud changes, and easy multi-account replication. <span class="tier-opt">Click-ops acceptable</span> if your customer has no cloud-changes-as-code culture and the OIDC setup is one-time. Just document what you clicked.</div>
+      `,
+    },
+    {
+      id: "step-bootstrap",
+      title: "Run ./bootstrap.sh",
+      meta: "~5 min",
+      body: `
+        <p>The script is idempotent — re-running it never breaks an existing config. Try a dry-run first.</p>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-com"># Preview what will happen</span>
+<span class="tok-cmd">./bootstrap.sh</span> <span class="tok-flag">--dry-run</span>
+
+<span class="tok-com"># If it looks right:</span>
+<span class="tok-cmd">./bootstrap.sh</span>
+
+<span class="tok-com"># Optional: also apply org-level allowed-actions policy (org owner only)</span>
+<span class="tok-cmd">./bootstrap.sh</span> <span class="tok-flag">--apply-org-policy</span></pre></div>
+
+        <h4>What it does, in order</h4>
+        <ol>
+          <li>${answers.teams === 'Create them all' ? 'Creates the three teams (engineering, release-managers, security)' : 'Confirms required teams exist'}</li>
+          <li>Grants teams correct repo permissions on <code>${repoFull}</code></li>
+          <li>Applies the <strong>ruleset</strong> to <code>main</code> (signed commits, required reviews, required checks, no force pushes)</li>
+          <li>Creates <code>dev</code>, <code>staging</code>, <code>prod</code> environments with their protection rules</li>
+          <li>Sets <code>AWS_DEPLOY_ROLE_ARN</code> + <code>AWS_REGION</code> per env from the OIDC outputs</li>
+          <li>Stubs optional secrets so workflows don't fail with "secret not found"</li>
+          <li>Locks down repo settings: squash-only, auto-delete branches, conversation resolution required</li>
+        </ol>
+
+        <div class="inline-q"><strong>Decision — break-glass actor:</strong> by default, the ruleset has no bypass actors. If you want a named admin to push directly in emergencies, edit <code>.github/rulesets/main-protection.json</code> before running and add their team to <code>bypass_actors</code> with mode <code>pull_request</code>.</div>
+      `,
+    },
+    {
+      id: "step-secrets",
+      title: "Fill in placeholder secrets + repo variables",
+      meta: "~5–15 min",
+      body: `
+        <p>Bootstrap stubbed <code>PLACEHOLDER_REPLACE_ME</code> for any secret you didn't have ready. Replace them now or as each service comes online.</p>
+        ${authBlock}
+        <h4>Slack notifications</h4>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-com"># Different webhook per env so deploys notify the right channel</span>
+<span class="tok-cmd">gh</span> secret set SLACK_WEBHOOK_URL <span class="tok-flag">--env</span> dev     <span class="tok-flag">--body</span> <span class="tok-str">'https://hooks.slack.com/...'</span> <span class="tok-flag">--repo</span> ${repoFull}
+<span class="tok-cmd">gh</span> secret set SLACK_WEBHOOK_URL <span class="tok-flag">--env</span> staging <span class="tok-flag">--body</span> <span class="tok-str">'https://hooks.slack.com/...'</span> <span class="tok-flag">--repo</span> ${repoFull}
+<span class="tok-cmd">gh</span> secret set SLACK_WEBHOOK_URL <span class="tok-flag">--env</span> prod    <span class="tok-flag">--body</span> <span class="tok-str">'https://hooks.slack.com/...'</span> <span class="tok-flag">--repo</span> ${repoFull}</pre></div>
+        <h4>Repository variables (not secrets — visible in logs)</h4>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-cmd">gh</span> variable set APP_DOMAIN <span class="tok-flag">--body</span> <span class="tok-str">'${domain}'</span> <span class="tok-flag">--repo</span> ${repoFull}
+<span class="tok-cmd">gh</span> variable set CHANGE_TICKET_PREFIX <span class="tok-flag">--body</span> <span class="tok-str">'${ctp}'</span> <span class="tok-flag">--repo</span> ${repoFull}</pre></div>
+      `,
+    },
+    {
+      id: "step-firstpr",
+      title: "First PR — prove the gates work",
+      meta: "~10 min",
+      body: `
+        <p>Push the scaffold itself as your first PR. CI will exercise every gate.</p>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-cmd">git</span> checkout <span class="tok-flag">-b</span> chore/scaffold
+<span class="tok-cmd">git</span> add .
+<span class="tok-cmd">git</span> commit <span class="tok-flag">-S</span> <span class="tok-flag">-m</span> <span class="tok-str">"chore: scaffold CI/CD pipeline"</span>
+<span class="tok-cmd">git</span> push <span class="tok-flag">-u</span> origin chore/scaffold
+
+<span class="tok-cmd">gh</span> pr create <span class="tok-flag">--fill</span> <span class="tok-flag">--base</span> main <span class="tok-flag">--repo</span> ${repoFull}
+<span class="tok-cmd">gh</span> run watch <span class="tok-flag">--repo</span> ${repoFull}</pre></div>
+
+        <h4>What you should see</h4>
+        <ul>
+          <li><strong>lint-test</strong> — green</li>
+          <li><strong>semgrep</strong> — green or annotated findings</li>
+          <li><strong>osv-scanner</strong> — green</li>
+          <li><strong>gitleaks</strong> — green</li>
+          <li><strong>checkov / tfsec</strong> — green (your IaC is clean)</li>
+          <li><strong>threat-model-drift</strong> — green (architecture is documented)</li>
+        </ul>
+
+        <h4>Common first-PR failures</h4>
+        <ul>
+          <li><strong>Unsigned commit:</strong> <code>git config --global commit.gpgsign true</code> and configure your signing key. Re-commit with <code>git commit --amend --no-edit -S</code>.</li>
+          <li><strong>Threat-model drift:</strong> means you changed <code>src/</code> or <code>iac/</code> without touching <code>.threatmodel/</code>. Run <code>/tm-threats</code> in Claude Code, commit the result.</li>
+          <li><strong>Status check missing:</strong> if a check name in the ruleset doesn't appear in the run, the ruleset blocks merge. Either fix the workflow or update the ruleset.</li>
+        </ul>
+
+        <div class="inline-q"><strong>Decision — first reviewer:</strong> the ruleset requires CODEOWNERS approval. The only people who can approve this PR are members of <code>@${org}/engineering</code>. Make sure that team has at least one member <em>besides</em> you (otherwise prevent-self-review will block you).</div>
+      `,
+    },
+    {
+      id: "step-firstprod",
+      title: "First production release — tag, gate, deploy",
+      meta: "~30 min (mostly waiting on the 30-min cooling timer)",
+      body: `
+        <p>After merge, tag a release and watch the prod gate work.</p>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-cmd">git</span> checkout main
+<span class="tok-cmd">git</span> pull
+<span class="tok-cmd">git</span> tag <span class="tok-flag">-s</span> v0.1.0 <span class="tok-flag">-m</span> <span class="tok-str">"v0.1.0 — first release"</span>
+<span class="tok-cmd">git</span> push origin v0.1.0</pre></div>
+
+        <p>The tag triggers <code>build.yml</code> → <code>deploy-prod.yml</code>. The deploy job will <strong>wait</strong> for:</p>
+        <ol>
+          <li>2 reviewers approve (one must be in <code>release-managers</code>)</li>
+          <li>30-minute wait timer elapses (cooling-off)</li>
+          <li>Cosign signature verification passes</li>
+          <li>SLSA provenance attestation verification passes</li>
+          <li>Change ticket reference (e.g. <code>${ctp}1234</code>) is provided via workflow_dispatch input</li>
+        </ol>
+
+        <div class="callout warn"><strong>Tag-only deploy:</strong> the prod IAM role's trust policy requires <code>job_workflow_ref</code> to match <code>refs/tags/v*</code>. A push to <code>main</code> cannot deploy to prod even if every protection rule is bypassed.</div>
+
+        <h4>Verify a deployed artefact locally</h4>
+        <div class="code-block"><button class="copy-btn">copy</button><pre><span class="tok-cmd">make</span> verify-prod TAG=v0.1.0</pre></div>
+
+        <p style="margin-top:1rem;font-size:0.9rem"><strong>Once green</strong>, your app is live at <code>https://${domain}</code> with full provenance, audit trail, and a working pipeline behind it.</p>
+      `,
+    },
+  ];
+}
+
+/* ============================================================
+   Data: credentials matrix
+============================================================ */
+const CREDS = [
+  { name: "GITHUB_TOKEN", where: "Auto-injected", scope: "Per-job (declared)", rotation: "Per-run (1h TTL)", access: "Implicit", pill: "gh" },
+  { name: "OIDC ID token", where: "Minted by Actions", scope: "audience = cloud STS", rotation: "Per-run (15m TTL)", access: "configure-aws-credentials exchange", pill: "gh" },
+  { name: "AWS STS session", where: "Returned by AssumeRoleWithWebIdentity", scope: "Per-env IAM role", rotation: "≤1 hour", access: "env vars set by configure-aws-credentials", pill: "aws" },
+  { name: "AWS_DEPLOY_ROLE_ARN", where: "GitHub env secret (per env)", scope: "Identifier only — not a credential", rotation: "Only on role recreation", access: "secrets context", pill: "gh" },
+  { name: "GHCR push", where: "GITHUB_TOKEN with packages: write", scope: "This repo's package registry", rotation: "Per-run", access: "Implicit", pill: "gh" },
+  { name: "Cosign keys", where: "None — keyless via Sigstore", scope: "Identity = workflow + repo + ref", rotation: "Per-run", access: "cosign-installer + OIDC", pill: "gh" },
+  { name: "WorkOS / Auth0 admin key", where: "GitHub env secret", scope: "Tenant per env", rotation: "Quarterly", access: "${{ secrets.WORKOS_API_KEY }}", pill: "app" },
+  { name: "Grafana Cloud token", where: "GitHub env secret", scope: "Stack per env", rotation: "Quarterly", access: "secrets context", pill: "app" },
+  { name: "DB connection string", where: "Cloud Secrets Manager (NOT GitHub)", scope: "Per-env DB", rotation: "Auto-rotated by cloud", access: "Runtime IAM role reads it", pill: "cloud" },
+  { name: "Slack webhook URL", where: "GitHub env secret", scope: "Channel per env", rotation: "Yearly", access: "secrets context", pill: "app" },
+  { name: "GPG/SSH signing key", where: "Developer machine + GitHub user account", scope: "Per developer", rotation: "Yearly or on loss", access: "git commit -S", pill: "gh" },
+];
+
+/* ============================================================
+   Data: validation checks
+============================================================ */
+const CHECKS = [
+  { t: "Unsigned commits are rejected", d: "Push an unsigned commit on a feature branch and confirm the ruleset blocks merge." },
+  { t: "Critical Semgrep findings block merge", d: "Add a vuln pattern that p/owasp-top-ten flags; PR must show failed check." },
+  { t: "Secret in code is caught", d: "Add a fake AKIA-looking key in a feature branch — gitleaks must block." },
+  { t: "OIDC works to all 3 envs", d: "Force a deploy-dev run, observe AWS STS session creation in CloudTrail." },
+  { t: "Prod deploy waits for 2 approvals + 30-min timer", d: "Tag a release; watch the run hold pending reviewers in the GitHub UI." },
+  { t: "SLSA provenance is verifiable", d: "Run make verify-prod TAG=v0.1.0 — both cosign and provenance verification pass." },
+  { t: "Threat-model drift fails CI", d: "Add a file under iac/ without touching .threatmodel/ — drift check must fail." },
+  { t: "Audit log captures the deploy", d: "Check S3/Loki for the structured deploy event with actor + sha + change ticket." },
+  { t: "DAST baseline runs against dev", d: "Confirm the ZAP baseline job posted findings (or 'no issues') as a check." },
+  { t: "Dependabot opens PRs for SHA updates", d: "Wait one cycle; Dependabot should open PRs that bump SHA + trailing version comment together." },
+];
+
+/* ============================================================
+   State management
+============================================================ */
+const STORAGE_KEY = "smb-cicd-walkthrough-v1";
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveState(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+let state = loadState();
+state.answers = state.answers || {};
+state.details = state.details || {};
+state.completedSteps = state.completedSteps || {};
+state.checkedCreds = state.checkedCreds || {};
+state.checkedValidations = state.checkedValidations || {};
+state.openSteps = state.openSteps || {};
+
+function persist() { saveState(state); refreshProgress(); }
+
+/* ============================================================
+   Architecture node interactions
+============================================================ */
+const archDetail = document.getElementById('archDetail');
+document.querySelectorAll('.arch-node').forEach(n => {
+  n.addEventListener('click', () => {
+    document.querySelectorAll('.arch-node').forEach(x => x.classList.remove('active'));
+    n.classList.add('active');
+    const id = n.dataset.node;
+    const d = NODES[id];
+    if (!d) return;
+    archDetail.innerHTML = `
+      <h4>${d.title}</h4>
+      <p>${d.desc}</p>
+      <dl class="kv">
+        <dt>Credentials</dt><dd>${d.creds}</dd>
+        <dt>Depends on</dt><dd>${d.depends}</dd>
+        <dt>Why</dt><dd>${d.why}</dd>
+      </dl>
+    `;
+  });
+});
+
+/* ============================================================
+   Pre-flight questions
+============================================================ */
+const qList = document.getElementById('questionsList');
+QUESTIONS.forEach((q, idx) => {
+  const div = document.createElement('div');
+  div.className = 'question';
+  div.innerHTML = `
+    <div class="q-text"><span class="q-num">${idx + 1}</span> ${q.text}</div>
+    <div class="q-options" data-q="${q.id}">
+      ${q.options.map(o => `<div class="q-opt" data-val="${o}">${o}</div>`).join('')}
+    </div>
+    <div class="q-hint" data-hint="${q.id}"></div>
+  `;
+  qList.appendChild(div);
+});
+
+document.querySelectorAll('.q-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    const group = opt.parentElement;
+    const qid = group.dataset.q;
+    group.querySelectorAll('.q-opt').forEach(x => x.classList.remove('selected'));
+    opt.classList.add('selected');
+    state.answers[qid] = opt.dataset.val;
+    const q = QUESTIONS.find(x => x.id === qid);
+    document.querySelector(`[data-hint="${qid}"]`).innerHTML = q.hint(opt.dataset.val);
+    persist();
+    renderStack();
+    renderSteps();
+  });
+});
+
+function restoreAnswers() {
+  for (const q of QUESTIONS) {
+    const val = state.answers[q.id];
+    if (val) {
+      const opt = document.querySelector(`[data-q="${q.id}"] .q-opt[data-val="${val}"]`);
+      if (opt) {
+        opt.classList.add('selected');
+        document.querySelector(`[data-hint="${q.id}"]`).innerHTML = q.hint(val);
+      }
+    }
+  }
+}
+
+function renderStack() {
+  const tags = document.getElementById('stackTags');
+  const labels = {
+    cloud: "Cloud", auth: "Auth", db: "DB", ghplan: "GitHub", compliance: "Compliance",
+    accounts: "Accounts", teams: "Teams"
+  };
+  tags.innerHTML = '';
+  for (const q of QUESTIONS) {
+    const v = state.answers[q.id];
+    if (v) {
+      const t = document.createElement('span');
+      t.className = 'stack-tag';
+      t.innerHTML = `<span class="label">${labels[q.id]}</span>${v}`;
+      tags.appendChild(t);
+    }
+  }
+  // Plus key project details if filled
+  const keyDetails = [
+    { id: 'github_org', label: 'Org' },
+    { id: 'github_repo', label: 'Repo' },
+    { id: 'aws_region', label: 'Region' },
+  ];
+  for (const k of keyDetails) {
+    const v = state.details[k.id];
+    if (v) {
+      const t = document.createElement('span');
+      t.className = 'stack-tag';
+      t.innerHTML = `<span class="label">${k.label}</span>${v}`;
+      tags.appendChild(t);
+    }
+  }
+}
+
+/* ============================================================
+   Walkthrough steps
+============================================================ */
+const stepsList = document.getElementById('stepsList');
+
+function renderSteps() {
+  const steps = buildSteps(state.answers);
+  stepsList.innerHTML = '';
+  steps.forEach((step, idx) => {
+    const isComplete = !!state.completedSteps[step.id];
+    const isOpen = !!state.openSteps[step.id];
+    const div = document.createElement('div');
+    div.className = `step ${isComplete ? 'complete' : ''} ${isOpen ? 'open' : ''}`;
+    div.dataset.id = step.id;
+    div.innerHTML = `
+      <div class="step-head">
+        <div class="step-num">${isComplete ? '✓' : (idx + 1)}</div>
+        <div class="step-title">${step.title}</div>
+        <div class="step-meta">${step.meta}</div>
+        <div class="step-toggle">›</div>
+      </div>
+      <div class="step-body">
+        ${step.body}
+        <div class="step-actions">
+          <button class="btn ${isComplete ? 'secondary' : 'success'}" data-action="toggle-complete" data-id="${step.id}">
+            ${isComplete ? 'Mark incomplete' : 'Mark complete →'}
+          </button>
+          <button class="btn ghost" data-action="copy-all" data-id="${step.id}">Copy all commands</button>
+        </div>
+      </div>
+    `;
+    stepsList.appendChild(div);
+  });
+  wireSteps();
+  refreshProgress();
+}
+
+function wireSteps() {
+  document.querySelectorAll('.step-head').forEach(head => {
+    head.addEventListener('click', () => {
+      const step = head.parentElement;
+      const id = step.dataset.id;
+      step.classList.toggle('open');
+      state.openSteps[id] = step.classList.contains('open');
+      persist();
+    });
+  });
+
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const pre = btn.parentElement.querySelector('pre');
+      const text = pre.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'copied';
+        btn.classList.add('copied');
+        showToast('Copied to clipboard');
+        setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-action="toggle-complete"]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      state.completedSteps[id] = !state.completedSteps[id];
+      persist();
+      renderSteps();
+    });
+  });
+
+  document.querySelectorAll('[data-action="copy-all"]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const step = btn.closest('.step');
+      const blocks = step.querySelectorAll('pre');
+      const all = Array.from(blocks).map(b => b.innerText).join('\n\n');
+      navigator.clipboard.writeText(all);
+      showToast('Copied all commands for this step');
+    });
+  });
+}
+
+/* ============================================================
+   Credentials matrix
+============================================================ */
+const credsBody = document.querySelector('#credsTable tbody');
+CREDS.forEach((c, idx) => {
+  const tr = document.createElement('tr');
+  const checked = !!state.checkedCreds[idx];
+  if (checked) tr.classList.add('checked');
+  tr.innerHTML = `
+    <td class="check-cell"><input type="checkbox" ${checked ? 'checked' : ''} data-cred="${idx}" /></td>
+    <td><span class="pill ${c.pill}">${c.pill === 'aws' ? 'cloud' : c.pill === 'gh' ? 'github' : c.pill === 'app' ? 'app' : 'cloud'}</span> <strong style="color:var(--text);font-weight:500">${c.name}</strong></td>
+    <td>${c.where}</td>
+    <td>${c.scope}</td>
+    <td>${c.rotation}</td>
+    <td>${c.access}</td>
+  `;
+  credsBody.appendChild(tr);
+});
+document.querySelectorAll('[data-cred]').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const idx = cb.dataset.cred;
+    state.checkedCreds[idx] = cb.checked;
+    cb.closest('tr').classList.toggle('checked', cb.checked);
+    persist();
+  });
+});
+
+/* ============================================================
+   Validation checklist
+============================================================ */
+const checkGrid = document.getElementById('checkGrid');
+CHECKS.forEach((c, idx) => {
+  const div = document.createElement('div');
+  const done = !!state.checkedValidations[idx];
+  div.className = `check-item ${done ? 'done' : ''}`;
+  div.dataset.idx = idx;
+  div.innerHTML = `
+    <div class="check-icon"></div>
+    <div class="check-text"><strong>${c.t}</strong><span>${c.d}</span></div>
+  `;
+  div.addEventListener('click', () => {
+    state.checkedValidations[idx] = !state.checkedValidations[idx];
+    div.classList.toggle('done');
+    persist();
+  });
+  checkGrid.appendChild(div);
+});
+
+/* ============================================================
+   Project detail inputs
+============================================================ */
+const detailGrid = document.getElementById('detailGrid');
+
+function escapeAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function renderDetails() {
+  detailGrid.innerHTML = '';
+  for (const f of DETAIL_FIELDS) {
+    const v = state.details[f.id] !== undefined ? state.details[f.id] : (f.default || '');
+    const required = isFieldRequired(f);
+    const wrap = document.createElement('div');
+    wrap.className = 'detail-field' + (f.id === 'change_ticket_prefix' || f.id === 'app_domain' ? '' : '');
+    let inputHtml;
+    if (f.select) {
+      inputHtml = `<select class="detail-select" data-field="${f.id}">
+        ${f.select.map(o => `<option value="${o}" ${o === v ? 'selected' : ''}>${o}</option>`).join('')}
+      </select>`;
+    } else {
+      inputHtml = `<input type="text" class="detail-input" data-field="${f.id}" value="${escapeAttr(v)}" placeholder="${f.placeholder || ''}" autocomplete="off" spellcheck="false" />`;
+    }
+    wrap.innerHTML = `
+      <label class="detail-label">
+        <span>${f.label}</span>
+        ${required ? '<span class="req" title="Required">●</span>' : ''}
+      </label>
+      ${inputHtml}
+      <div class="detail-hint" data-hint="${f.id}"></div>
+    `;
+    detailGrid.appendChild(wrap);
+  }
+  detailGrid.querySelectorAll('[data-field]').forEach(el => {
+    const f = DETAIL_FIELDS.find(x => x.id === el.dataset.field);
+    el.addEventListener('input', () => updateDetail(f, el));
+    el.addEventListener('change', () => updateDetail(f, el));
+    // store default on first render if missing
+    if (state.details[f.id] === undefined && f.default) {
+      state.details[f.id] = f.default;
+    }
+    updateDetailValidity(f, el, false);
+  });
+}
+
+function updateDetail(f, el) {
+  state.details[f.id] = el.value;
+  updateDetailValidity(f, el, true);
+  persist();
+  renderStack();
+  renderGenerator();
+  renderSteps();
+}
+
+function updateDetailValidity(f, el, showRequired) {
+  const v = el.value || '';
+  const hint = document.querySelector(`[data-hint="${f.id}"]`);
+  if (!hint) return true;
+  let ok = true;
+  if (showRequired && isFieldRequired(f) && !v) {
+    ok = false;
+    hint.textContent = 'Required';
+    hint.classList.add('error');
+  } else if (v && f.validate && !f.validate(v)) {
+    ok = false;
+    hint.textContent = f.err || 'Invalid';
+    hint.classList.add('error');
+  } else {
+    hint.textContent = '';
+    hint.classList.remove('error');
+  }
+  el.classList.toggle('invalid', !ok);
+  return ok;
+}
+
+/* ============================================================
+   Generated configuration files
+============================================================ */
+function isDetailValid(f) {
+  const v = state.details[f.id] || '';
+  if (isFieldRequired(f) && !v) return false;
+  if (v && f.validate && !f.validate(v)) return false;
+  return true;
+}
+function isAllRequiredFilled() {
+  return DETAIL_FIELDS.every(isDetailValid);
+}
+function listMissing() {
+  return DETAIL_FIELDS
+    .filter(f => isFieldRequired(f) && !isDetailValid(f))
+    .map(f => f.label);
+}
+
+function highlightPlaceholders(s) {
+  return s
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/&lt;([A-Z][A-Z0-9_-]*)&gt;/g, '<span class="ph">&lt;$1&gt;</span>');
+}
+
+function download(filename, content) {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+}
+
+function genBootstrapConfig() {
+  const d = state.details;
+  const a = state.answers;
+  const createTeams = a.teams === 'Create them all' ? 1 : 0;
+  return `# bootstrap.config.env
+# Generated by the Triarch CI/CD walkthrough.
+# Move to your project root (this file is gitignored).
+
+# ---- Required ---------------------------------------------------------------
+GITHUB_ORG="${d.github_org || '<GITHUB_ORG>'}"
+GITHUB_REPO="${d.github_repo || '<GITHUB_REPO>'}"
+DEFAULT_BRANCH="main"
+
+# Three AWS accounts — one per environment for blast-radius separation.
+AWS_ACCOUNT_ID_DEV="${d.aws_account_dev || '<AWS_ACCOUNT_DEV>'}"
+AWS_ACCOUNT_ID_STAGING="${d.aws_account_staging || '<AWS_ACCOUNT_STAGING>'}"
+AWS_ACCOUNT_ID_PROD="${d.aws_account_prod || '<AWS_ACCOUNT_PROD>'}"
+AWS_REGION="${d.aws_region || 'us-east-1'}"
+
+# ---- Teams ------------------------------------------------------------------
+TEAM_ENG="engineering"
+TEAM_RELEASE_MANAGERS="release-managers"
+TEAM_SECURITY="security"
+CREATE_TEAMS=${createTeams}
+
+# ---- Optional ---------------------------------------------------------------
+CHANGE_TICKET_PREFIX="${d.change_ticket_prefix || 'CHG-'}"
+`;
+}
+
+function genTfvars() {
+  const d = state.details;
+  return `# iac/github-oidc-aws/terraform.tfvars
+# Generated by the Triarch CI/CD walkthrough.
+
+github_org             = "${d.github_org || '<GITHUB_ORG>'}"
+github_repo            = "${d.github_repo || '<GITHUB_REPO>'}"
+aws_region             = "${d.aws_region || 'us-east-1'}"
+aws_account_id_dev     = "${d.aws_account_dev || '<AWS_ACCOUNT_DEV>'}"
+aws_account_id_staging = "${d.aws_account_staging || '<AWS_ACCOUNT_STAGING>'}"
+aws_account_id_prod    = "${d.aws_account_prod || '<AWS_ACCOUNT_PROD>'}"
+# bootstrap_role_name    = "OrganizationAccountAccessRole"   # default
+`;
+}
+
+function genCheatsheet() {
+  const d = state.details;
+  const a = state.answers;
+  const org    = d.github_org || '<GITHUB_ORG>';
+  const repo   = d.github_repo || '<GITHUB_REPO>';
+  const region = d.aws_region || 'us-east-1';
+  const domain = d.app_domain || 'example.com';
+  const ctp    = d.change_ticket_prefix || 'CHG-';
+  const cloud  = a.cloud || 'AWS';
+  const auth   = a.auth || '';
+  const repoFull = `${org}/${repo}`;
+
+  let authBlock = '';
+  if (auth.startsWith('WorkOS')) {
+    authBlock = `## Auth — WorkOS
+
+\`\`\`bash
+gh secret set WORKOS_API_KEY --env dev     --body 'sk_test_...' --repo ${repoFull}
+gh secret set WORKOS_API_KEY --env staging --body 'sk_test_...' --repo ${repoFull}
+gh secret set WORKOS_API_KEY --env prod    --body 'sk_live_...' --repo ${repoFull}
+\`\`\`
+
+`;
+  } else if (auth.startsWith('Auth0')) {
+    authBlock = `## Auth — Auth0
+
+\`\`\`bash
+gh secret set AUTH0_CLIENT_ID     --env dev     --body '...' --repo ${repoFull}
+gh secret set AUTH0_CLIENT_SECRET --env dev     --body '...' --repo ${repoFull}
+# Repeat for staging and prod with their respective tenant credentials.
+\`\`\`
+
+`;
+  } else if (auth.startsWith('AWS Cognito')) {
+    authBlock = `## Auth — AWS Cognito
+
+User pools per environment are managed via your IaC; no GitHub secrets required because
+the runtime IAM role can read \`cognito-idp:*\` directly.
+
+`;
+  }
+
+  return `# CI/CD Setup Cheat-Sheet — ${repoFull}
+
+Generated by the Triarch CI/CD walkthrough.
+Pairs with the \`github-cicd-scaffold/\` directory.
+
+---
+
+## 0. Install local tools
+
+\`\`\`bash
+brew install gh git jq opentofu awscli pre-commit cosign
+\`\`\`
+
+## 1. Authenticate gh
+
+\`\`\`bash
+gh auth login --hostname github.com --git-protocol https \\
+  --scopes "repo,workflow,admin:org,write:packages,read:packages,admin:repo_hook"
+\`\`\`
+
+## 2. Drop generated files into place
+
+- \`bootstrap.config.env\` → repo root (gitignored)
+- \`terraform.tfvars\` → \`iac/github-oidc-aws/\`
+
+## 3. Apply ${cloud} OIDC trust
+
+\`\`\`bash
+cd iac/github-oidc-aws
+tofu init
+tofu plan
+tofu apply
+tofu output -json > ../../bootstrap.oidc.outputs.json
+\`\`\`
+
+This creates 3× IAM roles (\`github-actions-{dev,staging,prod}\`) trusted only by
+\`repo:${repoFull}:environment:<env>\`. Prod additionally requires a \`v*\` tag ref.
+
+## 4. Run bootstrap
+
+\`\`\`bash
+./bootstrap.sh --dry-run    # preview
+./bootstrap.sh              # for real
+
+# Optional (org owner only):
+./bootstrap.sh --apply-org-policy
+\`\`\`
+
+## 5. Set repository variables
+
+\`\`\`bash
+gh variable set APP_DOMAIN --body '${domain}' --repo ${repoFull}
+gh variable set CHANGE_TICKET_PREFIX --body '${ctp}' --repo ${repoFull}
+\`\`\`
+
+${authBlock}## 6. Set Slack notification webhooks
+
+\`\`\`bash
+gh secret set SLACK_WEBHOOK_URL --env dev     --body 'https://hooks.slack.com/...' --repo ${repoFull}
+gh secret set SLACK_WEBHOOK_URL --env staging --body 'https://hooks.slack.com/...' --repo ${repoFull}
+gh secret set SLACK_WEBHOOK_URL --env prod    --body 'https://hooks.slack.com/...' --repo ${repoFull}
+\`\`\`
+
+## 7. Set observability tokens (optional)
+
+\`\`\`bash
+gh secret set GRAFANA_CLOUD_TOKEN --env dev     --body 'glc_...' --repo ${repoFull}
+gh secret set GRAFANA_CLOUD_TOKEN --env staging --body 'glc_...' --repo ${repoFull}
+gh secret set GRAFANA_CLOUD_TOKEN --env prod    --body 'glc_...' --repo ${repoFull}
+\`\`\`
+
+## 8. First PR — prove the gates work
+
+\`\`\`bash
+git checkout -b chore/scaffold
+git add .
+git commit -S -m "chore: scaffold CI/CD pipeline"
+git push -u origin chore/scaffold
+
+gh pr create --fill --base main --repo ${repoFull}
+gh run watch --repo ${repoFull}
+\`\`\`
+
+## 9. First production release
+
+\`\`\`bash
+git checkout main && git pull
+git tag -s v0.1.0 -m "v0.1.0 — first release"
+git push origin v0.1.0
+
+# Verify locally
+make verify-prod TAG=v0.1.0
+\`\`\`
+
+The prod deploy will wait for: 2 reviewers + 30-min cooling-off timer +
+cosign signature verification + SLSA provenance verification + change ticket
+reference (e.g. \`${ctp}1234\`).
+
+---
+
+## Reference URLs
+
+- **dev:**     https://dev.${domain}
+- **staging:** https://staging.${domain}
+- **prod:**    https://${domain}
+- **Repo:**    https://github.com/${repoFull}
+- **Actions:** https://github.com/${repoFull}/actions
+
+## Day-2 ops (Makefile targets)
+
+\`\`\`bash
+make pin-actions       # pin all third-party Actions to commit SHAs
+make verify-prod TAG=v1.4.0
+make rotate-workos ENV=prod
+make waivers           # list active security waivers
+make dr-drill          # run DR drill workflow
+make audit-export      # export last 30 days of deploys to JSON
+\`\`\`
+`;
+}
+
+function renderGenerator() {
+  const ready = isAllRequiredFilled();
+  const status = document.getElementById('genStatus');
+  const statusText = document.getElementById('genStatusText');
+  const dlAll = document.getElementById('downloadAllBtn');
+
+  status.classList.toggle('ready', ready);
+  if (ready) {
+    statusText.innerHTML = `<strong>Ready to download.</strong> All required project details are filled in. Your customized files are below.`;
+    dlAll.disabled = false;
+  } else {
+    const missing = listMissing();
+    statusText.innerHTML = missing.length
+      ? `Fill in the required project details above to enable downloads. <strong>Missing:</strong> ${missing.join(', ')}.`
+      : `Fill in the required project details above to enable downloads.`;
+    dlAll.disabled = true;
+  }
+
+  const files = [
+    { name: 'bootstrap.config.env', type: 'shell',
+      desc: 'Drop at repo root. Gitignored. Consumed by <code>./bootstrap.sh</code>.',
+      content: genBootstrapConfig() },
+    { name: 'terraform.tfvars', type: 'hcl',
+      desc: 'Drop into <code>iac/github-oidc-aws/</code>. Apply with <code>tofu apply</code>.',
+      content: genTfvars() },
+    { name: 'setup-cheatsheet.md', type: 'markdown',
+      desc: 'Personalized command-by-command run-sheet. Keep open in another window.',
+      content: genCheatsheet() },
+  ];
+
+  const filesEl = document.getElementById('genFiles');
+  filesEl.innerHTML = '';
+  for (const f of files) {
+    const div = document.createElement('div');
+    div.className = `gen-file ${ready ? 'ready' : ''}`;
+    div.innerHTML = `
+      <div class="gen-file-head">
+        <span class="filename">${f.name}</span>
+        <span class="ftype">${f.type}</span>
+      </div>
+      <div class="gen-file-desc">${f.desc}</div>
+      <div class="gen-file-preview"><pre>${highlightPlaceholders(f.content)}</pre></div>
+      <div class="gen-file-actions">
+        <button class="btn" data-dl="${f.name}" ${ready ? '' : 'disabled'}>${ready ? 'Download' : 'Fill required fields'}</button>
+        <button class="btn ghost" data-cp="${f.name}">Copy</button>
+      </div>
+    `;
+    filesEl.appendChild(div);
+  }
+  filesEl.querySelectorAll('[data-dl]').forEach(b => {
+    b.addEventListener('click', () => {
+      const f = files.find(x => x.name === b.dataset.dl);
+      download(f.name, f.content);
+      showToast(`Downloaded ${f.name}`);
+    });
+  });
+  filesEl.querySelectorAll('[data-cp]').forEach(b => {
+    b.addEventListener('click', () => {
+      const f = files.find(x => x.name === b.dataset.cp);
+      navigator.clipboard.writeText(f.content);
+      showToast(`Copied ${f.name} to clipboard`);
+    });
+  });
+  dlAll.onclick = () => {
+    if (!isAllRequiredFilled()) return;
+    files.forEach((f, i) => setTimeout(() => download(f.name, f.content), i * 250));
+    showToast(`Downloading all ${files.length} files…`);
+  };
+}
+
+/* ============================================================
+   Progress pill
+============================================================ */
+function refreshProgress() {
+  const total = 7;
+  const done = Object.values(state.completedSteps).filter(Boolean).length;
+  const pill = document.getElementById('progressPill');
+  pill.textContent = `${done} / ${total}`;
+}
+
+/* ============================================================
+   Sticky nav active section
+============================================================ */
+const sections = ['overview','architecture','discovery','questions','config','walkthrough','credentials','validation'];
+function updateNavActive() {
+  let current = sections[0];
+  for (const id of sections) {
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top < 120) current = id;
+  }
+  document.querySelectorAll('nav.toc a').forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+}
+window.addEventListener('scroll', updateNavActive);
+
+/* ============================================================
+   Reset button
+============================================================ */
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Clear all saved progress (answers, completed steps, checked items)?')) {
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  }
+});
+
+/* ============================================================
+   Toast
+============================================================ */
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2000);
+}
+
+/* ============================================================
+   Discovery script download
+============================================================ */
+const DISCOVERY_SCRIPT = `#!/usr/bin/env bash
+# discovery.sh — safe environment introspection for the Triarch CI/CD framework.
+# Outputs metadata only — no secrets, tokens, or credentials are printed.
+#
+# Usage:
+#   ./discovery.sh                 # current user only
+#   ./discovery.sh ORG             # org-level inventory
+#   ./discovery.sh ORG REPO        # repo-level inspection too
+
+set -uo pipefail
+ORG="\${1:-}"
+REPO="\${2:-}"
+OUT="discovery-$(date -u +%Y%m%dT%H%M%SZ).txt"
+
+echo "Triarch CI/CD Discovery — $(date -u +%FT%TZ)" | tee "$OUT"
+echo "================================================" | tee -a "$OUT"
+
+section() { echo -e "\\n===== $1 =====" | tee -a "$OUT"; }
+
+# ----- Local tooling --------------------------------------------------------
+section "Local tooling"
+for cmd in gh git tofu terraform aws docker node pre-commit cosign; do
+  if command -v "$cmd" >/dev/null 2>&1; then
+    printf "%-12s %s\\n" "$cmd" "$($cmd --version 2>&1 | head -1)" | tee -a "$OUT"
+  else
+    printf "%-12s %s\\n" "$cmd" "(not installed)" | tee -a "$OUT"
+  fi
+done
+
+# ----- GitHub ---------------------------------------------------------------
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+
+  section "GitHub: auth state (scopes only, never the token)"
+  gh auth status 2>&1 | tee -a "$OUT"
+
+  section "GitHub: user"
+  gh api user --jq '{login,id,plan:.plan.name}' 2>&1 | tee -a "$OUT"
+
+  section "GitHub: visible orgs"
+  gh api user/orgs --jq '.[].login' 2>&1 | tee -a "$OUT"
+
+  if [ -n "$ORG" ]; then
+    section "GitHub: org $ORG"
+    gh api "orgs/$ORG" --jq '{login,plan:.plan.name,public_repos,total_private_repos,two_factor_requirement_enabled}' 2>&1 | tee -a "$OUT"
+
+    section "GitHub: teams in $ORG"
+    gh api "orgs/$ORG/teams" --jq '.[].slug' 2>&1 | tee -a "$OUT"
+
+    section "GitHub: repos in $ORG (top 100, by recency)"
+    gh repo list "$ORG" --limit 100 --json name,visibility,isArchived,pushedAt \\
+      --jq '.[] | "\\(.visibility)\\t\\(.pushedAt)\\t\\(.name)"' 2>&1 | tee -a "$OUT"
+
+    section "GitHub: org actions policy"
+    gh api "orgs/$ORG/actions/permissions" 2>&1 | tee -a "$OUT"
+  fi
+
+  if [ -n "$ORG" ] && [ -n "$REPO" ]; then
+    section "GitHub: $ORG/$REPO branch protection on main"
+    gh api "repos/$ORG/$REPO/branches/main/protection" 2>&1 | tee -a "$OUT"
+
+    section "GitHub: $ORG/$REPO environments"
+    gh api "repos/$ORG/$REPO/environments" --jq '.environments[].name' 2>&1 | tee -a "$OUT"
+
+    section "GitHub: $ORG/$REPO rulesets"
+    gh api "repos/$ORG/$REPO/rulesets" --jq '.[].name' 2>&1 | tee -a "$OUT"
+
+    section "GitHub: $ORG/$REPO existing workflow files"
+    gh api "repos/$ORG/$REPO/contents/.github/workflows" --jq '.[].name' 2>&1 | tee -a "$OUT"
+  fi
+else
+  section "GitHub"
+  echo "(gh not authenticated — run 'gh auth login' first)" | tee -a "$OUT"
+fi
+
+# ----- AWS ------------------------------------------------------------------
+if command -v aws >/dev/null 2>&1 && aws sts get-caller-identity >/dev/null 2>&1; then
+
+  section "AWS: caller identity (account + arn, no secrets)"
+  aws sts get-caller-identity 2>&1 | tee -a "$OUT"
+
+  section "AWS: organization (if accessible)"
+  aws organizations list-accounts \\
+    --query 'Accounts[*].{Id:Id,Name:Name,Status:Status}' --output table 2>&1 | tee -a "$OUT"
+
+  section "AWS: existing OIDC providers"
+  aws iam list-open-id-connect-providers 2>&1 | tee -a "$OUT"
+
+  section "AWS: existing GitHub Actions roles (any name starts-with 'github')"
+  aws iam list-roles \\
+    --query 'Roles[?starts_with(RoleName, \`github\`)].{Name:RoleName,Arn:Arn}' \\
+    --output table 2>&1 | tee -a "$OUT"
+
+  section "AWS: default region"
+  aws configure get region 2>&1 | tee -a "$OUT"
+
+  section "AWS: available regions"
+  aws ec2 describe-regions --query 'Regions[*].RegionName' --output text 2>&1 | tee -a "$OUT"
+else
+  section "AWS"
+  echo "(aws not authenticated — run 'aws configure' or 'aws sso login' first)" | tee -a "$OUT"
+fi
+
+echo -e "\\n================================================"
+echo "Done. Saved to: $OUT"
+echo "Review before sharing — account IDs and role ARNs are present"
+echo "(but no secrets, tokens, or credentials)."
+`;
+
+document.getElementById('downloadDiscoveryBtn').addEventListener('click', () => {
+  download('discovery.sh', DISCOVERY_SCRIPT);
+  showToast('Downloaded discovery.sh — chmod +x, then run it');
+});
+
+/* ============================================================
+   Re-render generator when an answer changes (cloud → required AWS fields)
+============================================================ */
+document.querySelectorAll('.q-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    // Re-render details so requiredness updates, then regenerate previews.
+    setTimeout(() => { renderDetails(); renderGenerator(); }, 0);
+  });
+});
+
+/* ============================================================
+   Boot
+============================================================ */
+restoreAnswers();
+renderDetails();
+renderStack();
+renderSteps();
+renderGenerator();
+refreshProgress();
+updateNavActive();
+</script>
+
+</body>
+</html>

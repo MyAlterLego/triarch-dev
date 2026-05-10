@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Triarch · CI/CD — The Interactive Movie</title>
+<link rel="icon" type="image/png" href="https://www.triarch.dev/triarch-logo.png" />
+<meta name="description" content="An interactive cinematic walkthrough of the Triarch SMB CI/CD framework. How DevOps should work, how it's implemented, and the options at every layer." />
+<style>
+  /* ================================================================
+     Triarch CI/CD · The Interactive Movie
+     Cinematic, scene-by-scene presentation. Identical content to the
+     walkthrough and overview HTML — different presentation.
+  ================================================================ */
+  :root {
+    --bg: #0a0a0f;
+    --bg-2: #14140e;
+    --panel: #1f1d14;
+    --panel-2: #2b2818;
+    --border: #3a3424;
+    --border-strong: #5a4d2c;
+    --text: #f5ecd8;
+    --text-dim: #c9b88a;
+    --text-faint: #8a7956;
+    /* Burnt yellow primary palette + gradient accents around it */
+    --accent: #e8a317;          /* burnt yellow primary */
+    --accent-2: #c97d1a;        /* deeper burnt orange */
+    --accent-3: #f5cc5b;        /* warm gold highlight */
+    --accent-cool: #e8a317;     /* cyan kept for occasional cool contrast */
+    --accent-purple: #c97d1a;   /* purple for rare deep accents */
+    --warn: #d97706;
+    --danger: #c84d4d;
+    --success: #b8a045;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(1200px 700px at 10% -10%, rgba(232,163,23,0.22), transparent 65%),
+      radial-gradient(900px 600px at 95% 100%, rgba(201,125,26,0.18), transparent 65%),
+      radial-gradient(1100px 700px at 50% 50%, rgba(245,204,91,0.06), transparent 70%),
+      radial-gradient(700px 500px at 80% 30%, rgba(201,125,26,0.06), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    animation: bgDrift 30s ease-in-out infinite alternate;
+  }
+  @keyframes bgDrift {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(-30px, 20px); }
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    font-size: 0.85em;
+    background: rgba(255,255,255,0.06);
+    padding: 0.05em 0.4em;
+    border-radius: 4px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .movie-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 56px;
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0 1.5rem;
+    z-index: 100;
+    background: linear-gradient(180deg, rgba(5,8,17,0.85), rgba(5,8,17,0));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .movie-bar .brand {
+    display: flex; align-items: center; gap: 0.55rem;
+    font-weight: 700;
+    font-size: 0.86rem;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  .movie-bar .brand img { height: 26px; }
+  .movie-bar .brand .mark { color: var(--accent); }
+  .movie-bar .controls { margin-left: auto; display: flex; align-items: center; gap: 0.65rem; }
+  .movie-bar a, .movie-bar button {
+    font-family: inherit;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    padding: 0.4rem 0.85rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .movie-bar a:hover, .movie-bar button:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(232,163,23,0.06);
+    text-decoration: none;
+  }
+  .movie-bar button.playing { color: var(--accent-3); border-color: rgba(245,204,91,0.4); }
+  .movie-bar .ctr-counter {
+    color: var(--text-faint);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    padding: 0 0.5rem;
+  }
+
+  /* ---------- Scene container ---------- */
+  .scene {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5rem 4rem 6rem;
+    opacity: 0;
+    transform: scale(1.02);
+    transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 10;
+  }
+  @media (max-width: 900px) {
+    .scene { padding: 5rem 1.5rem 6rem; }
+  }
+  .scene.active {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+    z-index: 20;
+  }
+  .scene.behind {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  .scene-content {
+    max-width: 1100px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.5rem;
+  }
+
+  /* Element-level reveal animations on active scene */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: 0.2s;
+  }
+  .scene.active .reveal { opacity: 1; transform: translateY(0); }
+  .scene.active .reveal.d1 { transition-delay: 0.4s; }
+  .scene.active .reveal.d2 { transition-delay: 0.6s; }
+  .scene.active .reveal.d3 { transition-delay: 0.8s; }
+  .scene.active .reveal.d4 { transition-delay: 1.0s; }
+  .scene.active .reveal.d5 { transition-delay: 1.2s; }
+  .scene.active .reveal.d6 { transition-delay: 1.4s; }
+  .scene.active .reveal.d7 { transition-delay: 1.6s; }
+
+  /* Typography for scenes */
+  .eyebrow {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    background: rgba(232,163,23,0.08);
+    border: 1px solid rgba(232,163,23,0.25);
+    padding: 0.35rem 1rem;
+    border-radius: 999px;
+    display: inline-block;
+  }
+  .eyebrow.purple { color: var(--accent-2); background: rgba(201,125,26,0.08); border-color: rgba(201,125,26,0.25); }
+  .eyebrow.green { color: var(--accent-3); background: rgba(245,204,91,0.08); border-color: rgba(245,204,91,0.25); }
+  .eyebrow.warn { color: var(--warn); background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.25); }
+  h1.movie-title {
+    font-size: clamp(2rem, 6vw, 4.5rem);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  h1.movie-title .hl { color: var(--accent); }
+  h1.movie-title .hl-purple { color: var(--accent-2); }
+  h1.movie-title .hl-green { color: var(--accent-3); }
+  .subtitle {
+    font-size: clamp(1rem, 1.5vw, 1.35rem);
+    color: var(--text-dim);
+    max-width: 760px;
+    line-height: 1.55;
+  }
+  .subtitle strong { color: var(--text); font-weight: 600; }
+  .stat-big {
+    font-size: clamp(3rem, 9vw, 6rem);
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  /* ---------- Auto-play progress bar (top of screen) ---------- */
+  .autoplay-progress {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    width: 0%;
+    z-index: 95;
+    opacity: 0;
+    box-shadow: 0 0 10px var(--accent);
+    pointer-events: none;
+  }
+  .autoplay-progress.active { opacity: 1; }
+
+  /* ---------- Bottom progress + nav ---------- */
+  .nav-arrow {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 1.4rem;
+    cursor: pointer;
+    z-index: 90;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .nav-arrow:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(232,163,23,0.1);
+  }
+  .nav-arrow:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  .nav-prev { left: 1rem; }
+  .nav-next { right: 1rem; }
+  @media (max-width: 600px) {
+    .nav-arrow { width: 40px; height: 40px; }
+    .nav-prev { left: 0.5rem; }
+    .nav-next { right: 0.5rem; }
+  }
+
+  .progress-rail {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 90;
+    background: linear-gradient(0deg, rgba(5,8,17,0.7), rgba(5,8,17,0));
+    pointer-events: none;
+  }
+  .progress-dots {
+    display: flex; gap: 6px;
+    pointer-events: auto;
+  }
+  .progress-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    cursor: pointer;
+    transition: all 0.25s;
+    border: none;
+    padding: 0;
+  }
+  .progress-dot:hover { background: rgba(255,255,255,0.4); transform: scale(1.4); }
+  .progress-dot.done { background: var(--accent); opacity: 0.6; }
+  .progress-dot.active {
+    background: var(--accent);
+    transform: scale(1.6);
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  /* Act markers between dots */
+  .act-marker {
+    width: 14px;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ---------- Scene-specific visuals ---------- */
+
+  /* Big logo / title scene */
+  .hero-logo {
+    width: 96px; height: 96px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    padding: 6px;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Card grid for principles */
+  .stat-line {
+    display: flex; gap: 1.5rem; align-items: center; justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+  .stat-line .stat-item {
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 140px;
+  }
+  .stat-line .stat-num {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .stat-line .stat-num.purple { color: var(--accent-2); }
+  .stat-line .stat-num.green { color: var(--accent-3); }
+  .stat-line .stat-lbl {
+    font-size: 0.78rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 0.4rem;
+  }
+
+  /* Stage cards */
+  .stages-row {
+    display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;
+    margin-top: 1.5rem;
+  }
+  .stages-row .stage-pill {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 1rem 1.2rem;
+    border-radius: 12px;
+    display: flex; flex-direction: column; align-items: flex-start;
+    min-width: 170px; max-width: 200px;
+    text-align: left;
+  }
+  .stages-row .stage-pill .num {
+    width: 30px; height: 30px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-radius: 50%;
+    color: var(--bg);
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+  .stages-row .stage-pill h4 {
+    font-size: 0.95rem;
+    color: var(--text);
+    margin-bottom: 0.2rem;
+  }
+  .stages-row .stage-pill p {
+    font-size: 0.78rem;
+    color: var(--text-faint);
+    line-height: 1.4;
+  }
+
+  /* Architecture (mini diagram) */
+  .arch-mini {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    max-width: 900px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .arch-mini svg { width: 100%; height: auto; }
+
+  /* OIDC flow visualization */
+  .flow-row {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-top: 1rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 1rem;
+    width: 100%;
+    justify-content: center;
+  }
+  .flow-row .flow-node {
+    background: var(--panel);
+    border: 1px solid var(--border-strong);
+    padding: 0.85rem 1.1rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    color: var(--text);
+    flex-shrink: 0;
+    min-width: 140px;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .flow-row .flow-node .lbl {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.25rem;
+  }
+  .flow-row .arrow {
+    color: var(--accent);
+    font-size: 1.2rem;
+  }
+
+  /* Three envs visual */
+  .envs-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
+  .env-card {
+    background: var(--panel);
+    border: 2px solid var(--border-strong);
+    padding: 1.5rem 1.8rem;
+    border-radius: 12px;
+    min-width: 200px;
+    text-align: left;
+  }
+  .env-card.dev { border-color: var(--accent); box-shadow: 0 0 24px rgba(232,163,23,0.15); }
+  .env-card.staging { border-color: var(--warn); box-shadow: 0 0 24px rgba(245,166,35,0.15); }
+  .env-card.prod { border-color: var(--danger); box-shadow: 0 0 24px rgba(248,113,113,0.15); }
+  .env-card .env-name {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.4rem;
+  }
+  .env-card.dev .env-name { color: var(--accent); }
+  .env-card.staging .env-name { color: var(--warn); }
+  .env-card.prod .env-name { color: var(--danger); }
+  .env-card h4 { font-size: 1.1rem; color: var(--text); margin-bottom: 0.4rem; }
+  .env-card p { font-size: 0.82rem; color: var(--text-dim); line-height: 1.5; }
+
+  /* Tier cards */
+  .tier-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
+  .tier-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 3px solid;
+    padding: 1.5rem 1.6rem;
+    border-radius: 8px;
+    min-width: 240px; max-width: 280px;
+    text-align: left;
+  }
+  .tier-card.req { border-top-color: var(--danger); }
+  .tier-card.rec { border-top-color: var(--accent-3); }
+  .tier-card.opt { border-top-color: var(--text-faint); }
+  .tier-card .lbl {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .tier-card.req .lbl { color: var(--danger); }
+  .tier-card.rec .lbl { color: var(--accent-3); }
+  .tier-card.opt .lbl { color: var(--text-faint); }
+  .tier-card h4 { font-size: 1rem; color: var(--text); margin-bottom: 0.35rem; }
+  .tier-card p { font-size: 0.82rem; color: var(--text-dim); line-height: 1.55; }
+  .tier-card ul {
+    list-style: none;
+    margin-top: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+  .tier-card li {
+    padding: 0.2rem 0 0.2rem 0.9rem;
+    position: relative;
+  }
+  .tier-card li::before {
+    content: '·';
+    position: absolute;
+    left: 0;
+    color: var(--text-faint);
+  }
+
+  /* Hosting choice (Firebase vs AWS) */
+  .choice-row { display: flex; gap: 1.2rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
+  .choice-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 1.6rem 1.8rem;
+    border-radius: 12px;
+    min-width: 280px; max-width: 360px;
+    text-align: left;
+    transition: all 0.3s;
+  }
+  .choice-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+  .choice-card .when { font-size: 0.72rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+  .choice-card h3 { color: var(--text); font-size: 1.4rem; margin-bottom: 0.5rem; }
+  .choice-card p { font-size: 0.88rem; color: var(--text-dim); line-height: 1.55; margin-bottom: 0.75rem; }
+  .choice-card .pros, .choice-card .cons {
+    font-size: 0.78rem;
+    margin-top: 0.4rem;
+  }
+  .choice-card .pros::before { content: '+ '; color: var(--accent-3); font-weight: 700; }
+  .choice-card .cons::before { content: '− '; color: var(--warn); font-weight: 700; }
+  .choice-card .pros { color: var(--text-dim); }
+  .choice-card .cons { color: var(--text-dim); }
+
+  /* Outcome list */
+  .outcome-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem;
+    margin-top: 1.5rem;
+    text-align: left;
+    max-width: 800px;
+  }
+  @media (max-width: 700px) { .outcome-grid { grid-template-columns: 1fr; } }
+  .outcome-grid .outcome-item {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85rem 1.1rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+  .outcome-grid .outcome-item svg {
+    flex-shrink: 0;
+    color: var(--accent-3);
+    margin-top: 0.1rem;
+  }
+  .outcome-grid .outcome-item strong { color: var(--text); display: block; margin-bottom: 0.1rem; }
+
+  /* CTA scene */
+  .cta-buttons {
+    display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+    margin-top: 2rem;
+  }
+  .cta-btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.95rem 1.8rem;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .cta-btn:hover { filter: brightness(1.15); transform: translateY(-2px); text-decoration: none; }
+  .cta-btn.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+  }
+  .cta-btn.secondary:hover { background: var(--panel); }
+
+  /* Code-look snippets */
+  .code-snippet {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    font-family: ui-monospace, monospace;
+    font-size: 0.82rem;
+    color: #c4d4ee;
+    text-align: left;
+    margin-top: 1rem;
+    max-width: 600px;
+  }
+  .code-snippet .com { color: #637777; font-style: italic; }
+  .code-snippet .key { color: #82aaff; }
+  .code-snippet .str { color: #ecc48d; }
+
+  /* Pulse animation for highlights */
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+    50% { box-shadow: 0 0 0 12px transparent; opacity: 0.7; }
+  }
+  .pulse { animation: pulse 2s ease-in-out infinite; }
+
+  /* Status quo visual */
+  .gloom-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+    margin-top: 1rem;
+    max-width: 700px;
+  }
+  @media (max-width: 600px) { .gloom-list { grid-template-columns: 1fr; } }
+  .gloom-item {
+    background: rgba(248,113,113,0.05);
+    border: 1px solid rgba(248,113,113,0.2);
+    border-radius: 6px;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    text-align: left;
+  }
+  .gloom-item::before { content: '✕  '; color: var(--danger); font-weight: 700; }
+
+  /* ---------- Gradient text on highlight words ---------- */
+  h1.movie-title .hl,
+  h1.movie-title .hl-purple,
+  h1.movie-title .hl-green,
+  h1.movie-title .grad {
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    display: inline-block;
+  }
+  h1.movie-title .hl       { background-image: linear-gradient(135deg, #e8a317 0%, #c97d1a 100%); }
+  h1.movie-title .hl-purple{ background-image: linear-gradient(135deg, #f5cc5b 0%, #c97d1a 100%); }
+  h1.movie-title .hl-green { background-image: linear-gradient(135deg, #f5cc5b 0%, #e8a317 50%, #c97d1a 100%); }
+  h1.movie-title .grad     { background-image: linear-gradient(135deg, #f5cc5b 0%, #e8a317 50%, #e8a317 100%); }
+
+  /* ---------- Hero logo with gradient ring ---------- */
+  .hero-logo {
+    box-shadow:
+      0 0 0 2px rgba(232,163,23,0.4),
+      0 0 0 5px rgba(201,125,26,0.15),
+      0 0 40px rgba(232,163,23,0.25);
+    background: linear-gradient(135deg, rgba(232,163,23,0.06), rgba(201,125,26,0.06));
+  }
+
+  /* ---------- Gradient CTA buttons ---------- */
+  .cta-btn:not(.secondary) {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    color: var(--bg);
+    box-shadow: 0 4px 20px rgba(232,163,23,0.3);
+  }
+  .cta-btn:not(.secondary):hover {
+    background: linear-gradient(135deg, var(--accent-2) 0%, var(--accent) 100%);
+    box-shadow: 0 6px 30px rgba(201,125,26,0.4);
+  }
+
+  /* ---------- Stage card numbers + tier card tops ---------- */
+  .stages-row .stage-pill .num {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    box-shadow: 0 0 16px rgba(232,163,23,0.3);
+  }
+
+  /* ---------- Architecture scene — staggered node + line animation ---------- */
+  .arch-svg-anim .arch-node {
+    opacity: 0;
+    transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .scene.active .arch-svg-anim .arch-node { opacity: 1; }
+  .scene.active .arch-svg-anim .arch-node.n1  { transition-delay: 0.5s; }
+  .scene.active .arch-svg-anim .arch-node.n2  { transition-delay: 0.7s; }
+  .scene.active .arch-svg-anim .arch-node.n3  { transition-delay: 0.85s; }
+  .scene.active .arch-svg-anim .arch-node.n4  { transition-delay: 1.0s; }
+  .scene.active .arch-svg-anim .arch-node.n5  { transition-delay: 1.15s; }
+  .scene.active .arch-svg-anim .arch-node.n6  { transition-delay: 1.30s; }
+  .scene.active .arch-svg-anim .arch-node.n7  { transition-delay: 1.45s; }
+  .scene.active .arch-svg-anim .arch-node.n8  { transition-delay: 1.60s; }
+  .scene.active .arch-svg-anim .arch-node.n9  { transition-delay: 1.75s; }
+  .scene.active .arch-svg-anim .arch-node.n10 { transition-delay: 1.90s; }
+  .scene.active .arch-svg-anim .arch-node.n11 { transition-delay: 2.05s; }
+  .scene.active .arch-svg-anim .arch-node.n12 { transition-delay: 2.20s; }
+  .scene.active .arch-svg-anim .arch-node.n13 { transition-delay: 2.35s; }
+
+  /* Dotted lines fade in (no draw animation — they stay visible as dots) */
+  .arch-svg-anim .arch-line {
+    opacity: 0;
+    transition: opacity 0.55s ease;
+    filter: drop-shadow(0 0 3px rgba(232,163,23,0.4));
+  }
+  .scene.active .arch-svg-anim .arch-line { opacity: 0.85; }
+  .scene.active .arch-svg-anim .arch-line.l1 { transition-delay: 2.5s; }
+  .scene.active .arch-svg-anim .arch-line.l2 { transition-delay: 2.55s; }
+  .scene.active .arch-svg-anim .arch-line.l3 { transition-delay: 2.6s; }
+  .scene.active .arch-svg-anim .arch-line.l4 { transition-delay: 2.7s; }
+  .scene.active .arch-svg-anim .arch-line.l5 { transition-delay: 2.75s; }
+  .scene.active .arch-svg-anim .arch-line.l6 { transition-delay: 2.8s; }
+  .scene.active .arch-svg-anim .arch-line.l7 { transition-delay: 2.9s; }
+  .scene.active .arch-svg-anim .arch-line.l8 { transition-delay: 3.0s; }
+  .scene.active .arch-svg-anim .arch-line.l9 { transition-delay: 3.05s; }
+  .scene.active .arch-svg-anim .arch-line.l10 { transition-delay: 3.1s; }
+  .scene.active .arch-svg-anim .arch-line.l11 { transition-delay: 3.3s; }
+  .scene.active .arch-svg-anim .arch-line.l12 { transition-delay: 3.4s; }
+  .scene.active .arch-svg-anim .arch-line.l13 { transition-delay: 3.5s; }
+
+  /* Traveling bubbles along each line */
+  .arch-svg-anim .arch-bubble {
+    opacity: 0;
+    filter: drop-shadow(0 0 6px var(--accent)) drop-shadow(0 0 12px rgba(232,163,23,0.5));
+    transition: opacity 0.45s ease;
+  }
+  .arch-svg-anim .arch-bubble.purple {
+    filter: drop-shadow(0 0 6px var(--accent-2)) drop-shadow(0 0 12px rgba(201,125,26,0.5));
+  }
+  .scene.active .arch-svg-anim .arch-bubble { opacity: 1; }
+  .scene.active .arch-svg-anim .arch-bubble.b1 { transition-delay: 3.6s; }
+  .scene.active .arch-svg-anim .arch-bubble.b2 { transition-delay: 3.65s; }
+  .scene.active .arch-svg-anim .arch-bubble.b3 { transition-delay: 3.7s; }
+  .scene.active .arch-svg-anim .arch-bubble.b4 { transition-delay: 3.75s; }
+  .scene.active .arch-svg-anim .arch-bubble.b5 { transition-delay: 3.8s; }
+  .scene.active .arch-svg-anim .arch-bubble.b6 { transition-delay: 3.85s; }
+  .scene.active .arch-svg-anim .arch-bubble.b7 { transition-delay: 3.9s; }
+  .scene.active .arch-svg-anim .arch-bubble.b8 { transition-delay: 3.95s; }
+  .scene.active .arch-svg-anim .arch-bubble.b9 { transition-delay: 4.0s; }
+  .scene.active .arch-svg-anim .arch-bubble.b10 { transition-delay: 4.05s; }
+  .scene.active .arch-svg-anim .arch-bubble.b11 { transition-delay: 4.2s; }
+  .scene.active .arch-svg-anim .arch-bubble.b12 { transition-delay: 4.3s; }
+  .scene.active .arch-svg-anim .arch-bubble.b13 { transition-delay: 4.4s; }
+
+  /* ---------- Eyebrow with subtle gradient border ---------- */
+  .eyebrow {
+    background: linear-gradient(135deg, rgba(232,163,23,0.1), rgba(201,125,26,0.06));
+  }
+
+  /* Reduced motion respect */
+  @media (prefers-reduced-motion: reduce) {
+    .scene, .reveal, body::before,
+    .arch-svg-anim .arch-node, .arch-svg-anim .arch-line {
+      transition: none !important;
+      animation: none !important;
+    }
+    .arch-svg-anim .arch-line { opacity: 0.85 !important; }
+    .arch-svg-anim .arch-node { opacity: 1 !important; }
+    .arch-svg-anim .arch-bubble { opacity: 1 !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============== Top bar ============== -->
+<div class="movie-bar">
+  <div class="brand">
+    <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" />
+    <span><span class="mark">TRIARCH</span> · CI/CD movie</span>
+  </div>
+  <div class="controls">
+    <span class="ctr-counter" id="ctrCounter">1 / 23</span>
+    <button id="autoPlayBtn" title="Auto-play (7s per scene)">▶ auto</button>
+    <a href="cicd-overview.html">Overview</a>
+    <a href="cicd-walkthrough.html">Walkthrough →</a>
+  </div>
+</div>
+
+<div class="autoplay-progress" id="autoplayProgress"></div>
+
+<!-- ============== Scenes ============== -->
+
+<!-- ACT 1: SETUP -->
+
+<!-- Scene 1: Title -->
+<section class="scene active" data-scene="1" data-act="1">
+  <div class="scene-content">
+    <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" class="hero-logo reveal" />
+    <div class="eyebrow reveal d1">Triarch Security · An interactive movie</div>
+    <h1 class="movie-title reveal d2">From a <span class="hl">React repo</span><br/>to <span class="hl-purple">production-ready</span> CI/CD.</h1>
+    <p class="subtitle reveal d3">A cinematic walk through how DevOps should work, how we implement it, and the choices you have at every layer.</p>
+    <div class="reveal d4" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-faint)">
+      Press <code>→</code> or click <strong>›</strong> to begin · <code>Esc</code> to skip to the walkthrough
+    </div>
+  </div>
+</section>
+
+<!-- Scene 2: The starting state -->
+<section class="scene behind" data-scene="2" data-act="1">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 1 · The starting state</div>
+    <h1 class="movie-title reveal d1">Everything you have:<br/><span class="hl">GitHub</span> + a <span class="hl-purple">React app</span>.</h1>
+    <p class="subtitle reveal d2">No cloud account. No identity provider. No database. No observability stack. <strong>That's the assumed reality.</strong></p>
+    <div class="flow-row reveal d3">
+      <div class="flow-node"><span class="lbl">have</span>GitHub repo</div>
+      <div class="arrow">+</div>
+      <div class="flow-node"><span class="lbl">have</span>React source</div>
+      <div class="arrow">→</div>
+      <div class="flow-node" style="background:rgba(232,163,23,0.08);border-color:var(--accent)"><span class="lbl">need</span>Everything else</div>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 3: The status quo -->
+<section class="scene behind" data-scene="3" data-act="1">
+  <div class="scene-content">
+    <div class="eyebrow warn reveal">The cost of doing nothing</div>
+    <h1 class="movie-title reveal d1">Without a real pipeline,<br/>this is what's actually happening.</h1>
+    <div class="gloom-list reveal d2">
+      <div class="gloom-item">Secrets pasted into <code>.env</code> files and committed</div>
+      <div class="gloom-item">Manual deploys from someone's laptop</div>
+      <div class="gloom-item">No way to verify what's running in prod</div>
+      <div class="gloom-item">"It worked yesterday" debugging</div>
+      <div class="gloom-item">Vulnerable dependencies sit for months</div>
+      <div class="gloom-item">No audit trail of who changed what</div>
+      <div class="gloom-item">Auth = whatever was easiest at the time</div>
+      <div class="gloom-item">Rollback = pray, then revert</div>
+    </div>
+    <p class="subtitle reveal d3" style="margin-top:1rem"><strong>This is fixable.</strong> Let's walk through how.</p>
+  </div>
+</section>
+
+<!-- Scene 4: Architecture (early — the destination) -->
+<section class="scene behind" data-scene="4" data-act="1">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 1 · The destination</div>
+    <h1 class="movie-title reveal d1" style="font-size:clamp(1.6rem,4vw,3.2rem)">Where you're going. <span class="grad">Watch it assemble.</span></h1>
+    <div class="arch-mini reveal d2">
+      <svg viewBox="0 0 920 420" xmlns="http://www.w3.org/2000/svg" class="arch-svg-anim" aria-label="CI/CD architecture">
+        <defs>
+          <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#e8a317" />
+          </marker>
+          <linearGradient id="ghBg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1e2742" />
+            <stop offset="100%" stop-color="#161e30" />
+          </linearGradient>
+          <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#e8a317" />
+            <stop offset="100%" stop-color="#c97d1a" />
+          </linearGradient>
+        </defs>
+
+        <text x="120" y="20" fill="#98aac8" font-size="11" text-anchor="middle" letter-spacing="1.5">DEVELOPER</text>
+        <text x="460" y="20" fill="#98aac8" font-size="11" text-anchor="middle" letter-spacing="1.5">GITHUB · system of record</text>
+        <text x="800" y="20" fill="#98aac8" font-size="11" text-anchor="middle" letter-spacing="1.5">CLOUD · per environment</text>
+        <line x1="240" y1="35" x2="240" y2="400" stroke="#243049" stroke-dasharray="4,4" />
+        <line x1="680" y1="35" x2="680" y2="400" stroke="#243049" stroke-dasharray="4,4" />
+
+        <g class="arch-node n1">
+          <rect x="40" y="50" width="160" height="60" rx="10" fill="url(#ghBg)" stroke="#344467" stroke-width="1.5" />
+          <text x="120" y="78" fill="#f0f4fb" font-size="13" text-anchor="middle" font-weight="600">Claude Code / Cursor</text>
+          <text x="120" y="95" fill="#98aac8" font-size="10" text-anchor="middle">slash commands · hooks</text>
+        </g>
+
+        <g class="arch-node n2">
+          <rect x="290" y="50" width="180" height="50" rx="10" fill="url(#ghBg)" stroke="#344467" stroke-width="1.5" />
+          <text x="380" y="72" fill="#f0f4fb" font-size="13" text-anchor="middle" font-weight="600">Repo · IaC · threat-model</text>
+          <text x="380" y="88" fill="#98aac8" font-size="10" text-anchor="middle">signed commits · ruleset</text>
+        </g>
+        <g class="arch-node n3">
+          <rect x="290" y="115" width="180" height="50" rx="10" fill="url(#ghBg)" stroke="#e8a317" stroke-width="1.5" />
+          <text x="380" y="137" fill="#f0f4fb" font-size="13" text-anchor="middle" font-weight="600">GitHub Actions</text>
+          <text x="380" y="153" fill="#98aac8" font-size="10" text-anchor="middle">CI · build · sign · deploy</text>
+        </g>
+        <g class="arch-node n4">
+          <rect x="290" y="180" width="180" height="46" rx="10" fill="url(#ghBg)" stroke="#344467" stroke-width="1.5" />
+          <text x="380" y="200" fill="#f0f4fb" font-size="13" text-anchor="middle" font-weight="600">GHCR</text>
+          <text x="380" y="216" fill="#98aac8" font-size="10" text-anchor="middle">cosign + SLSA</text>
+        </g>
+        <g class="arch-node n5">
+          <rect x="500" y="115" width="160" height="34" rx="6" fill="rgba(232,163,23,0.12)" stroke="#e8a317" stroke-width="1.5" />
+          <text x="580" y="136" fill="#f0f4fb" font-size="12" text-anchor="middle" font-weight="600">env: dev — auto</text>
+        </g>
+        <g class="arch-node n6">
+          <rect x="500" y="155" width="160" height="34" rx="6" fill="rgba(245,166,35,0.12)" stroke="#f5a623" stroke-width="1.5" />
+          <text x="580" y="176" fill="#f0f4fb" font-size="12" text-anchor="middle" font-weight="600">env: staging — 1 reviewer</text>
+        </g>
+        <g class="arch-node n7">
+          <rect x="500" y="195" width="160" height="34" rx="6" fill="rgba(248,113,113,0.12)" stroke="#f87171" stroke-width="1.5" />
+          <text x="580" y="216" fill="#f0f4fb" font-size="12" text-anchor="middle" font-weight="600">env: prod — 2 reviewers</text>
+        </g>
+
+        <g class="arch-node n8">
+          <rect x="710" y="50" width="170" height="50" rx="10" fill="url(#ghBg)" stroke="#344467" stroke-width="1.5" />
+          <text x="795" y="72" fill="#f0f4fb" font-size="13" text-anchor="middle" font-weight="600">OIDC + IAM Role</text>
+          <text x="795" y="88" fill="#98aac8" font-size="10" text-anchor="middle">per env · repo-scoped</text>
+        </g>
+        <g class="arch-node n9">
+          <rect x="710" y="115" width="170" height="60" rx="10" fill="url(#ghBg)" stroke="#344467" stroke-width="1.5" />
+          <text x="795" y="138" fill="#f0f4fb" font-size="13" text-anchor="middle" font-weight="600">App runtime</text>
+          <text x="795" y="155" fill="#98aac8" font-size="10" text-anchor="middle">Container · Lambda · Static</text>
+          <text x="795" y="170" fill="#98aac8" font-size="10" text-anchor="middle">behind CDN + WAF</text>
+        </g>
+        <g class="arch-node n10">
+          <rect x="710" y="190" width="170" height="42" rx="10" fill="url(#ghBg)" stroke="#344467" stroke-width="1.5" />
+          <text x="795" y="208" fill="#f0f4fb" font-size="13" text-anchor="middle" font-weight="600">Database</text>
+          <text x="795" y="222" fill="#98aac8" font-size="10" text-anchor="middle">creds in Secrets Manager</text>
+        </g>
+        <g class="arch-node n11">
+          <rect x="710" y="247" width="170" height="42" rx="10" fill="url(#ghBg)" stroke="#344467" stroke-width="1.5" />
+          <text x="795" y="265" fill="#f0f4fb" font-size="13" text-anchor="middle" font-weight="600">IDP</text>
+          <text x="795" y="279" fill="#98aac8" font-size="10" text-anchor="middle">Firebase / WorkOS / Auth0</text>
+        </g>
+
+        <g class="arch-node n12">
+          <rect x="290" y="280" width="370" height="46" rx="10" fill="url(#ghBg)" stroke="#5a4d2c" stroke-width="1.5" stroke-dasharray="3,3" />
+          <text x="475" y="300" fill="#f5ecd8" font-size="13" text-anchor="middle" font-weight="600">Audit log — receives events from every layer</text>
+          <text x="475" y="316" fill="#c9b88a" font-size="10" text-anchor="middle">deploys · approvals · security events · runtime telemetry → S3 Object Lock</text>
+        </g>
+
+        <!-- Connection lines — orthogonal (90-degree) routing, no diagonals -->
+        <!-- L1: Developer → Repo (horizontal) -->
+        <line class="arch-line l1" x1="200" y1="78" x2="290" y2="78" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
+        <!-- L2: Repo → Actions (internal vertical) -->
+        <line class="arch-line l2" x1="380" y1="100" x2="380" y2="115" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
+        <!-- L3: Actions → GHCR (internal vertical) -->
+        <line class="arch-line l3" x1="380" y1="165" x2="380" y2="180" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
+        <!-- L4: Actions → env-dev (horizontal, same y-band) -->
+        <line class="arch-line l4" x1="470" y1="132" x2="500" y2="132" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
+        <!-- L5: Actions → env-staging (right, down, right) -->
+        <path class="arch-line l5" d="M 470 140 L 485 140 L 485 172 L 500 172" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
+        <!-- L6: Actions → env-prod (right, down, right) -->
+        <path class="arch-line l6" d="M 470 148 L 485 148 L 485 212 L 500 212" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
+        <!-- L7: envs → OIDC (right out of envs, up to OIDC level, right into OIDC) -->
+        <path class="arch-line l7" d="M 660 172 L 690 172 L 690 75 L 710 75" stroke="#c97d1a" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
+        <!-- L8: OIDC → Runtime (internal vertical) -->
+        <line class="arch-line l8" x1="795" y1="100" x2="795" y2="115" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
+        <!-- L9: Runtime → DB (vertical) -->
+        <line class="arch-line l9" x1="795" y1="175" x2="795" y2="190" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
+        <!-- L10: Runtime → IDP (right out of Runtime, down past DB, left into IDP) -->
+        <path class="arch-line l10" d="M 880 165 L 895 165 L 895 268 L 880 268" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
+        <!-- L11: GHCR → Audit (vertical feeder, dashed) -->
+        <line class="arch-line l11" x1="380" y1="226" x2="380" y2="280" stroke="#c97d1a" stroke-width="1" stroke-dasharray="2,4" opacity="0.6" />
+        <!-- L12: env-prod → Audit (vertical feeder, dashed) -->
+        <line class="arch-line l12" x1="580" y1="229" x2="580" y2="280" stroke="#c97d1a" stroke-width="1" stroke-dasharray="2,4" opacity="0.6" />
+        <!-- L13: Runtime → Audit (right out of Runtime, down past cloud column, left into Audit) -->
+        <path class="arch-line l13" d="M 880 155 L 910 155 L 910 305 L 660 305" stroke="#c97d1a" stroke-width="1" stroke-dasharray="2,4" opacity="0.55" fill="none" />
+
+        <!-- Traveling bubbles — every line gets one, paths match the 90-degree routing -->
+        <circle class="arch-bubble b1" r="4" fill="#e8a317">
+          <animateMotion dur="2.2s" begin="0s" repeatCount="indefinite" path="M 200 78 L 290 78" />
+        </circle>
+        <circle class="arch-bubble b2" r="3" fill="#e8a317">
+          <animateMotion dur="0.5s" begin="0.2s" repeatCount="indefinite" path="M 380 100 L 380 115" />
+        </circle>
+        <circle class="arch-bubble b3" r="3" fill="#e8a317">
+          <animateMotion dur="0.5s" begin="0.4s" repeatCount="indefinite" path="M 380 165 L 380 180" />
+        </circle>
+        <circle class="arch-bubble b4" r="4" fill="#e8a317">
+          <animateMotion dur="1.0s" begin="0.6s" repeatCount="indefinite" path="M 470 132 L 500 132" />
+        </circle>
+        <circle class="arch-bubble b5" r="4" fill="#e8a317">
+          <animateMotion dur="1.6s" begin="0.8s" repeatCount="indefinite" path="M 470 140 L 485 140 L 485 172 L 500 172" />
+        </circle>
+        <circle class="arch-bubble b6" r="4" fill="#e8a317">
+          <animateMotion dur="2.0s" begin="1.0s" repeatCount="indefinite" path="M 470 148 L 485 148 L 485 212 L 500 212" />
+        </circle>
+        <circle class="arch-bubble b7 purple" r="4.5" fill="#c97d1a">
+          <animateMotion dur="2.6s" begin="1.2s" repeatCount="indefinite" path="M 660 172 L 690 172 L 690 75 L 710 75" />
+        </circle>
+        <circle class="arch-bubble b8" r="3.5" fill="#e8a317">
+          <animateMotion dur="0.9s" begin="1.4s" repeatCount="indefinite" path="M 795 100 L 795 115" />
+        </circle>
+        <circle class="arch-bubble b9" r="3.5" fill="#e8a317">
+          <animateMotion dur="0.9s" begin="1.6s" repeatCount="indefinite" path="M 795 175 L 795 190" />
+        </circle>
+        <circle class="arch-bubble b10" r="3.5" fill="#e8a317">
+          <animateMotion dur="2.6s" begin="1.8s" repeatCount="indefinite" path="M 880 165 L 895 165 L 895 268 L 880 268" />
+        </circle>
+        <!-- Audit feeders — smaller, slower, deeper-burnt to convey "events flowing back" -->
+        <circle class="arch-bubble b11" r="2.5" fill="#c97d1a" opacity="0.85">
+          <animateMotion dur="2.0s" begin="2.0s" repeatCount="indefinite" path="M 380 226 L 380 280" />
+        </circle>
+        <circle class="arch-bubble b12" r="2.5" fill="#c97d1a" opacity="0.85">
+          <animateMotion dur="2.0s" begin="2.2s" repeatCount="indefinite" path="M 580 229 L 580 280" />
+        </circle>
+        <circle class="arch-bubble b13" r="2.5" fill="#c97d1a" opacity="0.85">
+          <animateMotion dur="3.5s" begin="2.4s" repeatCount="indefinite" path="M 880 155 L 910 155 L 910 305 L 660 305" />
+        </circle>
+      </svg>
+    </div>
+    <p class="subtitle reveal d3" style="font-size:0.92rem;margin-top:0.25rem">Same shape regardless of cloud or auth. Only implementations swap.</p>
+  </div>
+</section>
+
+<!-- ACT 2: PRINCIPLES -->
+
+<!-- Scene 4: Principle 1 - Security as a gate -->
+<section class="scene behind" data-scene="4" data-act="2">
+  <div class="scene-content">
+    <div class="eyebrow purple reveal">Principle 1 · Of 5</div>
+    <h1 class="movie-title reveal d1">Security is a <span class="hl">left-shifted gate</span>,<br/>not a right-shifted audit.</h1>
+    <p class="subtitle reveal d2">Every dangerous thing — secrets, vulnerable dependencies, unsafe code patterns, missing controls, untrustworthy build artefacts — is caught <strong>before merge</strong> or <strong>before promotion</strong>. Not in pen-test season. Not after the breach.</p>
+    <div class="flow-row reveal d3">
+      <div class="flow-node" style="background:rgba(245,204,91,0.08);border-color:var(--accent-3)">
+        <span class="lbl" style="color:var(--accent-3)">Stop here</span>
+        At PR review
+      </div>
+      <div class="arrow" style="color:var(--text-faint)">→</div>
+      <div class="flow-node" style="opacity:0.5">
+        <span class="lbl">not here</span>
+        At deploy time
+      </div>
+      <div class="arrow" style="color:var(--text-faint)">→</div>
+      <div class="flow-node" style="opacity:0.3">
+        <span class="lbl">definitely not here</span>
+        After incident
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 5: Principle 2 - GitHub as source of truth -->
+<section class="scene behind" data-scene="5" data-act="2">
+  <div class="scene-content">
+    <div class="eyebrow purple reveal">Principle 2 · Of 5</div>
+    <h1 class="movie-title reveal d1"><span class="hl">GitHub</span> is the system of record.</h1>
+    <p class="subtitle reveal d2">Source code, infrastructure-as-code, threat models, scan history, approval evidence, release provenance — all pivot off GitHub. <strong>Audit reconstruction works from <code>git</code> + <code>gh</code> CLI alone.</strong></p>
+    <div class="flow-row reveal d3" style="flex-wrap:wrap;gap:1rem">
+      <div class="flow-node">📝 Source code</div>
+      <div class="flow-node">📐 IaC</div>
+      <div class="flow-node">🛡️ Threat model</div>
+      <div class="flow-node">🔍 Scan history</div>
+      <div class="flow-node">✓ Approvals</div>
+      <div class="flow-node">📜 Provenance</div>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 6: Principle 3 - OIDC -->
+<section class="scene behind" data-scene="6" data-act="2">
+  <div class="scene-content">
+    <div class="eyebrow purple reveal">Principle 3 · Of 5</div>
+    <h1 class="movie-title reveal d1"><span class="hl-green">Zero</span> long-lived cloud credentials.</h1>
+    <p class="subtitle reveal d2">GitHub mints an OIDC token per workflow job. The cloud verifies it and returns a short-lived session — <strong>bound to a specific repo and environment</strong>. No static keys exist anywhere.</p>
+    <div class="flow-row reveal d3">
+      <div class="flow-node">GitHub Actions<br/><span style="color:var(--text-faint);font-size:0.7rem">id-token: write</span></div>
+      <div class="arrow">→</div>
+      <div class="flow-node" style="background:rgba(232,163,23,0.08);border-color:var(--accent)">OIDC token<br/><span style="color:var(--text-faint);font-size:0.7rem">15-min TTL</span></div>
+      <div class="arrow">→</div>
+      <div class="flow-node">Cloud STS<br/><span style="color:var(--text-faint);font-size:0.7rem">verifies sub claim</span></div>
+      <div class="arrow">→</div>
+      <div class="flow-node" style="background:rgba(245,204,91,0.08);border-color:var(--accent-3)">Session<br/><span style="color:var(--text-faint);font-size:0.7rem">≤1 hour</span></div>
+    </div>
+    <div class="code-snippet reveal d4">
+      <span class="com"># Trust policy condition</span><br/>
+      <span class="key">"sub":</span> <span class="str">"repo:acme/app:environment:prod"</span><br/>
+      <span class="key">"job_workflow_ref":</span> <span class="str">"refs/tags/v*"</span>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 7: Principle 4 - Three envs -->
+<section class="scene behind" data-scene="7" data-act="2">
+  <div class="scene-content">
+    <div class="eyebrow purple reveal">Principle 4 · Of 5</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Three</span> blast-radius zones.</h1>
+    <p class="subtitle reveal d2">Each environment lives in its own cloud account, with its own credentials, its own database, and its own approval gates. <strong>Compromise of dev cannot reach prod.</strong></p>
+    <div class="envs-row reveal d3">
+      <div class="env-card dev">
+        <div class="env-name">dev · auto-deploy</div>
+        <h4>0 reviewers</h4>
+        <p>Push to <code>main</code> → deploys. Smoke test only. Fast feedback.</p>
+      </div>
+      <div class="env-card staging">
+        <div class="env-name">staging · gated</div>
+        <h4>1 reviewer + 5 min</h4>
+        <p>Manual promote. Prevent self-review. Integration tests run.</p>
+      </div>
+      <div class="env-card prod">
+        <div class="env-name">prod · hardened</div>
+        <h4>2 reviewers + 30 min</h4>
+        <p>Tag-only. Provenance + signature verified. Change ticket required.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 8: Principle 5 - Provenance -->
+<section class="scene behind" data-scene="8" data-act="2">
+  <div class="scene-content">
+    <div class="eyebrow purple reveal">Principle 5 · Of 5</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Verifiable</span> provenance.</h1>
+    <p class="subtitle reveal d2">Every container is keyless-signed via Sigstore cosign. Every release carries a SLSA build-provenance attestation. <strong>Prod refuses to deploy what it cannot verify.</strong></p>
+    <div class="flow-row reveal d3">
+      <div class="flow-node">Build</div>
+      <div class="arrow">→</div>
+      <div class="flow-node">Syft SBOM</div>
+      <div class="arrow">→</div>
+      <div class="flow-node">Trivy scan</div>
+      <div class="arrow">→</div>
+      <div class="flow-node" style="background:rgba(245,204,91,0.08);border-color:var(--accent-3)">cosign sign</div>
+      <div class="arrow">→</div>
+      <div class="flow-node" style="background:rgba(245,204,91,0.08);border-color:var(--accent-3)">SLSA attest</div>
+    </div>
+    <div class="code-snippet reveal d4">
+      <span class="com"># At deploy time, prod refuses unverified artefacts:</span><br/>
+      cosign verify --certificate-identity-regexp "^https://github.com/acme/app/" \\<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;ghcr.io/acme/app@sha256:...
+    </div>
+  </div>
+</section>
+
+<!-- ACT 3: THE 5 STAGES -->
+
+<!-- Scene 9: 5 stages overview -->
+<section class="scene behind" data-scene="9" data-act="3">
+  <div class="scene-content">
+    <div class="eyebrow green reveal">Act 3 · How it goes</div>
+    <h1 class="movie-title reveal d1">Five stages.<br/>Each one has a single named output.</h1>
+    <div class="stages-row reveal d2">
+      <div class="stage-pill"><div class="num">1</div><h4>Understand</h4><p>Map what exists, name what doesn't.</p></div>
+      <div class="stage-pill"><div class="num">2</div><h4>Decide</h4><p>Customize for your stack — or pick defaults.</p></div>
+      <div class="stage-pill"><div class="num">3</div><h4>Generate</h4><p>Three downloadable, personalized config files.</p></div>
+      <div class="stage-pill"><div class="num">4</div><h4>Build</h4><p>Run the pipeline-creating commands.</p></div>
+      <div class="stage-pill"><div class="num">5</div><h4>Validate</h4><p>Prove every gate works, even adversarially.</p></div>
+    </div>
+    <p class="subtitle reveal d3" style="margin-top:1rem">You can stop after any stage and you've gained something concrete.</p>
+  </div>
+</section>
+
+<!-- Scene 10: Stage 1 Discovery -->
+<section class="scene behind" data-scene="10" data-act="3">
+  <div class="scene-content">
+    <div class="eyebrow green reveal">Stage 1 of 5</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Discovery.</span><br/>Honest enumeration.</h1>
+    <p class="subtitle reveal d2">Question the customer. Run safe metadata-only commands. <strong>"We don't have one yet" is a valid answer to most of these.</strong></p>
+    <div class="code-snippet reveal d3">
+      <span class="com"># Safe — prints metadata only, no secrets</span><br/>
+      gh auth status<br/>
+      gh api orgs/<span class="str">$ORG</span> --jq <span class="str">'.plan.name'</span><br/>
+      aws sts get-caller-identity<br/>
+      aws iam list-open-id-connect-providers<br/><br/>
+      <span class="com"># Or run them all at once:</span><br/>
+      ./discovery.sh ORG REPO &gt; discovery.txt
+    </div>
+    <p class="subtitle reveal d4" style="margin-top:0.5rem;font-size:0.95rem">Output: <code>discovery-&lt;timestamp&gt;.txt</code> — the project handover artefact.</p>
+  </div>
+</section>
+
+<!-- Scene 11: Stage 2 Decisions -->
+<section class="scene behind" data-scene="11" data-act="3">
+  <div class="scene-content">
+    <div class="eyebrow green reveal">Stage 2 of 5</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Decide.</span><br/>Eight questions. Live customization.</h1>
+    <p class="subtitle reveal d2">Pick your cloud, your auth, your DB, your GitHub plan, your compliance scope. For each gap surfaced in Stage 1, choose: <strong>recommend a default</strong> or <strong>integrate with the existing one</strong>.</p>
+    <div class="flow-row reveal d3" style="flex-wrap:wrap;gap:0.6rem">
+      <div class="flow-node" style="min-width:120px">Cloud</div>
+      <div class="flow-node" style="min-width:120px">Accounts</div>
+      <div class="flow-node" style="min-width:120px">Auth</div>
+      <div class="flow-node" style="min-width:120px">Database</div>
+      <div class="flow-node" style="min-width:120px">GH plan</div>
+      <div class="flow-node" style="min-width:120px">Compliance</div>
+      <div class="flow-node" style="min-width:120px">Teams</div>
+      <div class="flow-node" style="min-width:120px">Project details</div>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 12: Stage 3 Generate -->
+<section class="scene behind" data-scene="12" data-act="3">
+  <div class="scene-content">
+    <div class="eyebrow green reveal">Stage 3 of 5</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Generate.</span><br/>Three personalized files. One click each.</h1>
+    <p class="subtitle reveal d2">Live previews of three files build as you fill in decisions. Placeholders for things you'll create in Stage 4.</p>
+    <div class="flow-row reveal d3" style="flex-wrap:wrap">
+      <div class="flow-node" style="min-width:200px;background:var(--panel-2)">
+        <span class="lbl">script</span>
+        bootstrap.config.env
+      </div>
+      <div class="flow-node" style="min-width:200px;background:var(--panel-2)">
+        <span class="lbl">hcl</span>
+        terraform.tfvars
+      </div>
+      <div class="flow-node" style="min-width:200px;background:var(--panel-2)">
+        <span class="lbl">markdown</span>
+        setup-cheatsheet.md
+      </div>
+    </div>
+    <p class="subtitle reveal d4" style="margin-top:0.5rem;font-size:0.95rem">No copy-paste. No placeholder hunting. Drop into your repo.</p>
+  </div>
+</section>
+
+<!-- Scene 13: Stage 4 Build -->
+<section class="scene behind" data-scene="13" data-act="3">
+  <div class="scene-content">
+    <div class="eyebrow green reveal">Stage 4 of 5</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Build.</span><br/>Seven steps with copy-to-clipboard commands.</h1>
+    <p class="subtitle reveal d2">Each step has its own decision points. Commands are pre-populated with your values. Idempotent — safe to re-run. <strong>Step 1 includes provisioning the cloud account or IDP if you don't have them.</strong></p>
+    <div class="stages-row reveal d3" style="margin-top:1.5rem">
+      <div class="stage-pill" style="min-width:130px"><div class="num" style="font-size:0.78rem">1</div><h4 style="font-size:0.85rem">Foundation</h4></div>
+      <div class="stage-pill" style="min-width:130px"><div class="num" style="font-size:0.78rem">2</div><h4 style="font-size:0.85rem">Place files</h4></div>
+      <div class="stage-pill" style="min-width:130px"><div class="num" style="font-size:0.78rem">3</div><h4 style="font-size:0.85rem">OIDC trust</h4></div>
+      <div class="stage-pill" style="min-width:130px"><div class="num" style="font-size:0.78rem">4</div><h4 style="font-size:0.85rem">Bootstrap</h4></div>
+      <div class="stage-pill" style="min-width:130px"><div class="num" style="font-size:0.78rem">5</div><h4 style="font-size:0.85rem">Set secrets</h4></div>
+      <div class="stage-pill" style="min-width:130px"><div class="num" style="font-size:0.78rem">6</div><h4 style="font-size:0.85rem">First PR</h4></div>
+      <div class="stage-pill" style="min-width:130px"><div class="num" style="font-size:0.78rem">7</div><h4 style="font-size:0.85rem">First prod tag</h4></div>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 14: Stage 5 Validate -->
+<section class="scene behind" data-scene="14" data-act="3">
+  <div class="scene-content">
+    <div class="eyebrow green reveal">Stage 5 of 5</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Validate.</span><br/>Prove every gate works, adversarially.</h1>
+    <p class="subtitle reveal d2">A 10-point checklist. Try to break the pipeline; the pipeline should resist.</p>
+    <div class="gloom-list reveal d3" style="max-width:800px">
+      <div class="gloom-item" style="background:rgba(245,204,91,0.05);border-color:rgba(245,204,91,0.2);color:var(--text-dim)">✓ Unsigned commits rejected</div>
+      <div class="gloom-item" style="background:rgba(245,204,91,0.05);border-color:rgba(245,204,91,0.2);color:var(--text-dim)">✓ Critical Semgrep findings block merge</div>
+      <div class="gloom-item" style="background:rgba(245,204,91,0.05);border-color:rgba(245,204,91,0.2);color:var(--text-dim)">✓ Fake API key caught by Gitleaks</div>
+      <div class="gloom-item" style="background:rgba(245,204,91,0.05);border-color:rgba(245,204,91,0.2);color:var(--text-dim)">✓ OIDC reaches all 3 envs</div>
+      <div class="gloom-item" style="background:rgba(245,204,91,0.05);border-color:rgba(245,204,91,0.2);color:var(--text-dim)">✓ Prod waits for 2 approvals + 30min</div>
+      <div class="gloom-item" style="background:rgba(245,204,91,0.05);border-color:rgba(245,204,91,0.2);color:var(--text-dim)">✓ SLSA provenance verifiable</div>
+      <div class="gloom-item" style="background:rgba(245,204,91,0.05);border-color:rgba(245,204,91,0.2);color:var(--text-dim)">✓ Threat-model drift fails CI</div>
+      <div class="gloom-item" style="background:rgba(245,204,91,0.05);border-color:rgba(245,204,91,0.2);color:var(--text-dim)">✓ Audit log captures every deploy</div>
+    </div>
+    <style>.gloom-item::before {} .scene[data-scene="14"] .gloom-item::before { content: ''; }</style>
+  </div>
+</section>
+
+<!-- ACT 4: ARCHITECTURE -->
+
+<!-- Scene 15: Pipeline lifecycle (was Architecture, moved to Scene 4) -->
+<section class="scene behind" data-scene="15" data-act="4">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 4 · The pipeline lifecycle</div>
+    <h1 class="movie-title reveal d1">From PR to prod, <span class="hl">over time.</span></h1>
+    <p class="subtitle reveal d2">The architecture (early) shows where things <em>are</em>. This shows where they <em>go</em> — every check, every gate, every signature, in the order they fire.</p>
+    <div class="reveal d3" style="width:100%;max-width:1000px;overflow-x:auto;padding:1rem 0">
+      <svg viewBox="0 0 1000 200" xmlns="http://www.w3.org/2000/svg" class="arch-svg-anim" style="min-width:900px;width:100%;height:auto" aria-label="Pipeline lifecycle">
+        <defs>
+          <linearGradient id="rail" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#e8a317" />
+            <stop offset="50%" stop-color="#c97d1a" />
+            <stop offset="100%" stop-color="#f5cc5b" />
+          </linearGradient>
+          <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#e8a317" />
+          </marker>
+        </defs>
+
+        <!-- The rail -->
+        <line x1="40" y1="100" x2="960" y2="100" stroke="url(#rail)" stroke-width="3" stroke-linecap="round" />
+
+        <!-- Stations -->
+        <g class="arch-node n1">
+          <circle cx="80" cy="100" r="14" fill="#131a2b" stroke="#e8a317" stroke-width="2" />
+          <text x="80" y="105" fill="#e8a317" font-size="13" text-anchor="middle" font-weight="700">📝</text>
+          <text x="80" y="65" fill="#f0f4fb" font-size="12" text-anchor="middle" font-weight="600">PR opened</text>
+          <text x="80" y="135" fill="#98aac8" font-size="10" text-anchor="middle">developer push</text>
+        </g>
+        <g class="arch-node n3">
+          <circle cx="220" cy="100" r="20" fill="#131a2b" stroke="#e8a317" stroke-width="2" />
+          <text x="220" y="105" fill="#e8a317" font-size="14" text-anchor="middle" font-weight="700">7</text>
+          <text x="220" y="60" fill="#f0f4fb" font-size="12" text-anchor="middle" font-weight="600">CI checks</text>
+          <text x="220" y="135" fill="#98aac8" font-size="9" text-anchor="middle">semgrep · osv · gitleaks</text>
+          <text x="220" y="148" fill="#98aac8" font-size="9" text-anchor="middle">checkov · tfsec · TM-drift · lint</text>
+        </g>
+        <g class="arch-node n5">
+          <circle cx="370" cy="100" r="14" fill="#131a2b" stroke="#f5cc5b" stroke-width="2" />
+          <text x="370" y="105" fill="#f5cc5b" font-size="13" text-anchor="middle" font-weight="700">✓</text>
+          <text x="370" y="65" fill="#f0f4fb" font-size="12" text-anchor="middle" font-weight="600">Merge</text>
+          <text x="370" y="135" fill="#98aac8" font-size="10" text-anchor="middle">CODEOWNERS approved</text>
+        </g>
+        <g class="arch-node n7">
+          <circle cx="500" cy="100" r="20" fill="#131a2b" stroke="#c97d1a" stroke-width="2" />
+          <text x="500" y="105" fill="#c97d1a" font-size="13" text-anchor="middle" font-weight="700">🏗️</text>
+          <text x="500" y="60" fill="#f0f4fb" font-size="12" text-anchor="middle" font-weight="600">Build + sign</text>
+          <text x="500" y="135" fill="#98aac8" font-size="9" text-anchor="middle">SBOM · Trivy</text>
+          <text x="500" y="148" fill="#98aac8" font-size="9" text-anchor="middle">cosign · SLSA</text>
+        </g>
+        <g class="arch-node n9">
+          <circle cx="630" cy="100" r="14" fill="#131a2b" stroke="#e8a317" stroke-width="2" />
+          <text x="630" y="105" fill="#e8a317" font-size="11" text-anchor="middle" font-weight="700">dev</text>
+          <text x="630" y="65" fill="#f0f4fb" font-size="12" text-anchor="middle" font-weight="600">Deploy dev</text>
+          <text x="630" y="135" fill="#98aac8" font-size="10" text-anchor="middle">auto · smoke + ZAP</text>
+        </g>
+        <g class="arch-node n11">
+          <circle cx="760" cy="100" r="14" fill="#131a2b" stroke="#f5a623" stroke-width="2" />
+          <text x="760" y="106" fill="#f5a623" font-size="13" text-anchor="middle" font-weight="700">⏸</text>
+          <text x="760" y="60" fill="#f0f4fb" font-size="12" text-anchor="middle" font-weight="600">Staging gate</text>
+          <text x="760" y="135" fill="#98aac8" font-size="9" text-anchor="middle">1 reviewer · 5 min</text>
+          <text x="760" y="148" fill="#98aac8" font-size="9" text-anchor="middle">prevent self-review</text>
+        </g>
+        <g class="arch-node n13">
+          <circle cx="900" cy="100" r="20" fill="#131a2b" stroke="#f87171" stroke-width="2" />
+          <text x="900" y="106" fill="#f87171" font-size="13" text-anchor="middle" font-weight="700">🔒</text>
+          <text x="900" y="60" fill="#f0f4fb" font-size="12" text-anchor="middle" font-weight="600">Prod gate</text>
+          <text x="900" y="135" fill="#98aac8" font-size="9" text-anchor="middle">2 reviewers · 30 min</text>
+          <text x="900" y="148" fill="#98aac8" font-size="9" text-anchor="middle">tag v* · provenance ✓</text>
+        </g>
+
+        <!-- Animated traveling pulse -->
+        <circle cx="40" cy="100" r="6" fill="#e8a317" opacity="0.85" filter="url(#glow)">
+          <animate attributeName="cx" from="40" to="960" dur="8s" begin="2.5s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.9;0.9;0" keyTimes="0;0.05;0.95;1" dur="8s" begin="2.5s" repeatCount="indefinite" />
+        </circle>
+      </svg>
+    </div>
+    <p class="subtitle reveal d4" style="font-size:0.92rem;color:var(--text-faint)">The pulse traces every commit's journey from PR to prod.</p>
+  </div>
+</section>
+
+<!-- Scene 16: Approval gates -->
+<section class="scene behind" data-scene="16" data-act="4">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 4 · The gates</div>
+    <h1 class="movie-title reveal d1">How <span class="hl">approval gates</span> actually work.</h1>
+    <p class="subtitle reveal d2">No magic. GitHub Environments + protection rules + OIDC trust conditions, layered. Two pairs of eyes, a cooling-off period, and a verifiable artefact at every promotion.</p>
+    <div class="flow-row reveal d3" style="flex-direction:column;align-items:stretch;max-width:600px;margin:1.5rem auto">
+      <div class="flow-node" style="min-width:auto;padding:1rem;text-align:left">
+        <span class="lbl">push to main</span>
+        <strong>dev</strong> · auto-deploy · smoke test
+      </div>
+      <div class="arrow" style="text-align:center">↓ manual promote ↓</div>
+      <div class="flow-node" style="min-width:auto;padding:1rem;text-align:left;background:rgba(245,166,35,0.05);border-color:rgba(245,166,35,0.4)">
+        <span class="lbl" style="color:var(--warn)">staging gate</span>
+        <strong>1 reviewer</strong> + 5min wait + prevent self-review
+      </div>
+      <div class="arrow" style="text-align:center">↓ tag v*.*.* ↓</div>
+      <div class="flow-node" style="min-width:auto;padding:1rem;text-align:left;background:rgba(248,113,113,0.05);border-color:rgba(248,113,113,0.4)">
+        <span class="lbl" style="color:var(--danger)">prod gate</span>
+        <strong>2 reviewers</strong> + 30min wait + tag-only + change ticket + provenance check
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 17: What ships -->
+<section class="scene behind" data-scene="17" data-act="4">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 4 · What ships</div>
+    <h1 class="movie-title reveal d1">Every release carries its proof.</h1>
+    <p class="subtitle reveal d2">The artefact pushed to your registry is more than a container. It's <strong>cryptographically verifiable</strong> end-to-end.</p>
+    <div class="outcome-grid reveal d3" style="grid-template-columns:1fr">
+      <div class="outcome-item">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <div><strong>Cosign signature</strong>Keyless via Sigstore — identity is "this workflow run, in this repo, on this ref".</div>
+      </div>
+      <div class="outcome-item">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <div><strong>SLSA build provenance</strong>Records source SHA, builder, build steps. Verifiable months later.</div>
+      </div>
+      <div class="outcome-item">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <div><strong>SBOM (SPDX)</strong>Every dependency, every version. Searchable when the next CVE drops.</div>
+      </div>
+      <div class="outcome-item">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <div><strong>Trivy scan results</strong>Critical/High vulnerabilities — SARIF — uploaded to GitHub Security tab.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ACT 5: OPTIONS -->
+
+<!-- Scene 18: Required/Recommended/Optional -->
+<section class="scene behind" data-scene="18" data-act="5">
+  <div class="scene-content">
+    <div class="eyebrow warn reveal">Act 5 · Your choices</div>
+    <h1 class="movie-title reveal d1">What's <span class="hl">required</span>,<br/>what's <span class="hl-green">recommended</span>,<br/>what's <span style="color:var(--text-faint)">optional</span>.</h1>
+    <div class="tier-row reveal d2">
+      <div class="tier-card req">
+        <div class="lbl">Required</div>
+        <h4>Without these, no CI/CD</h4>
+        <ul>
+          <li>GitHub repo + Actions</li>
+          <li>One CI workflow</li>
+          <li>One deploy workflow</li>
+          <li>Branch protection on main</li>
+          <li>Deploy creds (OIDC or token)</li>
+          <li>A target hosting environment</li>
+        </ul>
+      </div>
+      <div class="tier-card rec">
+        <div class="lbl">Recommended</div>
+        <h4>Default in this framework</h4>
+        <ul>
+          <li>3 protected environments</li>
+          <li>OIDC instead of tokens</li>
+          <li>CODEOWNERS + signed commits</li>
+          <li>SAST + SCA + secrets scan</li>
+          <li>IaC for cloud setup</li>
+          <li>Threat model in repo</li>
+          <li>Audit log to immutable storage</li>
+        </ul>
+      </div>
+      <div class="tier-card opt">
+        <div class="lbl">Optional</div>
+        <h4>Add when capacity allows</h4>
+        <ul>
+          <li>SLSA + cosign signing</li>
+          <li>Threat-model drift CI gate</li>
+          <li>DAST scanning</li>
+          <li>DR drill workflow</li>
+          <li>Cost guardrail alerts</li>
+          <li>License compliance check</li>
+          <li>Full observability stack</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 19: Hosting choice -->
+<section class="scene behind" data-scene="19" data-act="5">
+  <div class="scene-content">
+    <div class="eyebrow warn reveal">Act 5 · Where it runs</div>
+    <h1 class="movie-title reveal d1">Pick your hosting path.</h1>
+    <p class="subtitle reveal d2">Two primary paths cover most SMB customers. Both are first-class.</p>
+    <div class="choice-row reveal d3">
+      <div class="choice-card">
+        <div class="when">⚡ Simplest path</div>
+        <h3>GCP + Firebase</h3>
+        <p>Hosting + auth + database in one console, ~10 min setup. Best when you have no compliance pressure and just need to ship.</p>
+        <div class="pros">10-min setup, generous free tier</div>
+        <div class="pros">Bundles hosting / auth / DB</div>
+        <div class="cons">Vendor lock-in to Google</div>
+        <div class="cons">Firebase Auth lacks SCIM (matters for enterprise B2B)</div>
+      </div>
+      <div class="choice-card">
+        <div class="when">🏢 B2B / compliance path</div>
+        <h3>AWS + WorkOS + Postgres</h3>
+        <p>Most-trodden path for SaaS heading toward SOC 2. Three accounts, SCIM-ready auth, relational DB. The included scaffold is AWS-first.</p>
+        <div class="pros">Best B2B procurement readiness</div>
+        <div class="pros">Three blast-radius zones</div>
+        <div class="cons">Multi-day provisioning (AWS Org + 3 accounts)</div>
+        <div class="cons">More moving parts to operate</div>
+      </div>
+    </div>
+    <p class="subtitle reveal d4" style="margin-top:1rem;font-size:0.92rem">Other paths supported: <strong>Azure, full GCP IaaS, Cloudflare-only</strong>. The shape of the pipeline doesn't change.</p>
+  </div>
+</section>
+
+<!-- Scene 20: Auth + DB -->
+<section class="scene behind" data-scene="20" data-act="5">
+  <div class="scene-content">
+    <div class="eyebrow warn reveal">Act 5 · Auth &amp; DB</div>
+    <h1 class="movie-title reveal d1">Authenticate users, store their data.</h1>
+    <p class="subtitle reveal d2">Both layers have a default-with-Firebase shortcut and a separate-vendors path. Pick what matches your customer's procurement story.</p>
+    <div class="choice-row reveal d3">
+      <div class="choice-card">
+        <div class="when">Auth · default</div>
+        <h3>Firebase Auth</h3>
+        <p>Native Google / Email / Phone / SAML / OIDC. Bundled with Firebase, zero extra setup.</p>
+        <div class="pros">Free, instant, integrates with your Firebase project</div>
+        <div class="cons">No native SCIM — blocks enterprise B2B procurement</div>
+      </div>
+      <div class="choice-card">
+        <div class="when">Auth · enterprise</div>
+        <h3>WorkOS or Auth0</h3>
+        <p>WorkOS for B2B (SAML + SCIM + audit + passkeys, generous free tier). Auth0 for B2C and complex flows.</p>
+        <div class="pros">SCIM-ready, audit-ready, enterprise-procurement-ready</div>
+        <div class="cons">Separate vendor relationship + per-env tenants</div>
+      </div>
+      <div class="choice-card">
+        <div class="when">DB · default</div>
+        <h3>Firestore <em>or</em> Postgres (Neon)</h3>
+        <p>Firestore: zero ops, scales to zero, document-store. Neon: free Postgres, branch-per-env, relational.</p>
+        <div class="pros">Both have free tiers covering SMB through MVP</div>
+        <div class="cons">Pick Firestore only if your devs are comfortable with NoSQL</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ACT 6: OUTCOME + CTA -->
+
+<!-- Scene 21: What you walk away with -->
+<section class="scene behind" data-scene="21" data-act="6">
+  <div class="scene-content">
+    <div class="eyebrow green reveal">Act 6 · Outcome</div>
+    <h1 class="movie-title reveal d1">Concrete artefacts you own and can re-run.</h1>
+    <div class="outcome-grid reveal d2">
+      <div class="outcome-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><div><strong>A repo running the pipeline</strong>Branch ruleset · 3 environments · OIDC · workflows.</div></div>
+      <div class="outcome-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><div><strong>discovery.sh in your repo</strong>A future engineer can re-run it to see how the environment has drifted.</div></div>
+      <div class="outcome-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><div><strong>Personalized cheat-sheet</strong>Every command substitutes your actual values.</div></div>
+      <div class="outcome-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><div><strong>Verifiable production deploys</strong>Cosign + SLSA. <code>make verify-prod TAG=v1.4.0</code> is the proof.</div></div>
+      <div class="outcome-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><div><strong>Documented threat model</strong>STRIDE + OWASP/SOC2 mapping. Lives next to the code.</div></div>
+      <div class="outcome-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><div><strong>Audit log feed</strong>Every deploy, approval, admin action — structured + immutable.</div></div>
+      <div class="outcome-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><div><strong>Day-2 ops Makefile</strong>pin-actions · verify-prod · rotate · waivers · dr-drill · audit-export.</div></div>
+      <div class="outcome-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><div><strong>Claude Code integration</strong>Slash commands and sub-agents that mirror every CI gate locally.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 22: CTA -->
+<section class="scene behind" data-scene="22" data-act="6">
+  <div class="scene-content">
+    <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" class="hero-logo reveal" />
+    <div class="eyebrow reveal d1">Ready to start</div>
+    <h1 class="movie-title reveal d2">Open the <span class="hl">walkthrough</span>.<br/>Answer a few questions.<br/>Download your config.</h1>
+    <p class="subtitle reveal d3">The walkthrough takes the same content from this movie and makes it actionable: input fields, generated files, copy-to-clipboard commands, progress that saves across reloads.</p>
+    <div class="cta-buttons reveal d4">
+      <a href="cicd-walkthrough.html" class="cta-btn">Open the walkthrough →</a>
+      <a href="cicd-overview.html" class="cta-btn secondary">Read the overview</a>
+    </div>
+    <p class="subtitle reveal d5" style="margin-top:2rem;font-size:0.85rem;color:var(--text-faint)">
+      <strong>Triarch Security Advisors</strong> · In a market full of noise, we provide the signal.
+    </p>
+  </div>
+</section>
+
+<!-- ============== Navigation arrows ============== -->
+<button class="nav-arrow nav-prev" id="prevBtn" aria-label="Previous scene">‹</button>
+<button class="nav-arrow nav-next" id="nextBtn" aria-label="Next scene">›</button>
+
+<!-- ============== Progress dots ============== -->
+<div class="progress-rail">
+  <div class="progress-dots" id="progressDots"></div>
+</div>
+
+<script>
+/* ================================================================
+   Scene management — keyboard, click, auto-play
+================================================================ */
+const scenes = Array.from(document.querySelectorAll('.scene'));
+const total = scenes.length;
+let current = 0;
+let autoPlay = false;
+let autoPlayTimer = null;
+const AUTOPLAY_INTERVAL = 7000;   // 7 seconds per scene
+
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const autoBtn = document.getElementById('autoPlayBtn');
+const counter = document.getElementById('ctrCounter');
+const dotsContainer = document.getElementById('progressDots');
+const progressBar = document.getElementById('autoplayProgress');
+
+/* Build progress dots, grouped by act */
+function buildDots() {
+  dotsContainer.innerHTML = '';
+  let lastAct = null;
+  scenes.forEach((s, i) => {
+    const act = s.dataset.act;
+    if (lastAct && act !== lastAct) {
+      const m = document.createElement('div');
+      m.className = 'act-marker';
+      dotsContainer.appendChild(m);
+    }
+    lastAct = act;
+    const b = document.createElement('button');
+    b.className = 'progress-dot';
+    b.title = `Scene ${i + 1}`;
+    b.addEventListener('click', () => showScene(i));
+    dotsContainer.appendChild(b);
+  });
+}
+
+function showScene(idx) {
+  if (idx < 0 || idx >= total) return;
+  scenes.forEach((s, i) => {
+    s.classList.toggle('active', i === idx);
+    s.classList.toggle('behind', i !== idx);
+  });
+  current = idx;
+  counter.textContent = `${idx + 1} / ${total}`;
+
+  /* Update dots */
+  dotsContainer.querySelectorAll('.progress-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === idx);
+    d.classList.toggle('done', i < idx);
+  });
+
+  prevBtn.disabled = idx === 0;
+  nextBtn.disabled = idx === total - 1;
+
+  /* If we hit the last scene, stop auto-play */
+  if (idx === total - 1 && autoPlay) toggleAutoPlay();
+}
+
+function next() {
+  if (current < total - 1) {
+    showScene(current + 1);
+    if (autoPlay) restartAutoPlayTimer();
+  }
+}
+function prev() {
+  if (current > 0) {
+    showScene(current - 1);
+    if (autoPlay) restartAutoPlayTimer();
+  }
+}
+
+prevBtn.addEventListener('click', prev);
+nextBtn.addEventListener('click', next);
+
+/* Keyboard */
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  switch (e.key) {
+    case 'ArrowRight':
+    case 'PageDown':
+    case ' ':
+      e.preventDefault(); next(); break;
+    case 'ArrowLeft':
+    case 'PageUp':
+      e.preventDefault(); prev(); break;
+    case 'Home':
+      e.preventDefault(); showScene(0); break;
+    case 'End':
+      e.preventDefault(); showScene(total - 1); break;
+    case 'Escape':
+      window.location.href = 'cicd-walkthrough.html'; break;
+    case 'p':
+    case 'P':
+      toggleAutoPlay(); break;
+  }
+});
+
+/* Click on scene background advances (but not on links/buttons) */
+scenes.forEach(s => {
+  s.addEventListener('click', (e) => {
+    if (e.target.closest('a, button, input')) return;
+    next();
+  });
+});
+
+/* Auto-play with visible progress bar feedback */
+function startProgressBar() {
+  progressBar.classList.add('active');
+  progressBar.style.transition = 'none';
+  progressBar.style.width = '0%';
+  // Force reflow so the next transition takes effect
+  void progressBar.offsetWidth;
+  progressBar.style.transition = `width ${AUTOPLAY_INTERVAL}ms linear`;
+  progressBar.style.width = '100%';
+}
+function stopProgressBar() {
+  progressBar.classList.remove('active');
+  progressBar.style.transition = 'none';
+  progressBar.style.width = '0%';
+}
+function restartAutoPlayTimer() {
+  clearInterval(autoPlayTimer);
+  autoPlayTimer = setInterval(autoAdvance, AUTOPLAY_INTERVAL);
+  startProgressBar();
+}
+function autoAdvance() {
+  if (current >= total - 1) {
+    // Reached end — stop auto-play
+    toggleAutoPlay();
+    return;
+  }
+  showScene(current + 1);
+  startProgressBar();
+}
+function toggleAutoPlay() {
+  autoPlay = !autoPlay;
+  if (autoPlay) {
+    autoPlayTimer = setInterval(autoAdvance, AUTOPLAY_INTERVAL);
+    autoBtn.textContent = '⏸ pause';
+    autoBtn.classList.add('playing');
+    startProgressBar();
+  } else {
+    clearInterval(autoPlayTimer);
+    autoBtn.textContent = '▶ auto';
+    autoBtn.classList.remove('playing');
+    stopProgressBar();
+  }
+}
+autoBtn.addEventListener('click', toggleAutoPlay);
+
+/* Touch / swipe support */
+let touchStartX = 0;
+let touchStartY = 0;
+document.addEventListener('touchstart', (e) => {
+  touchStartX = e.changedTouches[0].screenX;
+  touchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
+document.addEventListener('touchend', (e) => {
+  const dx = e.changedTouches[0].screenX - touchStartX;
+  const dy = e.changedTouches[0].screenY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) {
+    if (dx < 0) next();
+    else prev();
+  }
+}, { passive: true });
+
+/* Boot */
+buildDots();
+showScene(0);
+</script>
+
+</body>
+</html>

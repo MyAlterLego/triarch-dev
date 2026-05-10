@@ -1,0 +1,105 @@
+name: deploy-dev
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    with:
+      ref: ${{ github.sha }}
+
+  deploy:
+    name: deploy-dev
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: https://dev.${{ vars.APP_DOMAIN || 'example.com' }}
+    permissions:
+      contents: read
+      id-token: write   # OIDC for AWS
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify cosign signature on artefact
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          # TODO: install cosign once at top
+          curl -sSfL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 -o /usr/local/bin/cosign
+          chmod +x /usr/local/bin/cosign
+          cosign verify \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${{ needs.build.outputs.image }}"
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: gha-deploy-dev-${{ github.run_id }}
+
+      - name: Deploy
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          echo "Deploying $IMAGE ($DIGEST) to dev..."
+          # Examples — replace with your IaC / deploy tool:
+          # aws ecs update-service --cluster dev --service web --force-new-deployment
+          # aws s3 sync ./dist/ s3://dev-static-assets/ --delete
+          # aws cloudfront create-invalidation --distribution-id $CF_DIST_ID --paths "/*"
+
+      - name: Smoke test
+        run: |
+          curl -fsS --retry 5 --retry-delay 6 \
+            "https://dev.${{ vars.APP_DOMAIN || 'example.com' }}/healthz"
+
+  dast-baseline:
+    name: zap-baseline
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.13.0   # TODO: pin to commit SHA
+        with:
+          target: https://dev.${{ vars.APP_DOMAIN || 'example.com' }}
+          fail_action: false
+          allow_issue_writing: true
+
+  notify:
+    if: always()
+    needs: [deploy, dast-baseline]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Notify Slack
+        if: env.SLACK != ''
+        env:
+          SLACK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          STATUS: ${{ needs.deploy.result }}
+        run: |
+          [[ "$SLACK" == "PLACEHOLDER_REPLACE_ME" || -z "$SLACK" ]] && exit 0
+          curl -sS -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\":rocket: dev deploy ${STATUS} — ${{ github.sha }}\"}" \
+            "$SLACK"

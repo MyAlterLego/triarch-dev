@@ -1,0 +1,154 @@
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 02:00 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  codeql:
+    name: codeql
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  trufflehog-verified:
+    name: trufflehog-verified
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: TruffleHog (verified mode — only real, live secrets)
+        uses: trufflesecurity/trufflehog@v3.83.0   # TODO: pin to commit SHA
+        with:
+          path: ./
+          extra_args: --only-verified --json
+
+  semgrep-full:
+    name: semgrep-full
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    container:
+      image: semgrep/semgrep:latest   # TODO: pin to digest before merge
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          semgrep ci \
+            --config p/ci \
+            --config p/owasp-top-ten \
+            --config p/react \
+            --config p/typescript \
+            --config p/nodejs \
+            --config p/secrets \
+            --config p/xss \
+            --config p/sql-injection \
+            --config p/command-injection \
+            --sarif --output=semgrep.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep-full
+
+  license-check:
+    name: license-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: |
+          npm ci --no-audit --no-fund
+          npx --yes license-checker --production --excludePrivatePackages \
+            --onlyAllow "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0;Unlicense;CC-BY-4.0;Python-2.0" \
+            --excludePackages "" \
+            --json > licenses.json || { echo "::error::Disallowed license detected"; exit 1; }
+
+  expired-waiver-sweep:
+    name: expired-waiver-sweep
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              labels: 'security-waiver', state: 'open', per_page: 100
+            });
+            const now = new Date();
+            for (const i of issues) {
+              const m = (i.body || '').match(/Expires on:\s*(\d{4}-\d{2}-\d{2})/);
+              if (!m) continue;
+              const exp = new Date(m[1]);
+              if (exp < now) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: i.number, name: 'security-waiver:approved'
+                }).catch(()=>{});
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: i.number, labels: ['security-waiver:expired']
+                });
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: i.number,
+                  body: `Waiver expired on ${m[1]}. Prod deploys re-blocked until renewed or finding remediated.`
+                });
+              }
+            }
+
+  cost-guardrail:
+    name: cost-guardrail
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+    steps:
+      - name: Configure AWS via OIDC (read-only role)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_COST_READONLY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: gha-cost-guardrail
+        if: env.HAS_ROLE != ''
+        env:
+          HAS_ROLE: ${{ secrets.AWS_COST_READONLY_ROLE_ARN }}
+
+      - name: Compare last 7d vs prior 7d
+        if: env.HAS_ROLE != ''
+        env:
+          HAS_ROLE: ${{ secrets.AWS_COST_READONLY_ROLE_ARN }}
+        run: |
+          # Use Cost Explorer; alert if delta > 25%
+          echo "TODO: ce get-cost-and-usage and threshold check"

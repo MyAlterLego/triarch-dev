@@ -1,0 +1,24 @@
+# CODEOWNERS — required reviewers for sensitive paths.
+# The branch ruleset enforces "require code owner review" on main.
+
+# default — engineering reviews everything
+*                                @acme-corp/engineering
+
+# CI/CD pipeline itself — security team must review
+/.github/                        @acme-corp/security @acme-corp/release-managers
+/.github/workflows/              @acme-corp/security @acme-corp/release-managers
+/.github/rulesets/               @acme-corp/security
+/iac/                            @acme-corp/security @acme-corp/release-managers
+/bootstrap.sh                    @acme-corp/security @acme-corp/release-managers
+
+# Threat model — drift requires re-review
+/.threatmodel/                   @acme-corp/security
+
+# Auth code paths — extra scrutiny
+/src/auth/                       @acme-corp/security
+/src/middleware/auth*            @acme-corp/security
+/src/lib/crypto*                 @acme-corp/security
+
+# Anything that touches secrets handling
+**/secrets*                      @acme-corp/security
+**/vault*                        @acme-corp/security
