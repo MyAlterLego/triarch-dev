@@ -342,13 +342,19 @@
       <a class="resource" href="gap-analysis.md">
         <span class="ftype">.md</span>
         <h4>gap-analysis.md</h4>
-        <p>A self-contained prompt for a Claude Code session. Run against any customer's GitHub org/repo to produce an HTML gap report scoring every framework requirement as pass / partial / fail with remediation steps.</p>
+        <p>Step 1 — Claude Code prompt. Runs against the customer's GitHub org/repo and produces a Triarch-branded HTML report scoring every framework item as <code>pass</code> / <code>partial</code> / <code>fail</code> / <code>unknown</code>. Includes explicit no-credential-logging protocol.</p>
+      </a>
+
+      <a class="resource" href="deploy.md">
+        <span class="ftype">.md</span>
+        <h4>deploy.md</h4>
+        <p>Step 2 — Claude Code prompt. Takes the gap-analysis findings and walks through implementing each gap. Uses the scaffold as templates. <strong>Never asks for or logs credentials</strong> — for every secret, prints the <code>gh secret set</code> command for the user to run themselves.</p>
       </a>
 
       <a class="resource" href="github-cicd-scaffold/">
         <span class="ftype">/dir</span>
         <h4>github-cicd-scaffold/</h4>
-        <p>Drop-in GitHub repo scaffold: <code>bootstrap.sh</code>, <code>.github/workflows/</code>, <code>iac/github-oidc-aws/</code>, ruleset JSON, CODEOWNERS, Dependabot config, pre-commit hooks, Makefile. ~30 files. Run <code>./bootstrap.sh</code> after editing <code>bootstrap.config.env</code>.</p>
+        <p>Drop-in GitHub repo scaffold: <code>bootstrap.sh</code>, <code>discovery.sh</code>, <code>.github/workflows/</code>, <code>iac/github-oidc-aws/</code>, ruleset JSON, CODEOWNERS, Dependabot config, pre-commit hooks, Makefile. ~30 files.</p>
       </a>
 
       <a class="resource" href="github-cicd-scaffold/README.md">
@@ -364,8 +370,8 @@
     <ol style="margin-left:1.5rem;color:var(--text-dim);font-size:1rem">
       <li><strong>If you're showing a prospect or stakeholder</strong> — open the <a href="cicd-movie.html">movie</a>. Five minutes, full picture.</li>
       <li><strong>If you're scoping the work</strong> — read the <a href="cicd-overview.html">overview</a> and the <a href="SMB-CICD-Framework.md">framework markdown</a>.</li>
-      <li><strong>If you're an engineer ready to build</strong> — open the <a href="cicd-walkthrough.html">walkthrough</a>, answer the 8 project-detail fields, download the three generated config files, drop them into the <a href="github-cicd-scaffold/">scaffold</a>, run <code>./bootstrap.sh</code>.</li>
-      <li><strong>If you've inherited a half-built pipeline</strong> — hand the <a href="gap-analysis.md">gap-analysis prompt</a> to Claude Code. Get a full HTML report on what's in place vs missing.</li>
+      <li><strong>If you're an engineer ready to assess</strong> — open the <a href="cicd-walkthrough.html">walkthrough</a>. Either answer the 10-question form (fast, rough) or download <a href="github-cicd-scaffold/discovery.sh">discovery.sh</a> + <a href="gap-analysis.md">gap-analysis.md</a> and hand them to Claude Code (slower, comprehensive). Either way produces findings.</li>
+      <li><strong>To act on findings</strong> — hand <a href="deploy.md">deploy.md</a> to the same Claude Code session along with the findings. It walks through implementing each gap. Never asks for or logs your credentials.</li>
     </ol>
   </section>
 </main>

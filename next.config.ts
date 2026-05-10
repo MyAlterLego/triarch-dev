@@ -11,8 +11,8 @@ const nextConfig: NextConfig = {
       // because Next.js doesn't auto-resolve index.html for directories in
       // public/. Redirect both forms to the explicit index.html URL.
       // (Tried rewrites first — they didn't fire for static-file destinations.)
-      { source: '/triarch-cicd-package', destination: '/triarch-cicd-package/index.html', permanent: false },
-      { source: '/triarch-cicd-package/', destination: '/triarch-cicd-package/index.html', permanent: false },
+      { source: '/ci-cd', destination: '/ci-cd/index.html', permanent: false },
+      { source: '/ci-cd/', destination: '/ci-cd/index.html', permanent: false },
     ];
   },
 };
