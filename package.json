@@ -1,6 +1,6 @@
 {
   "name": "triarch-dev",
-  "version": "2.10.10",
+  "version": "2.11.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -44,7 +44,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.5",
+    "yaml": "^2.8.4"
   },
   "overrides": {
     "esbuild": "0.25.12"
