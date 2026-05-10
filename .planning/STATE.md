@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Customer Portal Split
 status: planning
-stopped_at: "Completed 24-03-PLAN.md (CI-04; scripts/validate-apphosting.ts CI lint in BOTH admin v2.11.1 and portal v0.5.2; +10 Vitest cases total — 5 per repo using temp-file fixtures). Admin PR #55 open against `triarchsecurity/platform` main (commits fad2268 RED + a33000f GREEN); portal PR #27 open against `triarchsecurity/dev-portal` main (commits f5ef27f RED + a2cb5d4 GREEN). Awaiting Mike's review + merge. Phase 24 structurally complete under reduced scope (24-02 + 24-03 shipped; 24-01 + 24-04 SKIPPED). Verifier can audit Phase 24 next."
-last_updated: "2026-05-09T00:55:32Z"
+stopped_at: "Completed 24-03-PLAN.md (CI-04 validate-apphosting CI lint; admin v2.11.1 PR #55; portal v0.5.2 PR #27; +10 Vitest cases — 5 per repo using temp-file fixtures). Both PRs open against main, awaiting Mike's review + merge. Phase 24 structurally complete under reduced scope (24-02 + 24-03 shipped; 24-01 + 24-04 SKIPPED)."
+last_updated: "2026-05-10T01:42:25.632Z"
 progress:
   total_phases: 20
   completed_phases: 12
   total_plans: 46
-  completed_plans: 62
+  completed_plans: 63
 ---
 
 # Triarch Dev Admin — Project State
@@ -23,8 +23,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 ## Current Position
 
-Phase: 24
-Plan: 24-03 complete (PRs open, awaiting merge); Phase 24 structurally complete under reduced scope
+Phase: 25
+Plan: Not started
 Last completed: Phase 24-03 validate-apphosting.ts CI lint (2026-05-09; admin v2.11.1 commits fad2268+a33000f PR #55; portal v0.5.2 commits f5ef27f+a2cb5d4 PR #27)
 
 ## Active Milestone: v2.2 — Customer Portal Split

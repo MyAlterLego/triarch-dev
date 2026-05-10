@@ -393,6 +393,6 @@
 | 22. Release Page Port (Write) | v2.2 | 4/5 | Complete    | 2026-05-09 |
 | 23. Bug + Feature Customer Surface | v2.2 | 3/4 | Complete    | 2026-05-09 |
 | 23.1. Portal UI Polish | v2.2 | 4/4 | Complete    | 2026-05-10 |
-| 24. CI/CD Deploy Safety | v2.2 | 2/4 | Complete (24-02 + 24-03 shipped; 24-01 + 24-04 SKIPPED per scope) | 2026-05-09 |
+| 24. CI/CD Deploy Safety | v2.2 | 2/4 | Complete    | 2026-05-10 |
 | 25. Cutover | v2.2 | 0/0 | Not started | - |
 | 26. Sunset (T+90) | v2.2 | 0/0 | Not started | - |
