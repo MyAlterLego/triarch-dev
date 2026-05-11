@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - main
+      - dev
       - 'release/**'
       - 'hotfix/**'
   pull_request:
     branches:
       - main
+      - dev
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -20,7 +22,7 @@ permissions:
 
 jobs:
   quality-gate:
-    uses: triarchsecurity/shared-workflows/.github/workflows/quality-gate.yml@v1
+    uses: triarchsecurity/shared-workflows/.github/workflows/quality-gate.yml@v7.1
     with:
       run_qa_tests: false
       run_pentest: false
@@ -57,25 +59,60 @@ jobs:
           node-version: '22'
           registry-url: 'https://npm.pkg.github.com'
       - name: Install deps for validate script
-        run: npm ci
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm ci
       - name: Validate apphosting.yaml against env schema
         run: npx tsx scripts/validate-apphosting.ts
 
-  deploy:
+  # Pick deploy environment from branch. admin/www's prod backend is named
+  # `triarch-dev` (legacy) and the dev backend is `admin-dev` — does NOT
+  # follow the v4 auto-suffix convention. v7+ `dev_backend` input handles this.
+  env-select:
     needs: [quality-gate, validate-apphosting]
-    if: github.event_name == 'push'
-    uses: triarchsecurity/shared-workflows/.github/workflows/deploy-firebase.yml@v4
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.pick.outputs.env }}
+    steps:
+      - id: pick
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            echo "env=dev" >> $GITHUB_OUTPUT
+          else
+            echo "env=prod" >> $GITHUB_OUTPUT
+          fi
+
+  # GitHub Environment binding for audit + future protection rules. Skipped
+  # for dev pushes. Currently no reviewer/timer (solo-dev org).
+  gate-prod:
+    needs: env-select
+    if: needs.env-select.outputs.environment == 'prod'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - run: echo "Production deploy approved for admin/www."
+
+  deploy:
+    needs: [quality-gate, validate-apphosting, env-select, gate-prod]
+    if: |
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
+      (needs.gate-prod.result == 'success' || needs.gate-prod.result == 'skipped')
+    uses: triarchsecurity/shared-workflows/.github/workflows/deploy-firebase.yml@v7.1
     with:
       firebase_project_id: triarch-dev-website
       app_hosting_backend: triarch-dev
+      # Dev backend is `admin-dev` — v4 auto-suffix would yield `triarch-dev-dev`
+      # (doesn't exist). v7+ dev_backend input handles this case.
+      dev_backend: admin-dev
+      environment: ${{ needs.env-select.outputs.environment }}
       deploy_command: apphosting
     secrets: inherit
 
   notify:
     needs: [quality-gate, deploy]
-    if: always() && github.event_name == 'push'
+    if: always() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     uses: triarchsecurity/shared-workflows/.github/workflows/notify.yml@v1
     with:
       status: ${{ needs.deploy.result }}
