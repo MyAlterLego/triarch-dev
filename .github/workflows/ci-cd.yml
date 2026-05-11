@@ -83,10 +83,43 @@ jobs:
             echo "env=prod" >> $GITHUB_OUTPUT
           fi
 
-  # GitHub Environment binding for audit + future protection rules. Skipped
-  # for dev pushes. Currently no reviewer/timer (solo-dev org).
-  gate-prod:
+  # Layer 3 bypass-prevention: refuse to deploy to prod unless this commit
+  # has already passed through dev. Hotfix escape: [hotfix-bypass-dev] in
+  # commit message. See: https://www.triarch.dev/ci-cd/firebase-2env-pattern.md
+  verify-dev-deployed:
     needs: env-select
+    if: needs.env-select.outputs.environment == 'prod'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Assert HEAD is on origin/dev (or carries hotfix-bypass token)
+        run: |
+          COMMIT_MSG=$(git log -1 --format=%B HEAD)
+          if echo "$COMMIT_MSG" | grep -qF "[hotfix-bypass-dev]"; then
+            echo "::warning::Bypassing dev-deployed check — commit message contains [hotfix-bypass-dev]."
+            {
+              echo "## ⚠️ Hotfix bypass used"
+              echo ""
+              echo "Commit \`$(git rev-parse HEAD)\` reached prod without passing through dev."
+              echo "Commit subject: $(git log -1 --format=%s HEAD)"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git fetch origin dev
+          if ! git merge-base --is-ancestor HEAD origin/dev; then
+            echo "::error::Refusing to deploy to prod: $(git rev-parse HEAD) has not been deployed to dev yet."
+            echo "::error::Merge this commit to dev first, verify it deploys cleanly, then promote to main."
+            echo "::error::For genuine hotfixes, add [hotfix-bypass-dev] to the commit message (deliberate, traceable bypass)."
+            exit 1
+          fi
+          echo "Verified: $(git rev-parse HEAD) is an ancestor of origin/dev — safe to promote to prod."
+
+  # GitHub Environment binding — Layer 4 of bypass prevention via env branch
+  # policy. Skipped for dev pushes. Currently no reviewer/timer (solo-dev org).
+  gate-prod:
+    needs: [env-select, verify-dev-deployed]
     if: needs.env-select.outputs.environment == 'prod'
     runs-on: ubuntu-latest
     environment: prod
@@ -94,7 +127,7 @@ jobs:
       - run: echo "Production deploy approved for admin/www."
 
   deploy:
-    needs: [quality-gate, validate-apphosting, env-select, gate-prod]
+    needs: [quality-gate, validate-apphosting, env-select, verify-dev-deployed, gate-prod]
     if: |
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
