@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Triarch · SMB CI/CD Framework</title>
+<link rel="icon" type="image/png" href="https://www.triarch.dev/triarch-logo.png" />
+<meta name="description" content="Triarch Security Advisors — SMB CI/CD framework. Production-ready GitHub-based pipeline for small and medium business React apps. Greenfield-first, security-baked, opinionated defaults." />
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg-2: #14140e;
+    --panel: #1f1d14;
+    --panel-2: #2b2818;
+    --border: #3a3424;
+    --border-strong: #5a4d2c;
+    --text: #f5ecd8;
+    --text-dim: #c9b88a;
+    --text-faint: #8a7956;
+    --accent: #e8a317;
+    --accent-2: #c97d1a;
+    --accent-3: #f5cc5b;
+    --accent-cool: #5ac8fa;
+    --warn: #d97706;
+    --danger: #c84d4d;
+    --code-bg: #14110a;
+    --radius: 12px;
+    --radius-sm: 6px;
+    --shadow: 0 8px 28px rgba(0,0,0,0.5);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(1100px 600px at 10% -10%, rgba(232,163,23,0.20), transparent 65%),
+      radial-gradient(800px 500px at 92% 5%, rgba(201,125,26,0.16), transparent 65%),
+      radial-gradient(1000px 600px at 50% 110%, rgba(245,204,91,0.06), transparent 65%);
+    pointer-events: none;
+  }
+  main, header, footer { position: relative; z-index: 1; }
+  h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); margin-bottom: 0.6rem; line-height: 1.1; letter-spacing: -0.02em; }
+  h1 .hl {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+    display: inline-block;
+  }
+  h2 { font-size: 1.6rem; margin: 3rem 0 0.85rem; letter-spacing: -0.01em; }
+  h3 { font-size: 1.15rem; margin: 0; color: var(--text); }
+  p { color: var(--text-dim); margin: 0.5rem 0; }
+  a { color: var(--accent); text-decoration: none; transition: color 0.15s; }
+  a:hover { color: var(--accent-3); text-decoration: underline; }
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.85em;
+    background: var(--code-bg);
+    color: #e8d4a4;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+  .container.narrow { max-width: 820px; }
+
+  /* ---------- Hero ---------- */
+  header.hero {
+    padding: 4rem 0 3rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand-row {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand-row img {
+    height: 60px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(232,163,23,0.06), rgba(201,125,26,0.06));
+    padding: 4px;
+    box-shadow: 0 0 0 2px rgba(232,163,23,0.4), 0 0 0 5px rgba(201,125,26,0.12), 0 0 30px rgba(232,163,23,0.2);
+  }
+  .brand-row .brand-text { display: flex; flex-direction: column; gap: 0.15rem; }
+  .brand-row .brand-name {
+    font-size: 1.05rem; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .brand-row .brand-name .mark { color: var(--accent); }
+  .brand-row .brand-tag { font-size: 0.82rem; color: var(--text-dim); font-style: italic; }
+  .badge {
+    display: inline-block;
+    padding: 0.25rem 0.8rem;
+    background: linear-gradient(135deg, rgba(232,163,23,0.12), rgba(201,125,26,0.08));
+    color: var(--accent);
+    border: 1px solid rgba(232,163,23,0.32);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+  }
+  .lede {
+    font-size: 1.15rem;
+    color: var(--text-dim);
+    max-width: 780px;
+    margin-top: 1rem;
+  }
+  .lede strong { color: var(--text); }
+  .signal-line {
+    margin-top: 1.5rem;
+    padding: 0.85rem 1.15rem;
+    background: rgba(232,163,23,0.05);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 0.92rem;
+    font-style: italic;
+    max-width: 780px;
+  }
+  .signal-line strong { color: var(--accent); font-style: normal; }
+
+  /* ---------- Three big cards ---------- */
+  .three-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin: 2rem 0 0.5rem;
+  }
+  @media (max-width: 850px) { .three-cards { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 1.5rem 1.6rem;
+    text-decoration: none !important;
+    color: inherit;
+    display: flex; flex-direction: column;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 36px rgba(232,163,23,0.15);
+    border-top-color: var(--accent-3);
+  }
+  .card .label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.5rem;
+  }
+  .card h3 {
+    font-size: 1.4rem;
+    color: var(--text);
+    margin-bottom: 0.6rem;
+    letter-spacing: -0.01em;
+  }
+  .card p {
+    font-size: 0.92rem;
+    color: var(--text-dim);
+    margin: 0;
+    line-height: 1.55;
+  }
+  .card .who {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--text-faint);
+  }
+  .card .who strong { color: var(--accent); }
+  .card .arrow {
+    margin-top: 1rem;
+    color: var(--accent);
+    font-size: 1.1rem;
+    font-weight: 600;
+    align-self: flex-start;
+    transition: transform 0.2s;
+  }
+  .card:hover .arrow { transform: translateX(4px); color: var(--accent-3); }
+
+  /* ---------- Resource list ---------- */
+  .resources {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    margin-top: 1rem;
+  }
+  @media (max-width: 700px) { .resources { grid-template-columns: 1fr; } }
+  .resource {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.2rem;
+    transition: all 0.15s;
+    text-decoration: none !important;
+    color: inherit;
+    display: block;
+  }
+  .resource:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .resource .ftype {
+    display: inline-block;
+    font-family: ui-monospace, monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    background: var(--bg-2);
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    margin-bottom: 0.4rem;
+  }
+  .resource h4 {
+    font-size: 1rem;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+  }
+  .resource p { font-size: 0.85rem; margin: 0; color: var(--text-dim); }
+
+  /* ---------- Stats line ---------- */
+  .stats {
+    display: flex; gap: 1.75rem; flex-wrap: wrap;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .stat { display: flex; flex-direction: column; gap: 0.15rem; }
+  .stat strong {
+    font-size: 1.4rem;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .stat span { font-size: 0.78rem; color: var(--text-faint); }
+
+  /* ---------- Footer ---------- */
+  footer {
+    border-top: 1px solid var(--border);
+    margin-top: 4rem;
+    padding: 2.5rem 0;
+    background: linear-gradient(180deg, transparent, rgba(232,163,23,0.03));
+  }
+  footer .container {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 1rem;
+  }
+  footer .footer-brand { display: flex; align-items: center; gap: 0.65rem; }
+  footer .footer-brand img { height: 26px; opacity: 0.75; }
+  footer .footer-brand strong {
+    color: var(--text-dim);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    font-size: 0.85rem;
+  }
+  footer .footer-links { display: flex; gap: 1.25rem; font-size: 0.85rem; }
+  footer .footer-links a { color: var(--text-faint); }
+  footer .footer-links a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="container">
+    <p style="margin-bottom:1rem;font-size:0.86rem;color:var(--text-faint)">
+      <a href="index.html" style="color:var(--accent)">← All three layers</a>
+      <span style="margin:0 0.5rem;color:var(--border-strong)">·</span>
+      <span style="color:var(--text-dim)">You're in <strong style="color:var(--text)">Layer 3 — SMB CI/CD framework</strong></span>
+    </p>
+    <div class="brand-row">
+      <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" />
+      <div class="brand-text">
+        <span class="brand-name"><span class="mark">TRIARCH</span> · SECURITY ADVISORS · DEV</span>
+        <span class="brand-tag">In a market full of noise, we provide the signal.</span>
+      </div>
+    </div>
+    <span class="badge">SMB CI/CD framework · v1.0 · greenfield-first</span>
+    <h1>From <span class="hl">GitHub + a React app</span><br/>to a production-ready pipeline.</h1>
+    <p class="lede">Built for the actual SMB starting state: <strong>just GitHub and source code</strong>. No cloud account, no IDP, no database, no observability assumed. The framework maps what exists, names what doesn't, and provisions the rest — hardened ruleset, three protected environments, OIDC (zero static keys), signed builds with SLSA provenance, and security scanning on every gate.</p>
+    <div class="signal-line"><strong>Triarch principle:</strong> security is a left-shifted gate, not a right-shifted audit.</div>
+    <div class="stats">
+      <div class="stat"><strong>5</strong><span>stages</span></div>
+      <div class="stat"><strong>3</strong><span>protected environments</span></div>
+      <div class="stat"><strong>0</strong><span>long-lived cloud creds</span></div>
+      <div class="stat"><strong>7</strong><span>required CI checks</span></div>
+      <div class="stat"><strong>~3 hrs</strong><span>greenfield to first prod</span></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="container">
+    <h2>Three views, one framework</h2>
+    <p>Each entry point serves a different audience. Pick whichever matches the conversation you're in.</p>
+
+    <div class="three-cards">
+      <a class="card" href="cicd-movie.html">
+        <span class="label">▶ Cinematic</span>
+        <h3>The interactive movie</h3>
+        <p>Scene-by-scene cinematic walkthrough across six acts: setup, principles, stages, architecture, options, outcome. Auto-play or click through. ~5 minutes.</p>
+        <div class="who">For: <strong>execs, sponsors, exploratory viewers</strong></div>
+        <span class="arrow">Watch the movie →</span>
+      </a>
+
+      <a class="card" href="cicd-overview.html">
+        <span class="label">📄 Reference</span>
+        <h3>The high-level overview</h3>
+        <p>Structured exec summary — five stages, canonical architecture, capabilities, options at every layer, timeline, outcomes. Scrollable, shareable, printable.</p>
+        <div class="who">For: <strong>technical leads, decision makers</strong></div>
+        <span class="arrow">Read the overview →</span>
+      </a>
+
+      <a class="card" href="cicd-walkthrough.html">
+        <span class="label">🛠 Hands-on</span>
+        <h3>The interactive walkthrough</h3>
+        <p>Five stages with input fields, generated config files, copy-to-clipboard commands, and a 10-point validation checklist. Progress saves across reloads.</p>
+        <div class="who">For: <strong>engineers doing the work</strong></div>
+        <span class="arrow">Open the walkthrough →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="container">
+    <h2>Primers — for foundations</h2>
+    <p>Before someone can act on the CI/CD framework, they often need the foundation. Two short cinematic primers cover the basics.</p>
+
+    <div class="three-cards" style="grid-template-columns: repeat(2, 1fr);">
+      <a class="card" href="git-primer.html">
+        <span class="label">▶ Cinematic primer</span>
+        <h3>Git &amp; GitHub fundamentals</h3>
+        <p>22 scenes covering commits, branches, push/pull, pull requests, the three merge strategies (merge / squash / rebase), conflicts, and the three undos. The mental model first, the commands second.</p>
+        <div class="who">For: <strong>new contributors, junior devs, anyone fuzzy on git</strong></div>
+        <span class="arrow">Start the primer →</span>
+      </a>
+
+      <a class="card" href="github-movie.html">
+        <span class="label">▶ Cinematic primer</span>
+        <h3>GitHub 101 — secure it</h3>
+        <p>23 scenes covering identity (2FA + PAT ladder), org structure, branch protection, secrets, Actions security (OIDC + SHA pinning + the March 2026 trivy-action incident), audit, plan-tier reality, and the 8-setting hardening checklist.</p>
+        <div class="who">For: <strong>tech leads, security folks, anyone hardening their org</strong></div>
+        <span class="arrow">Start the primer →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="container">
+    <h2>Supporting documents</h2>
+    <p>The framework markdown, the gap-analysis prompt for Claude Code, and the production-ready GitHub scaffold — everything an engineer needs to ship.</p>
+
+    <div class="resources">
+      <a class="resource" href="SMB-CICD-Framework.md">
+        <span class="ftype">.md</span>
+        <h4>SMB-CICD-Framework.md</h4>
+        <p>The complete framework markdown — guiding principles, reference architecture, layer-by-layer choices, environment model, security stack, workstreams, phased rollout, sources. ~36 KB.</p>
+      </a>
+
+      <a class="resource" href="gap-analysis.md">
+        <span class="ftype">.md</span>
+        <h4>gap-analysis.md</h4>
+        <p>Step 1 — Claude Code prompt. Runs against the customer's GitHub org/repo and produces a Triarch-branded HTML report scoring every framework item as <code>pass</code> / <code>partial</code> / <code>fail</code> / <code>unknown</code>. Includes explicit no-credential-logging protocol.</p>
+      </a>
+
+      <a class="resource" href="deploy.md">
+        <span class="ftype">.md</span>
+        <h4>deploy.md</h4>
+        <p>Step 2 — Claude Code prompt. Takes the gap-analysis findings and walks through implementing each gap. Uses the scaffold as templates. <strong>Never asks for or logs credentials</strong> — for every secret, prints the <code>gh secret set</code> command for the user to run themselves.</p>
+      </a>
+
+      <a class="resource" href="github-cicd-scaffold/">
+        <span class="ftype">/dir</span>
+        <h4>github-cicd-scaffold/</h4>
+        <p>Drop-in GitHub repo scaffold: <code>bootstrap.sh</code>, <code>discovery.sh</code>, <code>.github/workflows/</code>, <code>iac/github-oidc-aws/</code>, ruleset JSON, CODEOWNERS, Dependabot config, pre-commit hooks, Makefile. ~30 files.</p>
+      </a>
+
+      <a class="resource" href="github-cicd-scaffold/README.md">
+        <span class="ftype">.md</span>
+        <h4>github-cicd-scaffold/README.md</h4>
+        <p>Setup guide for the scaffold — credential matrix, GitHub plan requirements, role-by-role permissions, the 7-step setup flow, day-2 ops, troubleshooting. The single source of truth for an engineer adopting it.</p>
+      </a>
+    </div>
+  </section>
+
+  <section class="container narrow">
+    <h2>Where to start</h2>
+    <ol style="margin-left:1.5rem;color:var(--text-dim);font-size:1rem">
+      <li><strong>If a teammate is new to git itself</strong> — start them on the <a href="git-primer.html">Git &amp; GitHub primer</a>. 22 scenes, ~5 minutes, gets them past commits and merge strategies.</li>
+      <li><strong>If your org is loose on GitHub security</strong> — show them the <a href="github-movie.html">GitHub 101 + security movie</a>. Covers 2FA, branch protection, push protection, OIDC, and the 8 hardening settings — plus the plan-tier reality.</li>
+      <li><strong>If you're showing a prospect or stakeholder the CI/CD framework</strong> — open the <a href="cicd-movie.html">CI/CD movie</a>. Five minutes, full picture.</li>
+      <li><strong>If you're scoping the work</strong> — read the <a href="cicd-overview.html">overview</a> and the <a href="SMB-CICD-Framework.md">framework markdown</a>.</li>
+      <li><strong>If you're an engineer ready to assess</strong> — open the <a href="cicd-walkthrough.html">walkthrough</a>. Either answer the 10-question form (fast, rough) or download <a href="github-cicd-scaffold/discovery.sh">discovery.sh</a> + <a href="gap-analysis.md">gap-analysis.md</a> and hand them to Claude Code (slower, comprehensive). Either way produces findings.</li>
+      <li><strong>To act on findings</strong> — hand <a href="deploy.md">deploy.md</a> to the same Claude Code session along with the findings. It walks through implementing each gap. Never asks for or logs your credentials.</li>
+    </ol>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-brand">
+      <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" />
+      <strong>TRIARCH SECURITY ADVISORS</strong>
+      <span style="color:var(--text-faint);margin-left:0.5rem;font-size:0.82rem">· SMB CI/CD framework v1.0</span>
+    </div>
+    <div class="footer-links">
+      <a href="https://www.triarch.dev" target="_blank" rel="noopener">triarch.dev</a>
+      <a href="https://www.triarchsecurity.com" target="_blank" rel="noopener">triarchsecurity.com</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
