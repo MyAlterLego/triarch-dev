@@ -150,8 +150,8 @@ jobs:
             echo "env=prod" >> $GITHUB_OUTPUT
           fi
 
-  # 3. (Optional but recommended) Verify the commit being deployed to prod
-  #    has already been deployed to dev. Prevents bypass.
+  # 3. Verify the commit being deployed to prod has already been deployed
+  #    to dev. The mechanical bypass-prevention layer.
   verify-dev-deployed:
     needs: env-select
     if: needs.env-select.outputs.environment == 'prod'
@@ -160,12 +160,23 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0   # full history needed for ancestor check
-      - name: Assert HEAD is an ancestor of origin/dev
+      - name: Assert HEAD is on origin/dev (or carries hotfix-bypass token)
         run: |
+          COMMIT_MSG=$(git log -1 --format=%B HEAD)
+          if echo "$COMMIT_MSG" | grep -qF "[hotfix-bypass-dev]"; then
+            echo "::warning::Bypassing dev-deployed check — commit message contains [hotfix-bypass-dev]."
+            echo "::warning::This bypass is logged here and visible in git log forever. Use only for genuine hotfixes."
+            echo "## ⚠️ Hotfix bypass used" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Commit \`$(git rev-parse HEAD)\` reached prod without passing through dev." >> "$GITHUB_STEP_SUMMARY"
+            echo "Commit message contained \`[hotfix-bypass-dev]\` token. Reason should be in the commit body." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           git fetch origin dev
           if ! git merge-base --is-ancestor HEAD origin/dev; then
             echo "::error::Refusing to deploy to prod: $(git rev-parse HEAD) has not been deployed to dev yet."
             echo "::error::Merge this commit to dev first, verify it deploys cleanly, then promote to main."
+            echo "::error::For genuine hotfixes, add [hotfix-bypass-dev] to the commit message (deliberate, traceable bypass)."
             exit 1
           fi
           echo "Verified: $(git rev-parse HEAD) is an ancestor of origin/dev — safe to promote to prod."
@@ -244,7 +255,18 @@ git merge-base --is-ancestor HEAD origin/dev
 
 If `HEAD` (the commit being deployed to prod) is **not** an ancestor of `origin/dev`, the job fails with a clear error. This means: a commit can only reach prod if it has already been pushed to dev. There is no way around this short of force-pushing dev to include the commit just-in-time — which would be a deliberate end-run, not an accident.
 
-**Trade-off**: this requires that dev branch is always at least as far ahead as main. If you cherry-pick a hotfix directly to main without merging it into dev first, this gate will block. The mitigation is to either merge the hotfix to dev first, or temporarily disable the gate for the hotfix (and document why in the commit message).
+**Hotfix bypass token**: the gate honors `[hotfix-bypass-dev]` in the commit message. If present, the check is skipped and a warning is emitted to the run log + step summary. This is a deliberate, traceable bypass — the token lives forever in `git log`, so the audit trail is preserved. Use only for genuine emergencies (e.g., a customer-impacting security fix where adding a dev pass-through would extend the outage). For everything else, route through dev first.
+
+```bash
+# Example hotfix commit:
+git commit -m "fix(auth): patch session-fixation CVE-2026-XXXX [hotfix-bypass-dev]
+
+The fix removes the cookie-name reuse path identified in the vulnerability
+report. Going through dev would add 30+ minutes to remediation and customers
+are actively impacted."
+```
+
+After the hotfix lands on main, merge or cherry-pick the same commit to `dev` so future deploys aren't blocked by the divergence.
 
 ### Layer 4: GitHub Environment `prod` with branch policy
 
@@ -383,6 +405,29 @@ If you currently push to main and it deploys to whatever your single backend is 
 10. **Second test**: PR `dev` → `main`. Merge. Should deploy to prod backend.
 
 11. **Bypass test**: try to push directly to main from a feature branch that isn't on dev. The `verify-dev-deployed` gate should refuse.
+
+### Bootstrap caveat — first deploy after adding `verify-dev-deployed`
+
+If your repo is in a state where `main` is ahead of `dev` (common when you're retrofitting the gate onto an existing project), the **first push to main after the gate lands will fail** — the new main HEAD won't be on dev's history yet.
+
+Two ways to bootstrap cleanly:
+
+**Option A — sync dev to match main, then add the gate**:
+
+```bash
+# Before merging the gate PR:
+git checkout dev
+git reset --hard origin/main
+git push --force-with-lease origin dev
+# Now merge the PR that adds verify-dev-deployed.
+# Future pushes flow feature → dev → main, satisfying the gate.
+```
+
+**Option B — use the hotfix bypass token on the bootstrap commit**:
+
+The PR that introduces `verify-dev-deployed` to the workflow has its merge commit on main. That commit can carry `[hotfix-bypass-dev]` in its message so the first post-merge push doesn't fail. Subsequent pushes go via dev as designed.
+
+Option A is cleaner (no commits carry a bypass token). Option B is faster if you don't want to touch the dev branch.
 
 ---
 

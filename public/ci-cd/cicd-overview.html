@@ -940,6 +940,80 @@
   </div>
 </section>
 
+<!-- =============== Firebase variant: 2-env + 4 layers of bypass prevention =============== -->
+<section class="container" id="firebase-variant" style="margin-top: 4rem;">
+  <span class="section-eyebrow">Firebase variant</span>
+  <h2>2 environments — and 4 layers that block prod bypass</h2>
+  <p class="section-lede">For Firebase App Hosting on a single GCP project. Same enforcement properties as the AWS 3-env model, adapted for Firebase's constraints. See the <a href="firebase-2env-pattern.md">full pattern doc</a>.</p>
+
+  <div style="background: linear-gradient(180deg, #2b2818 0%, #1f1d14 100%); border: 1px solid #5a4d2c; border-radius: 12px; padding: 2rem; margin: 1.5rem 0;">
+
+    <div style="display: grid; grid-template-columns: 1fr; gap: 0.75rem; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.85rem; color: #f5ecd8;">
+
+      <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: rgba(232,163,23,0.05); border: 1px solid #3a3424; border-radius: 8px;">
+        <div style="background: #e8a317; color: #1f1d14; font-weight: 700; padding: 0.4rem 0.75rem; border-radius: 4px; min-width: 80px; text-align: center;">feature/*</div>
+        <div style="color: #c9b88a;">→ PR base=<code style="color: #e8a317;">dev</code> → merge → deploys to <code style="color: #f5ecd8;">app-dev</code> backend (auto)</div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: rgba(245,166,35,0.06); border: 1px solid #3a3424; border-radius: 8px;">
+        <div style="background: #f5a623; color: #1f1d14; font-weight: 700; padding: 0.4rem 0.75rem; border-radius: 4px; min-width: 80px; text-align: center;">dev branch</div>
+        <div style="color: #c9b88a;">→ PR base=<code style="color: #f5a623;">main</code> → merge → deploys to <code style="color: #f5ecd8;">app</code> backend (prod)</div>
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: center; padding: 0.5rem 0; color: #c9b88a; font-size: 1.1rem;">↓ but only after ALL 4 GATES pass ↓</div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;">
+
+        <div style="background: rgba(248,113,113,0.08); border: 1px solid #f87171; border-radius: 8px; padding: 1rem;">
+          <div style="color: #f87171; font-weight: 700; font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 0.5rem;">LAYER 1</div>
+          <div style="color: #f5ecd8; font-weight: 600; margin-bottom: 0.4rem;">Branch protection</div>
+          <div style="color: #c9b88a; font-size: 0.8rem;">Repo setting on <code style="color: #f87171;">main</code>: require PR + status checks. Blocks direct <code>git push</code>.</div>
+        </div>
+
+        <div style="background: rgba(248,113,113,0.08); border: 1px solid #f87171; border-radius: 8px; padding: 1rem;">
+          <div style="color: #f87171; font-weight: 700; font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 0.5rem;">LAYER 2</div>
+          <div style="color: #f5ecd8; font-weight: 600; margin-bottom: 0.4rem;">PR base flow</div>
+          <div style="color: #c9b88a; font-size: 0.8rem;">Features open against <code style="color: #f87171;">dev</code>, not <code>main</code>. Dev verifies before main promotion.</div>
+        </div>
+
+        <div style="background: rgba(248,113,113,0.14); border: 1.5px solid #f87171; border-radius: 8px; padding: 1rem; position: relative;">
+          <div style="position: absolute; top: -10px; right: 10px; background: #f87171; color: #1f1d14; font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; letter-spacing: 1px;">LOAD-BEARING</div>
+          <div style="color: #f87171; font-weight: 700; font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 0.5rem;">LAYER 3</div>
+          <div style="color: #f5ecd8; font-weight: 600; margin-bottom: 0.4rem;">verify-dev-deployed CI gate</div>
+          <div style="color: #c9b88a; font-size: 0.8rem;"><code style="color: #f87171;">git merge-base --is-ancestor HEAD origin/dev</code> must succeed. <strong>The mechanical block</strong> — commit must be on dev's history first.</div>
+        </div>
+
+        <div style="background: rgba(248,113,113,0.08); border: 1px solid #f87171; border-radius: 8px; padding: 1rem;">
+          <div style="color: #f87171; font-weight: 700; font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 0.5rem;">LAYER 4</div>
+          <div style="color: #f5ecd8; font-weight: 600; margin-bottom: 0.4rem;">GitHub Environment</div>
+          <div style="color: #c9b88a; font-size: 0.8rem;"><code style="color: #f87171;">prod</code> env's <em>Selected branches</em> policy: <code>main</code> only. Blocks workflow_dispatch from feature branches.</div>
+        </div>
+
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: center; padding: 0.5rem 0; color: #c9b88a; font-size: 1.1rem;">↓</div>
+
+      <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: rgba(34,197,94,0.06); border: 1px solid #22c55e; border-radius: 8px;">
+        <div style="background: #22c55e; color: #1f1d14; font-weight: 700; padding: 0.4rem 0.75rem; border-radius: 4px; min-width: 80px; text-align: center;">app</div>
+        <div style="color: #c9b88a;"><code style="color: #22c55e;">firebase apphosting:rollouts:create</code> on the prod backend</div>
+      </div>
+
+    </div>
+
+    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #3a3424; color: #c9b88a; font-size: 0.85rem;">
+      <strong style="color: #e8a317;">Hotfix bypass.</strong> Layer 3 honors <code style="color: #e8a317;">[hotfix-bypass-dev]</code> in the commit message — emergencies can land on main without merging to dev first. Bypass is logged as a workflow warning and is visible forever in <code>git log</code>, so the audit trail is preserved.
+    </div>
+
+  </div>
+
+  <div class="arch-cap">
+    <div class="cap"><strong>Compounding defenses</strong><span>Each layer is independent. Even if 3 fail (branch protection disabled, wrong PR base, env policy missing), Layer 3 still mechanically refuses to deploy.</span></div>
+    <div class="cap"><strong>No reviewer required</strong><span>The gates work on solo-dev orgs without a self-approval step. Reviewer rules are <em>optional</em> on top.</span></div>
+    <div class="cap"><strong>Documented escape hatch</strong><span>Real hotfixes don't get blocked. The <code>[hotfix-bypass-dev]</code> token requires a deliberate, traceable action.</span></div>
+    <div class="cap"><strong>Auditable</strong><span>Every deploy run lists which layers passed/skipped in the GitHub Actions UI. Bypasses appear as warnings in the run + the commit message.</span></div>
+  </div>
+</section>
+
 <!-- =============== Capabilities =============== -->
 <section class="container" id="capabilities">
   <span class="section-eyebrow">What's in the box</span>
