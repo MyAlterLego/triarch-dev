@@ -1,0 +1,163 @@
+# Triarch SMB CI/CD framework — FIREBASE variant.
+# -----------------------------------------------
+# This is the canonical Firebase App Hosting CI/CD workflow. One file
+# handles both dev and prod deploys, branch-gated, with hard bypass
+# prevention. See firebase-2env-pattern.md for the full pattern.
+#
+# Customize before applying:
+#   {{APP_NAME}}           — human-readable app name (Slack notification)
+#   {{APP_URL}}            — public URL of the prod backend
+#   {{FIREBASE_PROJECT}}   — GCP project ID (e.g. acme-app-prod)
+#   {{PROD_BACKEND}}       — prod FAH backend name (e.g. acme-app)
+#   {{DEV_BACKEND}}        — dev FAH backend name (e.g. acme-app-dev)
+#
+# Prerequisites (probe + remediate via R-F1 in deploy.md):
+#   - Two FAH backends exist in {{FIREBASE_PROJECT}}: {{PROD_BACKEND}} + {{DEV_BACKEND}}
+#   - Dev backend's "Environment Name" Console field is set to "dev"
+#     so apphosting.dev.yaml auto-overlays apphosting.yaml
+#   - GitHub Environments `dev` and `prod` exist on this repo
+#   - `dev` branch exists in this repo, wired to {{DEV_BACKEND}} in FAH Console
+#   - `main` branch is wired to {{PROD_BACKEND}} in FAH Console
+#   - Repo is added to any private GitHub Packages this app consumes
+#     (npm package settings → Manage Actions access)
+#
+# Required Actions secrets (set via `gh secret set <NAME>`, no `--body`):
+#   - FIREBASE_SA_KEY     — GCP service account JSON with FAH deploy permission
+#   - ADMIN_API_TOKEN     — optional, for admin platform release-log callback
+
+name: Firebase CI/CD
+
+on:
+  push:
+    branches: [main, dev, 'release/**', 'hotfix/**']
+  pull_request:
+    branches: [main, dev]
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: write       # for the tag-deployed-commit step in shared deploy workflow
+  packages: read        # for GITHUB_TOKEN npm auth against internal packages
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────
+  # Quality gate — build + test + scan. Same for dev and prod paths.
+  # ────────────────────────────────────────────────────────────────────
+  quality-gate:
+    uses: triarchsecurity/shared-workflows/.github/workflows/quality-gate.yml@v7.1
+    with:
+      run_qa_tests: false
+      run_pentest: false
+      needs_server: false
+    secrets: inherit
+
+  # ────────────────────────────────────────────────────────────────────
+  # Pick the deploy environment from the branch.
+  #   dev branch  → environment=dev  → {{DEV_BACKEND}}
+  #   main branch → environment=prod → {{PROD_BACKEND}}
+  # release/** and hotfix/** branches: workflow runs gates only (no deploy).
+  # ────────────────────────────────────────────────────────────────────
+  env-select:
+    needs: quality-gate
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.pick.outputs.env }}
+    steps:
+      - id: pick
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            echo "env=dev" >> $GITHUB_OUTPUT
+          else
+            echo "env=prod" >> $GITHUB_OUTPUT
+          fi
+
+  # ────────────────────────────────────────────────────────────────────
+  # Layer 3 bypass-prevention (the mechanical block).
+  # Refuse to deploy to prod unless this commit has already passed
+  # through dev. Hotfix escape: include [hotfix-bypass-dev] in the
+  # commit message — logged + visible in git log forever.
+  # ────────────────────────────────────────────────────────────────────
+  verify-dev-deployed:
+    needs: env-select
+    if: needs.env-select.outputs.environment == 'prod'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Assert HEAD is on origin/dev (or carries hotfix-bypass token)
+        run: |
+          COMMIT_MSG=$(git log -1 --format=%B HEAD)
+          if echo "$COMMIT_MSG" | grep -qF "[hotfix-bypass-dev]"; then
+            echo "::warning::Bypassing dev-deployed check — commit message contains [hotfix-bypass-dev]."
+            {
+              echo "## ⚠️ Hotfix bypass used"
+              echo ""
+              echo "Commit \`$(git rev-parse HEAD)\` reached prod without passing through dev."
+              echo "Commit subject: $(git log -1 --format=%s HEAD)"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git fetch origin dev
+          if ! git merge-base --is-ancestor HEAD origin/dev; then
+            echo "::error::Refusing to deploy to prod: $(git rev-parse HEAD) has not been deployed to dev yet."
+            echo "::error::Merge this commit to dev first, verify it deploys cleanly, then promote to main."
+            echo "::error::For genuine hotfixes, add [hotfix-bypass-dev] to the commit message (deliberate, traceable bypass)."
+            exit 1
+          fi
+          echo "Verified: $(git rev-parse HEAD) is an ancestor of origin/dev — safe to promote to prod."
+
+  # ────────────────────────────────────────────────────────────────────
+  # Layer 4 bypass-prevention (GitHub Environment binding).
+  # Binds to the `prod` Environment configured in Settings → Environments.
+  # That environment's `Selected branches and tags` policy should restrict
+  # deploys to `main` only. Reviewer rules optional (Team plan: only
+  # available on public repos or paid Enterprise). Skipped for dev pushes.
+  # ────────────────────────────────────────────────────────────────────
+  gate-prod:
+    needs: [env-select, verify-dev-deployed]
+    if: needs.env-select.outputs.environment == 'prod'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - run: echo "Production deploy approved for {{APP_NAME}}."
+
+  # ────────────────────────────────────────────────────────────────────
+  # Deploy via shared reusable workflow.
+  # ────────────────────────────────────────────────────────────────────
+  deploy:
+    needs: [quality-gate, env-select, verify-dev-deployed, gate-prod]
+    if: |
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
+      (needs.gate-prod.result == 'success' || needs.gate-prod.result == 'skipped')
+    uses: triarchsecurity/shared-workflows/.github/workflows/deploy-firebase.yml@v7.1
+    with:
+      firebase_project_id: '{{FIREBASE_PROJECT}}'
+      app_hosting_backend: '{{PROD_BACKEND}}'
+      # Only needed when dev/prod naming doesn't follow the <name>/<name>-dev
+      # auto-suffix. Safe to set explicitly even when it does — clearer to read.
+      dev_backend: '{{DEV_BACKEND}}'
+      environment: ${{ needs.env-select.outputs.environment }}
+      deploy_command: apphosting
+    secrets: inherit
+
+  # ────────────────────────────────────────────────────────────────────
+  # Slack/email notification on deploy outcome.
+  # ────────────────────────────────────────────────────────────────────
+  notify:
+    needs: [quality-gate, deploy]
+    if: always() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    uses: triarchsecurity/shared-workflows/.github/workflows/notify.yml@v1
+    with:
+      status: ${{ needs.deploy.result }}
+      project_name: '{{APP_NAME}}'
+      app_url: '{{APP_URL}}'
+      version: ${{ needs.deploy.outputs.version }}
+      wait_for_fah: true
+      app_hosting_backend: '{{PROD_BACKEND}}'
+      firebase_project_id: '{{FIREBASE_PROJECT}}'
+    secrets: inherit

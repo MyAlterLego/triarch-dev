@@ -132,7 +132,7 @@ firebase login
 firebase apphosting:backends:list --project <project-id>
 ```
 
-Each app should show **two backends** — `<app>` (or `<app>-prod`) for production and `<app>-dev` for development. If only one exists, the Firebase 2-environment pattern (see [firebase-2env-pattern.md](firebase-2env-pattern.md)) has not yet been applied — flag this and recommend the migration playbook in that doc as a separate remediation before continuing with CI/CD hardening.
+Each app should show **two backends** — `<app>` (or `<app>-prod`) for production and `<app>-dev` for development. If only one exists, the Firebase 2-environment pattern (see [firebase-2env-pattern.md](firebase-2env-pattern.md)) has not yet been applied — apply **[R-F1 — Firebase 2-env CI/CD bootstrap](#r-f1--firebase-2-env-cicd-bootstrap)** as the first remediation. R-F1 is the Firebase-flavored alternative to the AWS-targeted R-2/R-3/C-1 chain; do not apply both.
 
 Additionally check:
 - The dev backend's **Environment Name** Console field must be set to `dev` for `apphosting.dev.yaml` auto-overlay to load. CLI can't read this — you'll have to ask the user to verify in Console: Backend → Settings → Environment.
@@ -400,6 +400,189 @@ Each entry maps a gap-analysis ID to the action you take. Use `github-cicd-scaff
               aws s3 cp audit-*.json s3://acme-audit-bucket/
     ```
   Set `AUDIT_EXPORT_ROLE_ARN` via `gh secret set` (no value).
+
+### Firebase-specific (R-F1)
+
+#### R-F1 — Firebase 2-env CI/CD bootstrap
+
+**Apply when** `discovery.sh` (or the §1 Firebase probe) shows:
+- App is deployed to Firebase App Hosting (`firebase.json` or `apphosting.yaml` present), AND
+- Only one FAH backend exists per app, OR
+- The current workflow doesn't gate dev vs prod (e.g., every push to main deploys; no `environment` input passed to the deploy job).
+
+**Skip when** the AWS/OIDC 3-env model from R-2/R-3/C-1 is being applied instead. R-F1 is the Firebase-flavored *alternative*, not an addition.
+
+This is the comprehensive playbook for the [Firebase 2-environment pattern](firebase-2env-pattern.md). Each step is independently scriptable; apply in order.
+
+**Inputs you must collect from the user first:**
+
+| Input | Example |
+|---|---|
+| `APP_NAME` | `Acme Portal` |
+| `APP_URL` (prod) | `https://portal.acme.com` |
+| `DEV_APP_URL` | `https://dev.portal.acme.com` *or* the auto-generated FAH preview URL |
+| `FIREBASE_PROJECT` | `acme-app-prod` |
+| `PROD_BACKEND` (existing) | `acme-portal` |
+| `DEV_BACKEND` (to create or existing) | `acme-portal-dev` |
+| `ADMIN_EMAIL` | `ops@acme.com` |
+
+If `DEV_BACKEND` doesn't exist yet, the user must create it in Firebase Console (FAH CLI doesn't support `backends:create` directly as of 2026-05). Provide them this Console flow:
+
+> Firebase Console → Build → App Hosting → your project → **Create backend** → name = `{{DEV_BACKEND}}` → repository = same as prod → branch = `dev` → finish. Then: Backend Settings → Environment → set **Environment Name** to `dev` (this is what causes `apphosting.dev.yaml` to auto-load).
+
+Wait for the user to confirm "dev backend created" before proceeding to the file-writing steps.
+
+##### Step 1 — Write `apphosting.dev.yaml`
+
+If the file doesn't exist, write it from the scaffold template, substituting `{{DEV_APP_URL}}`:
+
+```bash
+# Source template ships with the scaffold
+cp github-cicd-scaffold/apphosting.dev.yaml.example ./apphosting.dev.yaml
+# Substitute placeholders
+sed -i.bak "s|{{DEV_APP_URL}}|$DEV_APP_URL|g" ./apphosting.dev.yaml && rm ./apphosting.dev.yaml.bak
+```
+
+Verify the file does NOT contain `{{` anywhere (catches unsubstituted placeholders). Commit later in §6 with the rest of the remediation.
+
+##### Step 2 — Set the dev `DATABASE_URL_DEV` secret
+
+The dev overlay references a separate database secret. Print the command — do **not** run with a value:
+
+```bash
+firebase apphosting:secrets:set DATABASE_URL_DEV --project $FIREBASE_PROJECT
+```
+
+User runs this in their own terminal and pastes the dev DB connection string into the prompt. If the user intends to share the prod DB with dev (not recommended), tell them to skip this step and remove the `DATABASE_URL` override from `apphosting.dev.yaml`.
+
+##### Step 3 — Create the `dev` branch
+
+```bash
+# Create dev branch from current main, push to origin
+git fetch origin main
+git checkout -b dev origin/main
+git push -u origin dev
+```
+
+##### Step 4 — Configure GitHub Environments
+
+```bash
+# dev — no protection rules; just the environment slot
+gh api -X PUT repos/$ORG/$REPO/environments/dev
+
+# prod — restrict deploys to the main branch only (Layer 4 of bypass prevention).
+# Reviewer/wait-timer rules are Enterprise-only on private repos; skip them
+# unless the user is on Enterprise.
+cat > /tmp/env-prod-firebase.json <<EOF
+{
+  "deployment_branch_policy": {
+    "protected_branches": false,
+    "custom_branch_policies": true
+  }
+}
+EOF
+gh api -X PUT repos/$ORG/$REPO/environments/prod --input /tmp/env-prod-firebase.json
+
+# Add `main` to the custom branch policy list
+gh api -X POST repos/$ORG/$REPO/environments/prod/deployment-branch-policies \
+  --field name='main' --field type='branch'
+```
+
+##### Step 5 — Configure branch protection on `main`
+
+If R-4 (the broader ruleset) wasn't applied, add at minimum:
+
+```bash
+gh api -X PUT repos/$ORG/$REPO/branches/main/protection --input - <<EOF
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["quality-gate / Build, Test, Audit", "verify-dev-deployed"]
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": null,
+  "restrictions": null,
+  "required_linear_history": true,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+EOF
+```
+
+Solo-dev orgs typically set `enforce_admins: false` and skip the reviewer requirement (Layer 2 of bypass prevention is process discipline; Layer 3 is the mechanical block).
+
+##### Step 6 — Write the `firebase-ci-cd.yml` workflow
+
+Copy the scaffold template and substitute placeholders:
+
+```bash
+mkdir -p .github/workflows
+cp github-cicd-scaffold/.github/workflows/firebase-ci-cd.yml .github/workflows/ci-cd.yml
+
+# Substitute placeholders
+sed -i.bak \
+  -e "s|{{APP_NAME}}|$APP_NAME|g" \
+  -e "s|{{APP_URL}}|$APP_URL|g" \
+  -e "s|{{FIREBASE_PROJECT}}|$FIREBASE_PROJECT|g" \
+  -e "s|{{PROD_BACKEND}}|$PROD_BACKEND|g" \
+  -e "s|{{DEV_BACKEND}}|$DEV_BACKEND|g" \
+  .github/workflows/ci-cd.yml && rm .github/workflows/ci-cd.yml.bak
+
+# Sanity check — no `{{` placeholders left
+grep -c '{{' .github/workflows/ci-cd.yml  # should print 0
+```
+
+##### Step 7 — Ensure `apphosting.yaml` exists
+
+If the repo had a single-backend Firebase setup, `apphosting.yaml` likely exists already. If not (greenfield), copy the example and substitute:
+
+```bash
+if [ ! -f apphosting.yaml ]; then
+  cp github-cicd-scaffold/apphosting.yaml.example ./apphosting.yaml
+  sed -i.bak \
+    -e "s|{{APP_URL}}|$APP_URL|g" \
+    -e "s|{{ADMIN_EMAIL}}|$ADMIN_EMAIL|g" \
+    apphosting.yaml && rm apphosting.yaml.bak
+fi
+```
+
+##### Step 8 — Required Actions secrets
+
+Print these `gh secret set` commands for the user to run (no values in your output):
+
+```bash
+gh secret set FIREBASE_SA_KEY --repo $ORG/$REPO       # GCP SA JSON with FAH deploy permission
+gh secret set ADMIN_API_TOKEN --repo $ORG/$REPO       # optional — for admin release-log callback
+```
+
+If the app consumes a private GitHub Packages npm registry, also tell the user to **add their repo to the package's "Manage Actions access" list**. This is a Console-only step — no CLI:
+
+> Open https://github.com/orgs/$ORG/packages → click the package → Package settings → Manage Actions access → Add Repository → select $ORG/$REPO → Read role.
+
+##### Step 9 — Output the bootstrap migration commands
+
+After this PR merges, the user needs to run this **once** to sync the `dev` branch to match the new `main` (the merge commit carries the gate code; dev needs to catch up):
+
+```bash
+git fetch origin main
+git push --force-with-lease origin origin/main:dev
+```
+
+Include this in the §7 hand-off summary. From this point forward, the normal flow (feature → PR base=dev → merge to dev → PR dev→main → merge to main) satisfies the gate naturally.
+
+##### Step 10 — Acceptance criteria
+
+In the §7 hand-off summary, list these as user-verified checks:
+
+- [ ] `firebase apphosting:backends:list --project $FIREBASE_PROJECT` shows both backends
+- [ ] dev backend's "Environment Name" Console field = `dev`
+- [ ] `gh api repos/$ORG/$REPO/environments --jq '.environments[].name'` shows both `dev` and `prod`
+- [ ] `gh api repos/$ORG/$REPO/environments/prod --jq '.deployment_branch_policy'` shows custom policy with `main` allowed
+- [ ] Push trivial commit to `dev` branch → workflow deploys to `$DEV_BACKEND`
+- [ ] PR from `dev` to `main` → merge → workflow deploys to `$PROD_BACKEND` (gate passes because commit is on dev's history)
+- [ ] Force-push a commit directly to a feature branch and try to `workflow_dispatch` against `main`/`prod` env from it → Layer 4 (Environment branch policy) refuses
+
+If any step in this remediation can't be completed (e.g., the user is on org Free private and can't configure Environments), surface that to the user and offer the [degraded fallback](#plan-tier-branching) in §1.
 
 ### Optional (O-1 to O-10)
 Apply only if explicitly requested. Each is a single workflow modification or new file. Use the scaffold's `nightly.yml` as the starting point — it bundles SLSA + cosign + CodeQL + license + DR + cost.

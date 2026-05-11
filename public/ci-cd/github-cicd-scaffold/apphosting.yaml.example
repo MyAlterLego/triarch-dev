@@ -1,0 +1,51 @@
+# Production baseline for Firebase App Hosting.
+# Loaded by EVERY backend in the project. Dev backend's apphosting.dev.yaml
+# auto-overlays on top of this when the backend's "Environment Name" Console
+# field is set to "dev".
+#
+# Customize before applying:
+#   {{APP_URL}}             — public URL of the prod app
+#   {{ADMIN_EMAIL}}         — admin contact (e.g. for break-glass)
+
+runConfig:
+  runtime: nodejs22
+  concurrency: 10
+  cpu: 1
+  memoryMiB: 512
+  minInstances: 0
+  maxInstances: 2
+  requestTimeout: 300
+
+env:
+  # ─── Public values ─────────────────────────────────────────────
+  - variable: NEXTAUTH_URL
+    value: '{{APP_URL}}'
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: ADMIN_EMAIL
+    value: '{{ADMIN_EMAIL}}'
+    availability:
+      - RUNTIME
+
+  # ─── Secrets (set via: firebase apphosting:secrets:set <KEY>) ──
+  - variable: DATABASE_URL
+    secret: DATABASE_URL
+
+  - variable: NEXTAUTH_SECRET
+    secret: NEXTAUTH_SECRET
+
+  - variable: GOOGLE_CLIENT_ID
+    secret: GOOGLE_CLIENT_ID
+
+  - variable: GOOGLE_CLIENT_SECRET
+    secret: GOOGLE_CLIENT_SECRET
+
+  # ─── Build-time GitHub Packages auth ───────────────────────────
+  # Only needed if the app consumes private GitHub Packages npm
+  # registry. Remove if not.
+  - variable: NODE_AUTH_TOKEN
+    secret: GITHUB_PACKAGES_TOKEN
+    availability:
+      - BUILD

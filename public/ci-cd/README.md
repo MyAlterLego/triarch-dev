@@ -108,9 +108,12 @@ triarch-cicd-package/
     │   ├── workflows/
     │   │   ├── ci-lite.yml            ← DEFAULT — 4 scanners on every PR
     │   │   ├── ci-full.yml            ← opt-in — adds IaC + threat-model checks
-    │   │   ├── deploy-{dev,staging,prod}.yml ← per-env deploys (OIDC-backed)
+    │   │   ├── deploy-{dev,staging,prod}.yml ← per-env deploys (OIDC-backed, AWS variant)
+    │   │   ├── firebase-ci-cd.yml     ← Firebase 2-env variant (single-file, env-select + verify-dev-deployed)
     │   │   ├── build.yml              ← reusable build + cosign + SLSA provenance
     │   │   └── nightly.yml            ← CodeQL + license + DR drill
+    ├── apphosting.yaml.example        ← Firebase variant — prod baseline FAH config
+    ├── apphosting.dev.yaml.example    ← Firebase variant — dev overlay FAH config
     │   └── rulesets/
     │       ├── main-protection-baseline.json ← phase-1: PR-required + linear history
     │       └── main-protection-lite.json     ← phase-2: + required scanner checks

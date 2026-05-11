@@ -880,7 +880,13 @@
         <line class="arch-line l4" x1="470" y1="132" x2="500" y2="132" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
         <path class="arch-line l5" d="M 470 140 L 485 140 L 485 172 L 500 172" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
         <path class="arch-line l6" d="M 470 148 L 485 148 L 485 212 L 500 212" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
+        <!-- Each environment exchanges its own OIDC trust + deploys to its own cloud account. -->
+        <!-- Three parallel paths from the env column converge at the cloud column, depicting -->
+        <!-- that all three environments deploy (not just staging). Originally only l7 existed; -->
+        <!-- l7a + l7b added so the diagram matches reality. -->
+        <path class="arch-line l7a" d="M 660 132 L 690 132 L 690 75 L 710 75" stroke="#c97d1a" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
         <path class="arch-line l7" d="M 660 172 L 690 172 L 690 75 L 710 75" stroke="#c97d1a" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
+        <path class="arch-line l7b" d="M 660 212 L 690 212 L 690 75 L 710 75" stroke="#c97d1a" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />
         <line class="arch-line l8" x1="795" y1="100" x2="795" y2="115" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
         <line class="arch-line l9" x1="795" y1="175" x2="795" y2="190" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" />
         <path class="arch-line l10" d="M 880 165 L 895 165 L 895 268 L 880 268" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="2,4" stroke-linecap="round" fill="none" />

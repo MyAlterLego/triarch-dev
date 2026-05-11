@@ -1,0 +1,24 @@
+# Dev environment overlay for Firebase App Hosting.
+# Auto-loaded ONLY when the FAH backend's "Environment Name" Console field
+# is set to "dev" (Backend → Settings → Environment). Merged on top of
+# apphosting.yaml — only override variables that differ from prod.
+# https://firebase.google.com/docs/app-hosting/multiple-environments
+#
+# Customize before applying:
+#   {{DEV_APP_URL}}         — public URL of the dev app
+
+env:
+  # Override the public URL so NextAuth callbacks resolve to dev, not prod
+  - variable: NEXTAUTH_URL
+    value: '{{DEV_APP_URL}}'
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Point DATABASE_URL at a separate dev secret. Set this with:
+  #   firebase apphosting:secrets:set DATABASE_URL_DEV --project <project-id>
+  #
+  # If you want dev to share the prod database (NOT recommended), remove
+  # this override — the base apphosting.yaml's DATABASE_URL binding wins.
+  - variable: DATABASE_URL
+    secret: DATABASE_URL_DEV
