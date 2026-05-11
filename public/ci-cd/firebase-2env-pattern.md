@@ -4,9 +4,13 @@
 **Last updated:** 2026-05-11
 **Companion docs:** [SMB-CICD-Framework.md](SMB-CICD-Framework.md), [deploy.md](deploy.md), [cicd-overview.html](cicd-overview.html)
 
-The canonical SMB CI/CD framework targets AWS/OIDC with a 3-environment model (dev / staging / prod). This document captures the Firebase variant of that framework — adapted for teams running on **Firebase App Hosting** with a **2-environment** model (dev / prod) and a **single GCP project**.
+## The Triarch default is **2 environments** (dev → prod)
 
-If you're on AWS, ignore this doc and use the main framework. If you're on Firebase App Hosting and want production-ready CI/CD that prevents accidental prod deploys, this is the pattern.
+Most SMBs ship with two environments. The promotion model is cloud-agnostic; this doc captures the Firebase App Hosting implementation specifically — backend provisioning, `apphosting.yaml` overlay loading, the `dev_backend` workflow input, and the 4-layer bypass-prevention model that prevents accidental prod deploys.
+
+**Staging is an optional, recommended middle state.** Add a third environment when team size, release-candidate discipline, or compliance scope justify the ceremony. See [SMB-CICD-Framework.md §3.1](SMB-CICD-Framework.md#31-promotion-model--2-env-default-3-env-optional) for when to upgrade. The migration is additive — create a third backend, add `apphosting.staging.yaml`, extend `env-select`. Nothing in this doc has to be undone.
+
+If you're on AWS / GCP / Azure with OIDC and want the cloud-agnostic version of this pattern, follow the main framework. The implementation details (`apphosting.yaml`, FAH backends, Console "Environment Name" field) are Firebase-specific; the **enforcement model is universal**.
 
 ---
 
@@ -431,10 +435,73 @@ Option A is cleaner (no commits carry a bypass token). Option B is faster if you
 
 ---
 
+## §3.3 — Adding staging (optional upgrade to 3-env)
+
+The 2-env pattern above is complete on its own. To upgrade to a 3-env model (dev → staging → prod), the migration is **additive** — no existing config is undone.
+
+1. **Create a third FAH backend** named `<app>-staging` in the same GCP project (Console: Build → App Hosting → Create backend → repository = same as prod → branch = `staging` → finish). Set its **Environment Name** Console field to `staging` so it auto-loads `apphosting.staging.yaml`.
+
+2. **Add `apphosting.staging.yaml`** to the repo root — overlay file with only what differs from prod:
+
+    ```yaml
+    env:
+      - variable: NEXTAUTH_URL
+        value: https://staging.<app>.example.com
+      - variable: DATABASE_URL
+        secret: DATABASE_URL_STAGING   # or share with prod if you accept the risk
+    ```
+
+3. **Create a `staging` branch** off `main` and push it. FAH Console wires `<app>-staging` to this branch.
+
+4. **Extend `env-select` in `ci-cd.yml`** to recognize three paths:
+
+    ```yaml
+    env-select:
+      ...
+      steps:
+        - id: pick
+          run: |
+            case "${{ github.ref }}" in
+              refs/heads/dev)     echo "env=dev"     >> $GITHUB_OUTPUT ;;
+              refs/heads/staging) echo "env=staging" >> $GITHUB_OUTPUT ;;
+              refs/heads/main)    echo "env=prod"    >> $GITHUB_OUTPUT ;;
+            esac
+    ```
+
+5. **Add a `verify-staging-deployed` job** on the prod path (the staging analog of `verify-dev-deployed`):
+
+    ```yaml
+    verify-staging-deployed:
+      needs: env-select
+      if: needs.env-select.outputs.environment == 'prod'
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+          with: { fetch-depth: 0 }
+        - run: |
+            git fetch origin staging
+            if ! git merge-base --is-ancestor HEAD origin/staging; then
+              echo "::error::Commit not on staging. Promote to staging first."
+              exit 1
+            fi
+    ```
+
+    `verify-dev-deployed` stays — both must pass. The prod path now requires: HEAD ∈ history(dev) AND HEAD ∈ history(staging). Promotion order is enforced as dev → staging → prod.
+
+6. **Extend the shared `deploy-firebase.yml@v7.1` call** with a `staging_backend` input *or* (simpler) add a third deploy-target branch in `env-select`'s output and a sibling `staging_backend` input on the deploy job. Confirm shared-workflows version supports it before assuming — at @v7.1, the `staging_backend` input does not exist; you'll need to either fork the reusable workflow or use a per-repo inline deploy step for staging.
+
+7. **Configure GitHub Environment `staging`** (Settings → Environments) — typically 1 reviewer, 5-min wait timer (or none on solo-dev), deployment-branches policy = `staging` only.
+
+8. **Branch protection on `staging`** — same shape as `main`: required status checks including `verify-dev-deployed`, no direct pushes, PR-only.
+
+PR flow becomes: `feature → PR base=dev → merge to dev` → `PR base=staging head=dev → merge to staging` → `PR base=main head=staging → merge to main`. Each promotion satisfies the corresponding ancestor check.
+
+---
+
 ## See also
 
-- [SMB-CICD-Framework.md](SMB-CICD-Framework.md) — the broader AWS/OIDC-targeted framework this Firebase variant slots into
-- [deploy.md](deploy.md) — Claude-Code-driven deployment runbook (Step 1: pre-requisites includes Firebase backend probe)
+- [SMB-CICD-Framework.md](SMB-CICD-Framework.md) — the broader cloud-agnostic framework this Firebase implementation slots into
+- [deploy.md](deploy.md) — Claude-Code-driven deployment runbook (Step 1: pre-requisites includes Firebase backend probe; R-F1 for end-to-end bootstrap)
 - [cicd-overview.html](cicd-overview.html) — exec-level overview with diagrams
 - [Firebase docs — multiple environments](https://firebase.google.com/docs/app-hosting/multiple-environments) — the authoritative source on the apphosting.yaml overlay mechanism
 - [Triarch shared-workflows](https://github.com/triarchsecurity/shared-workflows) — the `@v7.1` reusable workflows referenced throughout

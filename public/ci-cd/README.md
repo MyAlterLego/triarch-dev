@@ -57,14 +57,18 @@ cd triarch-cicd-package
 
 The `deploy.md` runbook makes this decision for you based on `discovery.sh` output. **You almost certainly want lite first.** Switch to full when you grow into it.
 
-## Pick your deploy target: AWS/OIDC (3-env) vs Firebase (2-env)
+## Pick your environment count: 2 (default) or 3 (optional, recommended)
 
-| Target | Environments | Best for | Reference |
-|---|---|---|---|
-| **AWS / GCP / Azure with OIDC** | 3 (dev / staging / prod) | Multi-cloud, regulated environments, teams ≥3 engineers | [SMB-CICD-Framework.md §3.1](SMB-CICD-Framework.md#31-three-track-promotion) (default) |
-| **Firebase App Hosting** | 2 (dev / prod) | Single GCP project, solo / small-team Next.js apps, fastest path to production-ready CI/CD | [firebase-2env-pattern.md](firebase-2env-pattern.md) (variant) |
+| Count | Topology | Best for |
+|---|---|---|
+| **2 environments** ← **default** | `dev → prod` | Most SMBs. Solo / small team, single product, fast iteration. The 4-layer bypass-prevention model still applies. |
+| **3 environments** ← upgrade | `dev → staging → prod` | Teams ≥4 engineers, release-candidate model with soak time, compliance scope requiring non-prod-but-production-like env, high deployment cadence. |
 
-The Firebase variant uses a single GCP project with two App Hosting backends per app, a `dev` branch wired to the dev backend, and `main` wired to the prod backend. It preserves the same enforcement properties as the AWS pattern (branch-gated deploys, GitHub Environment binding, hard bypass prevention via a `verify-dev-deployed` CI gate) while fitting Firebase's constraints.
+Environment count is **independent** of cloud. Both work on AWS / GCP / Azure with OIDC, or on Firebase App Hosting (which uses separate backends within one GCP project). Pick a count based on team size and ceremony budget, then pick a cloud based on existing relationships.
+
+- **2-env on Firebase** (canonical Triarch internal pattern): [firebase-2env-pattern.md](firebase-2env-pattern.md)
+- **2-env or 3-env on AWS / GCP / Azure**: follow the main framework ([SMB-CICD-Framework.md §3.1](SMB-CICD-Framework.md#31-promotion-model--2-env-default-3-env-optional))
+- The 4-layer bypass-prevention model (branch protection + PR flow + `verify-dev-deployed` CI gate + GitHub Environment branch policy) applies regardless of environment count or cloud.
 
 ---
 

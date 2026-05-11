@@ -76,9 +76,11 @@ gh api repos/$ORG/$REPO/code-scanning/default-setup 2>&1 | head -3
 # Public repos always pass this even on Free.
 ```
 
-**Plan-tier branching (3 tiers, NOT 2):**
-- `plan=enterprise` — **architecture's full vision**. Adds environment-level required reviewers + wait timers on private repos (Enterprise-only). Apply the full deploy flow with 3 protected envs WITH reviewers/wait-timers per the architecture diagram (`env: dev — auto`, `env: staging — 1 reviewer / 5min`, `env: prod — 2 reviewers / 30min`).
-- `plan=team` — the framework's **assumed baseline**. All pipeline gates available EXCEPT env-level reviewers/wait-timers (Enterprise-only on private). Apply: ruleset (signed commits, linear history, required reviews, required status checks) + 3 environments (basic) + `deployment_branch_policy: protected_branches: true` on staging/prod (so only the protected `main` branch can deploy). The reviewer gate happens at the PR level via the ruleset, not at the env level.
+**Environment count first:** Before plan-tier branching, decide with the user whether the project ships with **2 environments (dev → prod, default)** or **3 (dev → staging → prod, optional)**. Staging is recommended when team size ≥4, when release-candidate soak time is part of the dev cycle, or when compliance scope demands a non-prod-but-production-like environment. **Default to 2 unless the user explicitly says they want staging.** All remediations below apply at either count — just skip the staging steps in C-1/R-2/R-3 when 2-env.
+
+**Plan-tier branching (3 plan tiers, NOT environment counts):**
+- `plan=enterprise` — **architecture's full vision**. Adds environment-level required reviewers + wait timers on private repos (Enterprise-only). Apply the full deploy flow with reviewers/wait-timers per the architecture diagram (`env: dev — auto`, [if 3-env] `env: staging — 1 reviewer / 5min`, `env: prod — 2 reviewers / 30min`).
+- `plan=team` — the framework's **assumed baseline**. All pipeline gates available EXCEPT env-level reviewers/wait-timers (Enterprise-only on private). Apply: ruleset (signed commits, linear history, required reviews, required status checks) + 2 or 3 environments (basic) + `deployment_branch_policy: protected_branches: true` on prod (and staging if applicable) so only the protected `main` branch can deploy. The reviewer gate happens at the PR level via the ruleset, not at the env level. For Firebase 2-env projects, use **R-F1** instead of C-1.
 - `plan=free` AND `visibility=private` — **degraded fallback**. R-4, C-1, C-4, C-5, C-8 cannot be enforced (org-Free locks branch protection, rulesets, environments on private repos; the 2020 "branch protection became free" change applies to **personal** Free, not org Free). Apply file-based remediations only (CODEOWNERS, Dependabot, threat model, ci-lite.yml, pre-commit) and recommend Team upgrade. Do NOT attempt `gh api -X PUT .../branches/main/protection` or `gh api -X POST .../rulesets` on private repos — both return 403 "Upgrade to GitHub Pro".
 - `plan=free` AND `visibility=public` — full features (Free's pipeline gates work on public repos). Apply Team-equivalent flow.
 
@@ -286,8 +288,9 @@ Each entry maps a gap-analysis ID to the action you take. Use `github-cicd-scaff
 ### R-6 — Hosting target
 - **Action:** Out of scope for this prompt — point the user at `cicd-walkthrough.html` Stage 1 if they haven't picked / provisioned a cloud yet.
 
-### C-1 — Create 3 protected environments
-- **Team-tier action (private repos):** Create the environments + apply `deployment_branch_policy: protected_branches: true` on staging/prod. **Do NOT pass `reviewers` or `wait_timer` fields on Team** — they 422 with "Failed to create the environment protection rule. Please ensure the billing plan supports..." (env-level reviewers + wait-timers are Enterprise-only on private repos).
+### C-1 — Create protected environments (2 by default, 3 if user opted in to staging)
+- **Decision first:** confirm the user's environment count from §1. **Default = 2 (dev + prod).** Only create `staging` when explicitly requested.
+- **Team-tier action (private repos):** Create the environments + apply `deployment_branch_policy: protected_branches: true` on prod (and on staging if 3-env). **Do NOT pass `reviewers` or `wait_timer` fields on Team** — they 422 with "Failed to create the environment protection rule. Please ensure the billing plan supports..." (env-level reviewers + wait-timers are Enterprise-only on private repos).
   ```bash
   # Get user/team IDs (use teams when they exist; users as fallback)
   USER_ID=$(gh api users/$DEPLOYER_LOGIN --jq .id)
@@ -296,6 +299,7 @@ Each entry maps a gap-analysis ID to the action you take. Use `github-cicd-scaff
   gh api -X PUT repos/$ORG/$REPO/environments/dev
 
   # staging: only the protected default branch (main) can deploy
+  # SKIP this block when 2-env is in scope.
   cat > /tmp/env-staging.json <<EOF
   {
     "deployment_branch_policy": {"protected_branches": true, "custom_branch_policies": false}
@@ -410,7 +414,7 @@ Each entry maps a gap-analysis ID to the action you take. Use `github-cicd-scaff
 - Only one FAH backend exists per app, OR
 - The current workflow doesn't gate dev vs prod (e.g., every push to main deploys; no `environment` input passed to the deploy job).
 
-**Skip when** the AWS/OIDC 3-env model from R-2/R-3/C-1 is being applied instead. R-F1 is the Firebase-flavored *alternative*, not an addition.
+**Skip when** the AWS/OIDC remediation chain (R-2/R-3/C-1) is being applied instead. R-F1 is the Firebase-specific implementation of the same enforcement model; pick one based on where the runtime lives, not on environment count. R-F1 ships 2-env (dev/prod) by default. To add staging on Firebase, complete R-F1 first then run §3.3 of [firebase-2env-pattern.md](firebase-2env-pattern.md) as a follow-up step.
 
 This is the comprehensive playbook for the [Firebase 2-environment pattern](firebase-2env-pattern.md). Each step is independently scriptable; apply in order.
 

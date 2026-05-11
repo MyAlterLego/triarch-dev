@@ -96,33 +96,45 @@ flowchart LR
 
 ## 3. Environment model
 
-### 3.1 Three-track promotion
+### 3.1 Promotion model — 2-env default, 3-env optional
+
+**Default: dev → prod (2 environments).** Two GitHub Environments, two cloud accounts/subscriptions/projects (or, on Firebase, two App Hosting backends in one GCP project). Suitable for most SMBs: small team, single product, fast iteration. The 4-layer bypass-prevention model below makes prod unreachable without passing through dev.
+
+**Recommended upgrade: dev → staging → prod (3 environments).** Add staging when any of:
+
+- Team size ≥ 4 engineers — dev becomes too noisy as a verification bed
+- Release-candidate model with stakeholder soak time before prod cutover
+- Compliance scope requires a non-prod-but-production-like environment for audit evidence
+- Deployment cadence is high enough that dev cycles before verification completes
 
 ```mermaid
 flowchart LR
     PR[Pull request]
     Dev[(dev)]
-    Stg[(staging)]
+    Stg[("staging<br/>(optional)")]
     Prd[(prod)]
 
-    PR -->|merge to main<br/>auto-deploy| Dev
-    Dev -->|"manual: required reviewer<br/>+ wait timer 0–10min"| Stg
-    Stg -->|"manual: 2 reviewers<br/>+ wait timer 30min<br/>+ change ticket ref"| Prd
+    PR -->|merge to dev<br/>auto-deploy| Dev
+    Dev -.->|"optional: 1 reviewer<br/>+ 5min wait"| Stg
+    Dev -->|"PR dev→main<br/>verify-dev-deployed gate"| Prd
+    Stg -.->|"2 reviewers<br/>+ 30min wait<br/>+ change ticket"| Prd
 
     classDef gate fill:#fff3cd,stroke:#856404
-    class Dev,Stg,Prd gate
+    classDef optional fill:#fff,stroke:#aaa,stroke-dasharray:5 5
+    class Dev,Prd gate
+    class Stg optional
 ```
 
-Three GitHub **Environments** (`dev`, `staging`, `prod`), each owning its own secrets, OIDC trust policy, and protection rules. GitHub allows up to six deployment-protection rules per environment ([docs](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)); we use:
+GitHub allows up to six deployment-protection rules per environment ([docs](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)). Per-environment defaults:
 
-- **dev** — branch restriction (`main` only), no reviewers, smoke-test job is the only gate.
-- **staging** — 1 required reviewer (any engineer), prevent-self-review on, 5-minute wait timer for cooling-off, and a hard requirement that the deploying SHA carries SLSA provenance.
-- **prod** — 2 required reviewers (one from `@triarch/release-managers` group via CODEOWNERS), prevent-self-review on, 30-minute wait timer, change-ticket reference required in the run input, and the same SLSA + signed-image gate.
+- **dev** — branch restriction (`dev` only), no reviewers, smoke-test job is the only gate.
+- **staging** *(optional)* — 1 required reviewer (any engineer), prevent-self-review on, 5-minute wait timer, SLSA provenance required.
+- **prod** — branch restriction (`main` only), `verify-dev-deployed` gate (HEAD must be ancestor of `origin/dev` — see [firebase-2env-pattern.md](firebase-2env-pattern.md) for the canonical implementation), reviewer rule when multi-developer (Enterprise-only on private repos). Solo-dev orgs can skip the reviewer rule — the mechanical block (`verify-dev-deployed`) enforces promotion discipline.
 
-Hard separation rules:
+Hard separation rules (apply at any environment count):
 
-- Each environment lives in its own cloud account/subscription/project (account-level blast radius).
-- Each environment has its own IDP tenant **or** at minimum its own application registration (no shared client secrets).
+- Each environment lives in its own cloud account/subscription/project (account-level blast radius). *Firebase exception: separate App Hosting backends within one GCP project; equivalent isolation via per-backend service accounts + per-environment Secret Manager bindings.*
+- Each environment has its own IDP tenant, **or** at minimum its own application registration (no shared client secrets).
 - Database per environment; **no** shared DB with row-level filtering.
 - Production OIDC trust policy scoped to `repo:<org>/<repo>:environment:prod` and `ref:refs/tags/v*` only. Pre-prod can trust `main` and tags; dev can trust any branch.
 
@@ -138,19 +150,19 @@ hotfix/*  ──●──────────PR─────/
 
 Trunk-based, short-lived branches, squash merge, conventional commits, signed commits required (`git config commit.gpgsign true` enforced via repo ruleset). Releases happen by tagging `v*` on `main`; the tag is what triggers the prod environment workflow.
 
-### 3.3 Firebase variant (2-environment model)
+### 3.3 Firebase-specific implementation notes
 
-The 3-environment AWS/OIDC pattern above is the canonical recommendation. For teams running on **Firebase App Hosting**, a simpler **2-environment** variant (dev + prod, single GCP project, two FAH backends per app) is in use across every Triarch internal project. The pattern preserves the same enforcement properties — branch-gated deploys, GitHub Environment binding on prod, hard bypass prevention — adapted to the constraints of FAH (Console-driven branch wiring, repo-attached package secrets, no per-environment GCP project).
+The promotion model above (2-env default, 3-env optional) is **cloud-agnostic** — same enforcement properties regardless of where the runtime lives. Firebase App Hosting has implementation specifics worth a dedicated reference, particularly around backend provisioning, `apphosting.yaml` overlay loading, and the `dev_backend` input on the shared deploy workflow.
 
-See [firebase-2env-pattern.md](firebase-2env-pattern.md) for the full pattern, including:
+See [firebase-2env-pattern.md](firebase-2env-pattern.md) for:
 
 - Backend provisioning + Console "Environment Name" field for `apphosting.dev.yaml` auto-overlay
 - The shared `deploy-firebase.yml@v7.1` reusable workflow with `dev_backend` input
-- The four layers of bypass prevention (branch protection + PR flow + `verify-dev-deployed` CI gate + GitHub Environment branch policy)
+- The 4-layer bypass-prevention implementation (branch protection + PR flow + `verify-dev-deployed` CI gate + GitHub Environment branch policy) in Firebase-specific YAML
 - Naming-convention caveats (when the auto-suffix breaks and you need `dev_backend` override)
 - Migration playbook from a 1-env setup
 
-If you're greenfielding on AWS, use §3.1. If you're on Firebase or migrating an existing Firebase project, use the variant doc.
+Adding staging on Firebase is straightforward: create a third backend named `<app>-staging`, mirror the overlay pattern with `apphosting.staging.yaml`, add a third `staging` branch wired to it, and extend `env-select` to recognize the third path. The 4-layer model expands accordingly (`verify-dev-deployed` becomes `verify-staging-deployed` for the prod path).
 
 ---
 
