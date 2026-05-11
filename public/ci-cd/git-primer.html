@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Triarch · Git &amp; GitHub Primer</title>
+<link rel="icon" type="image/png" href="https://www.triarch.dev/triarch-logo.png" />
+<meta name="description" content="An interactive cinematic primer on git and GitHub fundamentals: commits, branches, push/pull, pull requests, the three merge strategies, conflicts, and undos." />
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg-2: #14140e;
+    --panel: #1f1d14;
+    --panel-2: #2b2818;
+    --border: #3a3424;
+    --border-strong: #5a4d2c;
+    --text: #f5ecd8;
+    --text-dim: #c9b88a;
+    --text-faint: #8a7956;
+    --accent: #e8a317;
+    --accent-2: #c97d1a;
+    --accent-3: #f5cc5b;
+    --accent-cool: #5ac8fa;
+    --accent-purple: #b794f6;
+    --warn: #d97706;
+    --danger: #c84d4d;
+    --success: #b8a045;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(1200px 700px at 10% -10%, rgba(232,163,23,0.22), transparent 65%),
+      radial-gradient(900px 600px at 95% 100%, rgba(201,125,26,0.18), transparent 65%),
+      radial-gradient(1100px 700px at 50% 50%, rgba(245,204,91,0.06), transparent 70%);
+    pointer-events: none;
+    animation: bgDrift 30s ease-in-out infinite alternate;
+  }
+  @keyframes bgDrift {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(-30px, 20px); }
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    font-size: 0.85em;
+    background: rgba(255,255,255,0.06);
+    padding: 0.05em 0.4em;
+    border-radius: 4px;
+  }
+
+  /* Top bar */
+  .movie-bar {
+    position: fixed; top: 0; left: 0; right: 0; height: 56px;
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0 1.5rem; z-index: 100;
+    background: linear-gradient(180deg, rgba(10,10,15,0.85), rgba(10,10,15,0));
+    backdrop-filter: blur(8px);
+  }
+  .movie-bar .brand {
+    display: flex; align-items: center; gap: 0.55rem;
+    font-weight: 700; font-size: 0.86rem; letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  .movie-bar .brand img { height: 26px; }
+  .movie-bar .brand .mark { color: var(--accent); }
+  .movie-bar .controls { margin-left: auto; display: flex; align-items: center; gap: 0.65rem; }
+  .movie-bar a, .movie-bar button {
+    font-family: inherit; font-size: 0.78rem;
+    color: var(--text-dim);
+    padding: 0.4rem 0.85rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .movie-bar a:hover, .movie-bar button:hover {
+    color: var(--accent); border-color: var(--accent);
+    background: rgba(232,163,23,0.06);
+    text-decoration: none;
+  }
+  .movie-bar button.playing { color: var(--accent-3); border-color: rgba(245,204,91,0.4); }
+  .movie-bar .ctr-counter {
+    color: var(--text-faint); font-size: 0.75rem;
+    font-variant-numeric: tabular-nums; padding: 0 0.5rem;
+  }
+
+  .autoplay-progress {
+    position: fixed; top: 56px; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    width: 0%; z-index: 95; opacity: 0;
+    box-shadow: 0 0 10px var(--accent);
+    pointer-events: none;
+  }
+  .autoplay-progress.active { opacity: 1; }
+
+  /* Scene */
+  .scene {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 5rem 4rem 6rem;
+    opacity: 0; transform: scale(1.02);
+    transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none; z-index: 10;
+  }
+  @media (max-width: 900px) { .scene { padding: 5rem 1.5rem 6rem; } }
+  .scene.active { opacity: 1; transform: scale(1); pointer-events: auto; z-index: 20; }
+  .scene.behind { opacity: 0; transform: scale(0.98); }
+  .scene-content {
+    max-width: 1100px; width: 100%;
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; gap: 1.5rem;
+  }
+
+  .reveal {
+    opacity: 0; transform: translateY(24px);
+    transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: 0.2s;
+  }
+  .scene.active .reveal { opacity: 1; transform: translateY(0); }
+  .scene.active .reveal.d1 { transition-delay: 0.4s; }
+  .scene.active .reveal.d2 { transition-delay: 0.6s; }
+  .scene.active .reveal.d3 { transition-delay: 0.8s; }
+  .scene.active .reveal.d4 { transition-delay: 1.0s; }
+  .scene.active .reveal.d5 { transition-delay: 1.2s; }
+  .scene.active .reveal.d6 { transition-delay: 1.4s; }
+
+  .eyebrow {
+    font-size: 0.78rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.18em;
+    color: var(--accent);
+    background: linear-gradient(135deg, rgba(232,163,23,0.1), rgba(201,125,26,0.06));
+    border: 1px solid rgba(232,163,23,0.25);
+    padding: 0.35rem 1rem;
+    border-radius: 999px;
+    display: inline-block;
+  }
+  .eyebrow.cool { color: var(--accent-cool); background: rgba(90,200,250,0.08); border-color: rgba(90,200,250,0.25); }
+  .eyebrow.purple { color: var(--accent-purple); background: rgba(183,148,246,0.08); border-color: rgba(183,148,246,0.25); }
+  .eyebrow.danger { color: var(--danger); background: rgba(200,77,77,0.08); border-color: rgba(200,77,77,0.25); }
+  .eyebrow.warn { color: var(--warn); background: rgba(217,119,6,0.08); border-color: rgba(217,119,6,0.25); }
+
+  h1.movie-title {
+    font-size: clamp(2rem, 6vw, 4.5rem);
+    font-weight: 700; line-height: 1.05;
+    letter-spacing: -0.02em; color: var(--text);
+  }
+  h1.movie-title .hl,
+  h1.movie-title .hl-2,
+  h1.movie-title .grad {
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+    display: inline-block;
+  }
+  h1.movie-title .hl  { background-image: linear-gradient(135deg, #e8a317 0%, #c97d1a 100%); }
+  h1.movie-title .hl-2{ background-image: linear-gradient(135deg, #f5cc5b 0%, #c97d1a 100%); }
+  h1.movie-title .grad{ background-image: linear-gradient(135deg, #f5cc5b 0%, #e8a317 50%, #5ac8fa 100%); }
+
+  .subtitle {
+    font-size: clamp(1rem, 1.5vw, 1.3rem);
+    color: var(--text-dim);
+    max-width: 800px; line-height: 1.55;
+  }
+  .subtitle strong { color: var(--text); font-weight: 600; }
+
+  .hero-logo {
+    width: 96px; height: 96px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(232,163,23,0.06), rgba(201,125,26,0.06));
+    border: 1px solid var(--border);
+    padding: 6px; margin-bottom: 0.5rem;
+    box-shadow:
+      0 0 0 2px rgba(232,163,23,0.4),
+      0 0 0 5px rgba(201,125,26,0.15),
+      0 0 40px rgba(232,163,23,0.25);
+  }
+
+  /* Nav arrows */
+  .nav-arrow {
+    position: fixed; top: 50%;
+    transform: translateY(-50%);
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 1.4rem;
+    cursor: pointer; z-index: 90;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .nav-arrow:hover { color: var(--accent); border-color: var(--accent); background: rgba(232,163,23,0.1); }
+  .nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
+  .nav-prev { left: 1rem; }
+  .nav-next { right: 1rem; }
+  @media (max-width: 600px) {
+    .nav-arrow { width: 40px; height: 40px; }
+    .nav-prev { left: 0.5rem; } .nav-next { right: 0.5rem; }
+  }
+
+  .progress-rail {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 90;
+    background: linear-gradient(0deg, rgba(10,10,15,0.7), rgba(10,10,15,0));
+    pointer-events: none;
+  }
+  .progress-dots { display: flex; gap: 6px; pointer-events: auto; }
+  .progress-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    cursor: pointer; transition: all 0.25s;
+    border: none; padding: 0;
+  }
+  .progress-dot:hover { background: rgba(255,255,255,0.4); transform: scale(1.4); }
+  .progress-dot.done { background: var(--accent); opacity: 0.6; }
+  .progress-dot.active { background: var(--accent); transform: scale(1.6); box-shadow: 0 0 12px var(--accent); }
+  .act-marker { width: 14px; height: 1px; background: var(--border); }
+
+  /* Card grid */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem;
+    margin-top: 1.25rem;
+    width: 100%;
+  }
+  .card-grid.three { grid-template-columns: repeat(3, 1fr); }
+  .card-grid.four { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 800px) { .card-grid, .card-grid.three, .card-grid.four { grid-template-columns: 1fr; } }
+  .feat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    padding: 1.1rem 1.25rem;
+    border-radius: 10px;
+    text-align: left;
+  }
+  .feat-card .icon { font-size: 1.4rem; margin-bottom: 0.5rem; }
+  .feat-card h4 { font-size: 0.98rem; color: var(--text); margin-bottom: 0.3rem; }
+  .feat-card p { font-size: 0.82rem; color: var(--text-dim); line-height: 1.55; }
+  .feat-card .lbl {
+    font-size: 0.66rem; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 0.4rem; font-weight: 700;
+  }
+  .feat-card.cool { border-top-color: var(--accent-cool); }
+  .feat-card.cool .lbl { color: var(--accent-cool); }
+  .feat-card.purple { border-top-color: var(--accent-purple); }
+  .feat-card.purple .lbl { color: var(--accent-purple); }
+  .feat-card.success { border-top-color: var(--success); }
+  .feat-card.success .lbl { color: var(--success); }
+  .feat-card.danger { border-top-color: var(--danger); }
+  .feat-card.danger .lbl { color: var(--danger); }
+
+  /* Code-look snippets */
+  .code-snippet {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.95rem 1.15rem;
+    font-family: ui-monospace, monospace;
+    font-size: 0.85rem;
+    color: #e8d4a4;
+    text-align: left;
+    margin-top: 1rem;
+    max-width: 760px;
+    line-height: 1.55;
+    white-space: pre;
+    overflow-x: auto;
+    width: 100%;
+  }
+  .code-snippet.wide { max-width: 900px; }
+  .code-snippet .com { color: #837659; font-style: italic; }
+  .code-snippet .key { color: var(--accent); }
+  .code-snippet .str { color: var(--accent-3); }
+  .code-snippet .arrow { color: var(--accent-2); }
+  .code-snippet .ok { color: var(--success); }
+  .code-snippet .bad { color: var(--danger); }
+  .code-snippet .hl { background: rgba(232,163,23,0.15); padding: 0 0.2rem; }
+
+  /* Three-tree visualization */
+  .three-trees {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+    width: 100%;
+    max-width: 900px;
+  }
+  @media (max-width: 700px) { .three-trees { grid-template-columns: 1fr; } }
+  .tree {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 1.1rem 1.25rem;
+    text-align: left;
+  }
+  .tree h4 { color: var(--text); margin-bottom: 0.4rem; font-size: 1.05rem; }
+  .tree .what { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 0.6rem; }
+  .tree .cmd {
+    font-family: ui-monospace, monospace;
+    font-size: 0.78rem;
+    color: var(--accent-3);
+    background: rgba(0,0,0,0.3);
+    padding: 0.35rem 0.6rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    display: inline-block;
+  }
+
+  /* Compare table */
+  .compare {
+    width: 100%; max-width: 880px;
+    border-collapse: collapse;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 1rem;
+    font-size: 0.86rem;
+  }
+  .compare th, .compare td {
+    padding: 0.7rem 0.95rem; text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .compare th {
+    background: var(--bg-2);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .compare tr:last-child td { border-bottom: none; }
+  .compare td .icn.bad { color: var(--danger); font-weight: 700; }
+  .compare td .icn.good { color: var(--success); font-weight: 700; }
+  .compare td .icn.ok { color: var(--warn); font-weight: 700; }
+
+  /* CTA */
+  .cta-buttons {
+    display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+    margin-top: 2rem;
+  }
+  .cta-btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.95rem 1.8rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--bg);
+    border-radius: 8px;
+    font-weight: 700; font-size: 1rem;
+    cursor: pointer;
+    border: none; text-decoration: none;
+    transition: all 0.2s;
+    font-family: inherit;
+    box-shadow: 0 4px 20px rgba(232,163,23,0.3);
+  }
+  .cta-btn:hover { filter: brightness(1.15); transform: translateY(-2px); text-decoration: none; }
+  .cta-btn.secondary {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border-strong);
+    box-shadow: none;
+  }
+  .cta-btn.secondary:hover { background: var(--panel); }
+
+  /* Workflow flow visual */
+  .flow-line {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0.65rem; flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+  .flow-node {
+    background: var(--panel);
+    border: 1px solid var(--border-strong);
+    padding: 0.65rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: var(--text);
+    text-align: center;
+    min-width: 110px;
+  }
+  .flow-node.start { border-color: var(--accent-cool); color: var(--accent-cool); }
+  .flow-node.end { border-color: var(--success); color: var(--success); }
+  .flow-arrow { color: var(--accent); font-size: 1.2rem; }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .scene, .reveal, body::before {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="movie-bar">
+  <div class="brand">
+    <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" />
+    <span><span class="mark">TRIARCH</span> · Git &amp; GitHub primer</span>
+  </div>
+  <div class="controls">
+    <span class="ctr-counter" id="ctrCounter">1 / 22</span>
+    <button id="autoPlayBtn" title="Auto-play (8s per scene)">▶ auto</button>
+    <a href="github-movie.html">▶ Security</a>
+    <a href="index.html">Home</a>
+  </div>
+</div>
+
+<div class="autoplay-progress" id="autoplayProgress"></div>
+
+<!-- =============== Scenes =============== -->
+
+<!-- ACT 1 — SETUP -->
+
+<!-- Scene 1 -->
+<section class="scene active" data-scene="1" data-act="1">
+  <div class="scene-content">
+    <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" class="hero-logo reveal" />
+    <div class="eyebrow reveal d1">Triarch Security · An interactive primer</div>
+    <h1 class="movie-title reveal d2">Git &amp; GitHub —<br/>the <span class="hl">primer</span>.</h1>
+    <p class="subtitle reveal d3">Commits, branches, pushes, pull requests, the three merge strategies, conflicts, undos. What each thing really is, and when to use which.</p>
+    <div class="reveal d4" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-faint)">
+      Press <code>→</code> or click <strong>›</strong> to begin · <code>Esc</code> for home
+    </div>
+  </div>
+</section>
+
+<!-- Scene 2: Git vs GitHub -->
+<section class="scene behind" data-scene="2" data-act="1">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 1 · Setup</div>
+    <h1 class="movie-title reveal d1">Git is the engine.<br/><span class="hl">GitHub</span> is the highway.</h1>
+    <div class="card-grid reveal d2">
+      <div class="feat-card">
+        <div class="icon">⚙️</div>
+        <div class="lbl">The tool</div>
+        <h4>Git</h4>
+        <p>A program you run on your laptop. Version-controls files. Works offline. Tracks who changed what, when, why. Created by Linus Torvalds in 2005.</p>
+      </div>
+      <div class="feat-card cool">
+        <div class="icon">🌐</div>
+        <div class="lbl">The service</div>
+        <h4>GitHub</h4>
+        <p>A website that hosts your git repos remotely. Adds collaboration: pull requests, code review, issues, Actions, identity. You don't need it to use git — but at scale you do.</p>
+      </div>
+    </div>
+    <p class="subtitle reveal d3" style="margin-top:1rem;font-size:1rem"><strong>Two different things.</strong> You install git locally. You authenticate to GitHub remotely. Git pushes commits to GitHub; GitHub renders them.</p>
+  </div>
+</section>
+
+<!-- Scene 3: Three trees -->
+<section class="scene behind" data-scene="3" data-act="1">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Mental model</div>
+    <h1 class="movie-title reveal d1">Three places your code <span class="hl">lives</span>.</h1>
+    <p class="subtitle reveal d2">Every file in a git repo is in one of three "trees" at any moment. Most confusing git errors come from forgetting which tree you're in.</p>
+    <div class="three-trees reveal d3">
+      <div class="tree">
+        <h4>1. Working directory</h4>
+        <div class="what">The actual files on disk. What your editor sees. Anything you've changed but not yet staged.</div>
+        <span class="cmd">edit a file</span>
+      </div>
+      <div class="tree">
+        <h4>2. Staging area</h4>
+        <div class="what">A list of "I want this change in the next commit." Lets you prepare a coherent commit before making it.</div>
+        <span class="cmd">git add &lt;file&gt;</span>
+      </div>
+      <div class="tree">
+        <h4>3. Repository</h4>
+        <div class="what">Permanent history. Once committed, this snapshot is identified by a SHA and can never be lost (unless you really try).</div>
+        <span class="cmd">git commit</span>
+      </div>
+    </div>
+    <p class="subtitle reveal d4" style="margin-top:0.85rem;font-size:0.95rem"><code>git status</code> tells you what's in each tree right now. Run it constantly — it's git's "where am I" command.</p>
+  </div>
+</section>
+
+<!-- ACT 2 — THE BASICS -->
+
+<!-- Scene 4: Clone -->
+<section class="scene behind" data-scene="4" data-act="2">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 2 · Your first contribution</div>
+    <h1 class="movie-title reveal d1">Step 1 — <span class="hl">clone</span> the repo.</h1>
+    <p class="subtitle reveal d2">A clone is a complete copy of the repo — every commit, every branch, every tag. You can work offline. You push changes back when ready.</p>
+    <div class="code-snippet reveal d3"><span class="com"># Clone over SSH (recommended for daily work)</span>
+<span class="key">git</span> clone git@github.com:<span class="str">acme-corp/web-app</span>.git
+<span class="key">cd</span> web-app
+
+<span class="com"># See what you got</span>
+<span class="key">git</span> log --oneline -5
+<span class="com"># a1b2c3d (HEAD -&gt; main, origin/main) feat: add user login
+# e4f5g6h fix: typo in README
+# ...</span>
+
+<span class="key">git</span> branch -a       <span class="com"># list all branches</span>
+<span class="key">git</span> remote -v       <span class="com"># where does this clone push to?</span></div>
+  </div>
+</section>
+
+<!-- Scene 5: Commit -->
+<section class="scene behind" data-scene="5" data-act="2">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 2 · The atom of git</div>
+    <h1 class="movie-title reveal d1">Edit. Stage. <span class="hl">Commit</span>.</h1>
+    <p class="subtitle reveal d2">A commit is a snapshot — not a diff. It records the entire state of all tracked files at one moment, plus an author, a message, and a parent commit. Identified by a 40-char SHA.</p>
+    <div class="code-snippet reveal d3"><span class="com"># 1. Edit some files</span>
+<span class="key">vim</span> src/auth.js
+
+<span class="com"># 2. Stage what you want in the next commit</span>
+<span class="key">git</span> add src/auth.js                  <span class="com"># single file</span>
+<span class="key">git</span> add -p                            <span class="com"># interactive — stage individual hunks</span>
+<span class="key">git</span> add .                             <span class="com"># everything (be careful)</span>
+
+<span class="com"># 3. Commit (snapshot + message)</span>
+<span class="key">git</span> commit -m <span class="str">"feat(auth): handle expired tokens on refresh"</span>
+
+<span class="com"># Or open an editor for a multi-line message:</span>
+<span class="key">git</span> commit</div>
+  </div>
+</section>
+
+<!-- Scene 6: Commit messages -->
+<section class="scene behind" data-scene="6" data-act="2">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 2 · Commits future-you will love</div>
+    <h1 class="movie-title reveal d1">Write <span class="hl">conventional</span> commit messages.</h1>
+    <p class="subtitle reveal d2">Format: <code>type(scope): subject</code>. Type is one of <code>feat fix docs chore refactor test perf</code>. Body explains <em>why</em>, not <em>what</em> (the diff already shows what).</p>
+    <table class="compare reveal d3">
+      <thead><tr><th>Bad</th><th>Good</th><th>Better</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="icn bad">✕</span> <code>fix stuff</code></td>
+          <td><span class="icn ok">~</span> <code>fix: handle expired tokens</code></td>
+          <td><span class="icn good">✓</span> <code>fix(auth): refresh tokens before expiry</code></td>
+        </tr>
+        <tr>
+          <td><span class="icn bad">✕</span> <code>changes</code></td>
+          <td><span class="icn ok">~</span> <code>refactor: split user.js</code></td>
+          <td><span class="icn good">✓</span> <code>refactor(user): extract validation to user-rules.js</code></td>
+        </tr>
+        <tr>
+          <td><span class="icn bad">✕</span> <code>wip</code></td>
+          <td><span class="icn ok">~</span> <code>feat: add login</code></td>
+          <td><span class="icn good">✓</span> <code>feat(login): support OAuth via Google</code></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="subtitle reveal d4" style="margin-top:0.85rem;font-size:0.95rem">Bonus: tools like <code>semantic-release</code> read these to auto-version your releases. Good commits become free changelogs.</p>
+  </div>
+</section>
+
+<!-- Scene 7: Push -->
+<section class="scene behind" data-scene="7" data-act="2">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 2 · Share what you've done</div>
+    <h1 class="movie-title reveal d1">Step 3 — <span class="hl">push</span> to the remote.</h1>
+    <p class="subtitle reveal d2">Until you push, your commits exist only on your laptop. Push uploads them to GitHub so collaborators can see them.</p>
+    <div class="code-snippet reveal d3"><span class="com"># First time pushing a new branch:</span>
+<span class="key">git</span> push -u origin feature/login
+<span class="com"># -u sets the upstream so future `git push` and `git pull` know where</span>
+
+<span class="com"># After that, just:</span>
+<span class="key">git</span> push
+
+<span class="com"># See what's about to be pushed before doing it:</span>
+<span class="key">git</span> log origin/feature/login..feature/login --oneline
+
+<span class="com"># Force push? Almost never. Use --force-with-lease if you must:</span>
+<span class="key">git</span> push --force-with-lease         <span class="com"># refuses if remote has commits you don't have</span></div>
+  </div>
+</section>
+
+<!-- ACT 3 — BRANCHES -->
+
+<!-- Scene 8: What is a branch -->
+<section class="scene behind" data-scene="8" data-act="3">
+  <div class="scene-content">
+    <div class="eyebrow purple reveal">Act 3 · Branches</div>
+    <h1 class="movie-title reveal d1">A branch is just a <span class="hl">pointer</span>.</h1>
+    <p class="subtitle reveal d2">Not a folder. Not a copy of the code. Just a label that points to a commit. When you commit on a branch, the label automatically moves to the new commit.</p>
+    <div class="code-snippet wide reveal d3"><span class="com"># A repo with two branches looks like this:</span>
+
+<span class="key">main</span>:        A───B───C───D    <span class="arrow">←</span> main points here
+                       <span class="arrow">\</span>
+<span class="key">feature</span>:              E───F    <span class="arrow">←</span> feature points here
+
+<span class="com"># Both branches share commits A, B, C, D
+# feature has its own commits E, F that main doesn't know about
+# main and feature are just two labels on a shared commit graph</span></div>
+    <p class="subtitle reveal d4" style="margin-top:0.85rem;font-size:0.95rem">This is why creating a branch is instant — it's just writing a name into a tiny file. <code>HEAD</code> is the special pointer to "which branch you're on right now."</p>
+  </div>
+</section>
+
+<!-- Scene 9: Create branches -->
+<section class="scene behind" data-scene="9" data-act="3">
+  <div class="scene-content">
+    <div class="eyebrow purple reveal">Act 3 · Branch operations</div>
+    <h1 class="movie-title reveal d1">Create. Switch. <span class="hl">Delete</span>.</h1>
+    <div class="code-snippet reveal d2"><span class="com"># Create a new branch off your current commit + switch to it</span>
+<span class="key">git</span> checkout -b feature/login        <span class="com"># classic syntax</span>
+<span class="key">git</span> switch -c feature/login          <span class="com"># modern (clearer intent)</span>
+
+<span class="com"># Switch between existing branches</span>
+<span class="key">git</span> switch main
+<span class="key">git</span> switch feature/login
+
+<span class="com"># Delete a local branch (only if its commits are merged or you don't care)</span>
+<span class="key">git</span> branch -d feature/login          <span class="com"># safe — refuses if unmerged</span>
+<span class="key">git</span> branch -D feature/login          <span class="com"># force — careful</span>
+
+<span class="com"># Delete the remote branch too</span>
+<span class="key">git</span> push origin --delete feature/login
+
+<span class="com"># See what you've got</span>
+<span class="key">git</span> branch                            <span class="com"># local branches</span>
+<span class="key">git</span> branch -r                         <span class="com"># remote-tracking branches</span></div>
+  </div>
+</section>
+
+<!-- Scene 10: Branching strategies -->
+<section class="scene behind" data-scene="10" data-act="3">
+  <div class="scene-content">
+    <div class="eyebrow purple reveal">Act 3 · Pick a model</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Trunk-based</span> or git-flow.</h1>
+    <div class="card-grid reveal d2">
+      <div class="feat-card success">
+        <div class="lbl">Recommended for most teams</div>
+        <h4>Trunk-based</h4>
+        <p><code>main</code> plus short-lived feature branches that live ≤2 days. Merge often. Delete the branch after.</p>
+        <p style="margin-top:0.4rem"><strong>Branches:</strong> main, feature/*, hotfix/*</p>
+      </div>
+      <div class="feat-card">
+        <div class="lbl">Heavy ceremony</div>
+        <h4>Git-flow</h4>
+        <p>main, develop, release/*, hotfix/*, feature/*. Designed for shrink-wrapped releases. Most modern teams find it over-engineered.</p>
+        <p style="margin-top:0.4rem"><strong>Branches:</strong> 5 long-lived types</p>
+      </div>
+    </div>
+    <p class="subtitle reveal d3" style="margin-top:1rem">Pick <strong>trunk-based</strong> unless you're shipping desktop software with quarterly releases. Most SaaS teams want fast merges and a single source of truth — main.</p>
+  </div>
+</section>
+
+<!-- ACT 4 — PULL REQUESTS -->
+
+<!-- Scene 11: What's a PR -->
+<section class="scene behind" data-scene="11" data-act="4">
+  <div class="scene-content">
+    <div class="eyebrow cool reveal">Act 4 · Pull requests</div>
+    <h1 class="movie-title reveal d1">A PR is an <span class="hl">offer</span> to merge.</h1>
+    <p class="subtitle reveal d2">You're saying "here's my work on branch X — please review, then merge it into main." GitHub gives reviewers a UI to comment line-by-line, request changes, and approve.</p>
+    <div class="code-snippet wide reveal d3"><span class="com"># Open a PR after pushing your branch</span>
+<span class="key">gh</span> pr create --base main --head feature/login --title <span class="str">"feat: user login"</span> --body <span class="str">"Adds OAuth via Google + GitHub"</span>
+
+<span class="com"># Or via the GitHub UI: visit the repo, GitHub auto-detects your pushed branch
+# and offers a big green "Compare &amp; pull request" button.</span>
+
+<span class="com"># What a PR contains:</span>
+- The <span class="hl">diff</span> between your branch and the target branch (usually main)
+- The <span class="hl">commits</span> you've added on this branch
+- A title + description (think: the merge commit message)
+- Reviewers, assignees, labels, linked issues, milestones
+- Status checks (CI results, security scans, deploy previews)
+- A discussion thread (comments, approvals, change-requests)</div>
+  </div>
+</section>
+
+<!-- Scene 12: Review flow -->
+<section class="scene behind" data-scene="12" data-act="4">
+  <div class="scene-content">
+    <div class="eyebrow cool reveal">Act 4 · The PR lifecycle</div>
+    <h1 class="movie-title reveal d1">Open → review → <span class="hl">approve</span> → merge.</h1>
+    <div class="flow-line reveal d2">
+      <div class="flow-node start">PR opened</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">Reviewers comment / request changes</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">Author pushes more commits</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">Reviewers approve</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node end">Merge</div>
+    </div>
+    <table class="compare reveal d3" style="margin-top:1.25rem">
+      <thead><tr><th>Reviewer action</th><th>What it means</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Comment</strong></td><td>Question or suggestion. Doesn't block merge. Use for nits, learning, ideas.</td></tr>
+        <tr><td><strong>Request changes</strong></td><td>Hard block. The PR can't merge until the reviewer dismisses or you push fixes and they re-approve.</td></tr>
+        <tr><td><strong>Approve</strong></td><td>"Good to merge." Required count is set by branch protection.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Scene 13: Status checks -->
+<section class="scene behind" data-scene="13" data-act="4">
+  <div class="scene-content">
+    <div class="eyebrow cool reveal">Act 4 · Automation as a reviewer</div>
+    <h1 class="movie-title reveal d1"><span class="hl">CI</span> protects what humans miss.</h1>
+    <p class="subtitle reveal d2">"Required status checks" make merging impossible until specific automated checks pass. Tests, linting, security scans — anything you want enforced.</p>
+    <div class="code-snippet wide reveal d3"><span class="com"># What a PR's check summary looks like:</span>
+
+<span class="ok">✓</span> lint                       <span class="com"># 12s</span>
+<span class="ok">✓</span> unit-tests                 <span class="com"># 1m 24s</span>
+<span class="ok">✓</span> semgrep                    <span class="com"># 38s</span>
+<span class="ok">✓</span> osv-scanner                <span class="com"># 22s</span>
+<span class="bad">✗</span> codeql                     <span class="com"># found 2 High-severity findings ← blocks merge</span>
+<span class="ok">✓</span> build                      <span class="com"># 3m 02s</span>
+
+<span class="com"># Merge button is DISABLED until codeql is green.</span></div>
+    <p class="subtitle reveal d4" style="margin-top:0.85rem;font-size:0.95rem">Without required checks, anyone with merge permission can ignore CI. With required checks, even admins go through the gate.</p>
+  </div>
+</section>
+
+<!-- ACT 5 — MERGE STRATEGIES -->
+
+<!-- Scene 14: Three strategies overview -->
+<section class="scene behind" data-scene="14" data-act="5">
+  <div class="scene-content">
+    <div class="eyebrow warn reveal">Act 5 · The core decision</div>
+    <h1 class="movie-title reveal d1">Three ways to merge.<br/><span class="hl">Different histories</span>.</h1>
+    <p class="subtitle reveal d2">GitHub lets you pick the merge strategy per PR (or enforce one repo-wide). Each leaves a different shape in your commit graph.</p>
+    <div class="card-grid three reveal d3">
+      <div class="feat-card">
+        <div class="lbl">Strategy 1</div>
+        <h4>Merge commit</h4>
+        <p>Preserves the full branch topology. Creates a "merge commit" that ties the two histories together.</p>
+      </div>
+      <div class="feat-card success">
+        <div class="lbl">Strategy 2 · most common</div>
+        <h4>Squash and merge</h4>
+        <p>Collapses all the PR's commits into one clean commit on main. Loses granular detail but keeps main tidy.</p>
+      </div>
+      <div class="feat-card cool">
+        <div class="lbl">Strategy 3</div>
+        <h4>Rebase and merge</h4>
+        <p>Rewrites the PR's commits onto main, no merge commit. Linear history. Rewrites SHAs.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 15: Merge commit -->
+<section class="scene behind" data-scene="15" data-act="5">
+  <div class="scene-content">
+    <div class="eyebrow warn reveal">Strategy 1 · Merge commit</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Preserves</span> branch topology.</h1>
+    <div class="code-snippet wide reveal d2"><span class="com"># Before merge:</span>
+<span class="key">main</span>:        A───B───C───D
+                       <span class="arrow">\</span>
+<span class="key">feature</span>:              E───F───G
+
+<span class="com"># After "Merge pull request":</span>
+<span class="key">main</span>:        A───B───C───D────────M    <span class="arrow">←</span> M is the merge commit
+                       <span class="arrow">\</span>           <span class="arrow">/</span>
+<span class="key">feature</span>:              E───F───G
+
+<span class="com"># Pros: complete history, easy to see "this came from a PR"
+# Cons: messy graph at scale, many merge commits = noise</span></div>
+    <p class="subtitle reveal d3" style="margin-top:0.85rem;font-size:0.95rem"><strong>Use when:</strong> long-running feature branches where the individual commits genuinely matter for debugging or git-blame archaeology.</p>
+  </div>
+</section>
+
+<!-- Scene 16: Squash and merge -->
+<section class="scene behind" data-scene="16" data-act="5">
+  <div class="scene-content">
+    <div class="eyebrow warn reveal">Strategy 2 · Squash and merge</div>
+    <h1 class="movie-title reveal d1">Many WIP commits → <span class="hl">one</span> clean commit.</h1>
+    <div class="code-snippet wide reveal d2"><span class="com"># Before:</span>
+<span class="key">main</span>:        A───B───C───D
+                       <span class="arrow">\</span>
+<span class="key">feature</span>:              E───F───G    <span class="com"># E = "wip", F = "fix tests", G = "address review"</span>
+
+<span class="com"># After "Squash and merge":</span>
+<span class="key">main</span>:        A───B───C───D───S    <span class="arrow">←</span> S = single commit with E + F + G's combined diff
+
+<span class="com"># The PR title becomes S's commit message.
+# E, F, G are gone from main. They still exist on the feature branch (if you didn't delete it).</span></div>
+    <p class="subtitle reveal d3" style="margin-top:0.85rem;font-size:0.95rem"><strong>Use when:</strong> most PRs. Feature branches accumulate ugly commits ("wip", "fix typo", "address review feedback") that aren't worth keeping in main's history. Squash collapses them to one clean line.</p>
+    <p class="subtitle reveal d4" style="font-size:0.92rem;color:var(--accent-3);margin-top:0.5rem"><strong>Recommended default for most teams.</strong></p>
+  </div>
+</section>
+
+<!-- Scene 17: Rebase and merge -->
+<section class="scene behind" data-scene="17" data-act="5">
+  <div class="scene-content">
+    <div class="eyebrow warn reveal">Strategy 3 · Rebase and merge</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Linear</span> history, no merge commits.</h1>
+    <div class="code-snippet wide reveal d2"><span class="com"># Before:</span>
+<span class="key">main</span>:        A───B───C───D
+                       <span class="arrow">\</span>
+<span class="key">feature</span>:              E───F───G
+
+<span class="com"># After "Rebase and merge":</span>
+<span class="key">main</span>:        A───B───C───D───E'──F'──G'    <span class="arrow">←</span> commits replayed onto main; SHAs change
+
+<span class="com"># Pros: dead-straight history. `git log --oneline` is one column.
+#       `git bisect` is easier. No diamonds in the graph.
+# Cons: SHAs rewritten. NEVER rebase branches that others have based work on.
+#       Lose the "these commits arrived together as PR #123" signal.</span></div>
+    <p class="subtitle reveal d3" style="margin-top:0.85rem;font-size:0.95rem"><strong>Use when:</strong> small, well-crafted feature branches where each commit is meaningful and the team agrees on linearity. Common in compiler / kernel / infrastructure teams; less common in product teams.</p>
+  </div>
+</section>
+
+<!-- ACT 6 — WHEN THINGS GO SIDEWAYS -->
+
+<!-- Scene 18: Conflicts -->
+<section class="scene behind" data-scene="18" data-act="6">
+  <div class="scene-content">
+    <div class="eyebrow danger reveal">Act 6 · When merges aren't automatic</div>
+    <h1 class="movie-title reveal d1">A <span class="hl">conflict</span> = two changes,<br/>same line.</h1>
+    <p class="subtitle reveal d2">Git tries to auto-merge. When it can't decide between two competing changes to the same line, it stops and leaves the file with conflict markers.</p>
+    <div class="code-snippet wide reveal d3"><span class="com">// src/config.js — file with a conflict</span>
+
+<span class="bad">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</span>                              <span class="com"># your branch's version</span>
+const port = 3000;
+<span class="bad">=======</span>
+const port = process.env.PORT || 8080;       <span class="com"># the incoming branch's version</span>
+<span class="bad">&gt;&gt;&gt;&gt;&gt;&gt;&gt; main</span>
+
+<span class="com"># Resolve by editing the file — keep whichever you want (or combine):</span>
+const port = process.env.PORT || 3000;       <span class="com"># merge of both intents</span>
+
+<span class="com"># Then mark it resolved + continue:</span>
+<span class="key">git</span> add src/config.js
+<span class="key">git</span> commit                                <span class="com"># for merge — auto-fills message</span>
+<span class="key">git</span> rebase --continue                     <span class="com"># for rebase</span></div>
+  </div>
+</section>
+
+<!-- Scene 19: Pull -->
+<section class="scene behind" data-scene="19" data-act="6">
+  <div class="scene-content">
+    <div class="eyebrow danger reveal">Act 6 · Getting others' work</div>
+    <h1 class="movie-title reveal d1"><code>pull</code> = <span class="hl">fetch + merge</span>.</h1>
+    <div class="code-snippet wide reveal d2"><span class="com"># `pull` is two commands in one:</span>
+<span class="key">git</span> pull           <span class="com"># = `git fetch origin` + `git merge origin/&lt;branch&gt;`</span>
+
+<span class="com"># If you've made local commits and main moved while you were working,
+# the default `git pull` creates a "merge of main into your branch" commit.
+# That's noise. Prefer rebase:</span>
+
+<span class="key">git</span> pull --rebase  <span class="com"># fetches, then replays YOUR commits on top of theirs. Linear, no diamond.</span>
+
+<span class="com"># Make this the default once:</span>
+<span class="key">git</span> config --global pull.rebase true
+
+<span class="com"># For pure visibility without changing anything:</span>
+<span class="key">git</span> fetch          <span class="com"># downloads remote refs but doesn't touch your working dir</span>
+<span class="key">git</span> log HEAD..origin/main --oneline   <span class="com"># what's on main that you don't have?</span></div>
+  </div>
+</section>
+
+<!-- Scene 20: Three undos -->
+<section class="scene behind" data-scene="20" data-act="6">
+  <div class="scene-content">
+    <div class="eyebrow danger reveal">Act 6 · Three ways to take it back</div>
+    <h1 class="movie-title reveal d1"><span class="hl">amend</span>, <span class="hl-2">revert</span>, reset.<br/>Pick the right one.</h1>
+    <table class="compare reveal d2">
+      <thead><tr><th>You want to…</th><th>Use</th><th>Safe after push?</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Fix the last commit's message or contents</strong></td>
+          <td><code>git commit --amend</code></td>
+          <td><span class="icn bad">✕</span> No — rewrites the last commit's SHA</td>
+        </tr>
+        <tr>
+          <td><strong>Undo a commit that's already pushed / merged</strong></td>
+          <td><code>git revert &lt;sha&gt;</code></td>
+          <td><span class="icn good">✓</span> Yes — creates a new commit that inverts the old one</td>
+        </tr>
+        <tr>
+          <td><strong>Throw away local commits entirely</strong></td>
+          <td><code>git reset --hard &lt;sha&gt;</code></td>
+          <td><span class="icn bad">✕</span> NEVER on shared branches — destroys history</td>
+        </tr>
+        <tr>
+          <td><strong>Move HEAD back but keep changes staged</strong></td>
+          <td><code>git reset --soft &lt;sha&gt;</code></td>
+          <td><span class="icn bad">✕</span> Same caveat — local only</td>
+        </tr>
+        <tr>
+          <td><strong>Recover a commit you thought you lost</strong></td>
+          <td><code>git reflog</code> + <code>git reset --hard &lt;sha&gt;</code></td>
+          <td><span class="icn good">✓</span> reflog tracks every move HEAD makes for 90 days</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="subtitle reveal d3" style="margin-top:0.85rem;font-size:0.95rem"><strong>Rule of thumb:</strong> if the commit is pushed/merged, use <code>revert</code>. If it's still local, you have more freedom. <code>reflog</code> is the safety net most people don't know exists.</p>
+  </div>
+</section>
+
+<!-- ACT 7 — GITHUB PRIMITIVES -->
+
+<!-- Scene 21: GitHub primitives -->
+<section class="scene behind" data-scene="21" data-act="7">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 7 · GitHub-specific units of work</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Issues</span>, PRs, Forks, Projects.</h1>
+    <div class="card-grid four reveal d2">
+      <div class="feat-card">
+        <div class="icon">🐛</div>
+        <div class="lbl">Track work</div>
+        <h4>Issues</h4>
+        <p>Bug reports, feature requests, tasks. Labelable, assignable, linkable to PRs. The atomic unit of "we need to do something."</p>
+      </div>
+      <div class="feat-card success">
+        <div class="icon">🔀</div>
+        <div class="lbl">Ship work</div>
+        <h4>Pull requests</h4>
+        <p>Code review + status checks + merge gate. Closes issues automatically via <code>Closes #42</code> in the body.</p>
+      </div>
+      <div class="feat-card cool">
+        <div class="icon">🍴</div>
+        <div class="lbl">Open-source contribution pattern</div>
+        <h4>Forks</h4>
+        <p>Your own copy of someone else's repo. Push to your fork; open a PR <em>from your fork</em> to the original. Standard for OSS contributions.</p>
+      </div>
+      <div class="feat-card purple">
+        <div class="icon">📋</div>
+        <div class="lbl">Organize work</div>
+        <h4>Projects</h4>
+        <p>Kanban + spreadsheet hybrid for grouping issues and PRs. Replaces JIRA at small scale. Per-org or per-repo.</p>
+      </div>
+    </div>
+    <p class="subtitle reveal d3" style="margin-top:1rem;font-size:0.95rem">Issues are <em>requests</em>. PRs are <em>responses</em>. Forks are <em>independent copies</em>. Projects are <em>views</em> over issues + PRs.</p>
+  </div>
+</section>
+
+<!-- ACT 8 — CTA -->
+
+<!-- Scene 22: CTA -->
+<section class="scene behind" data-scene="22" data-act="8">
+  <div class="scene-content">
+    <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" class="hero-logo reveal" />
+    <div class="eyebrow reveal d1">Foundation: laid</div>
+    <h1 class="movie-title reveal d2">Now go <span class="hl">secure</span><br/>what you're shipping.</h1>
+    <p class="subtitle reveal d3">You've got the mental model: commits as snapshots, branches as pointers, PRs as offers, merge strategies as history-shaping choices. Next: hardening the platform that hosts it all.</p>
+    <div class="cta-buttons reveal d4">
+      <a href="github-movie.html" class="cta-btn">▶ GitHub security primer →</a>
+      <a href="cicd-movie.html" class="cta-btn secondary">▶ CI/CD movie</a>
+      <a href="cicd-walkthrough.html" class="cta-btn secondary">Open the walkthrough</a>
+    </div>
+    <p class="subtitle reveal d5" style="margin-top:2rem;font-size:0.85rem;color:var(--text-faint)">
+      <strong>Triarch Security Advisors</strong> · In a market full of noise, we provide the signal.
+    </p>
+  </div>
+</section>
+
+<!-- Navigation -->
+<button class="nav-arrow nav-prev" id="prevBtn" aria-label="Previous scene">‹</button>
+<button class="nav-arrow nav-next" id="nextBtn" aria-label="Next scene">›</button>
+
+<div class="progress-rail">
+  <div class="progress-dots" id="progressDots"></div>
+</div>
+
+<script>
+const scenes = Array.from(document.querySelectorAll('.scene'));
+const total = scenes.length;
+let current = 0;
+let autoPlay = false;
+let autoPlayTimer = null;
+const AUTOPLAY_INTERVAL = 8000;
+
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const autoBtn = document.getElementById('autoPlayBtn');
+const counter = document.getElementById('ctrCounter');
+const dotsContainer = document.getElementById('progressDots');
+const progressBar = document.getElementById('autoplayProgress');
+
+function buildDots() {
+  dotsContainer.innerHTML = '';
+  let lastAct = null;
+  scenes.forEach((s, i) => {
+    const act = s.dataset.act;
+    if (lastAct && act !== lastAct) {
+      const m = document.createElement('div'); m.className = 'act-marker';
+      dotsContainer.appendChild(m);
+    }
+    lastAct = act;
+    const b = document.createElement('button');
+    b.className = 'progress-dot';
+    b.title = `Scene ${i + 1}`;
+    b.addEventListener('click', () => showScene(i));
+    dotsContainer.appendChild(b);
+  });
+}
+
+function showScene(idx) {
+  if (idx < 0 || idx >= total) return;
+  scenes.forEach((s, i) => {
+    s.classList.toggle('active', i === idx);
+    s.classList.toggle('behind', i !== idx);
+  });
+  current = idx;
+  counter.textContent = `${idx + 1} / ${total}`;
+  dotsContainer.querySelectorAll('.progress-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === idx);
+    d.classList.toggle('done', i < idx);
+  });
+  prevBtn.disabled = idx === 0;
+  nextBtn.disabled = idx === total - 1;
+  if (idx === total - 1 && autoPlay) toggleAutoPlay();
+}
+
+function next() { if (current < total - 1) { showScene(current + 1); if (autoPlay) restartTimer(); } }
+function prev() { if (current > 0) { showScene(current - 1); if (autoPlay) restartTimer(); } }
+prevBtn.addEventListener('click', prev);
+nextBtn.addEventListener('click', next);
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  switch (e.key) {
+    case 'ArrowRight': case 'PageDown': case ' ': e.preventDefault(); next(); break;
+    case 'ArrowLeft': case 'PageUp': e.preventDefault(); prev(); break;
+    case 'Home': e.preventDefault(); showScene(0); break;
+    case 'End': e.preventDefault(); showScene(total - 1); break;
+    case 'Escape': window.location.href = 'index.html'; break;
+    case 'p': case 'P': toggleAutoPlay(); break;
+  }
+});
+
+scenes.forEach(s => {
+  s.addEventListener('click', (e) => {
+    if (e.target.closest('a, button, input')) return;
+    next();
+  });
+});
+
+function startProgressBar() {
+  progressBar.classList.add('active');
+  progressBar.style.transition = 'none';
+  progressBar.style.width = '0%';
+  void progressBar.offsetWidth;
+  progressBar.style.transition = `width ${AUTOPLAY_INTERVAL}ms linear`;
+  progressBar.style.width = '100%';
+}
+function stopProgressBar() {
+  progressBar.classList.remove('active');
+  progressBar.style.transition = 'none';
+  progressBar.style.width = '0%';
+}
+function restartTimer() {
+  clearInterval(autoPlayTimer);
+  autoPlayTimer = setInterval(autoAdvance, AUTOPLAY_INTERVAL);
+  startProgressBar();
+}
+function autoAdvance() {
+  if (current >= total - 1) { toggleAutoPlay(); return; }
+  showScene(current + 1);
+  startProgressBar();
+}
+function toggleAutoPlay() {
+  autoPlay = !autoPlay;
+  if (autoPlay) {
+    autoPlayTimer = setInterval(autoAdvance, AUTOPLAY_INTERVAL);
+    autoBtn.textContent = '⏸ pause';
+    autoBtn.classList.add('playing');
+    startProgressBar();
+  } else {
+    clearInterval(autoPlayTimer);
+    autoBtn.textContent = '▶ auto';
+    autoBtn.classList.remove('playing');
+    stopProgressBar();
+  }
+}
+autoBtn.addEventListener('click', toggleAutoPlay);
+
+let touchStartX = 0, touchStartY = 0;
+document.addEventListener('touchstart', (e) => {
+  touchStartX = e.changedTouches[0].screenX;
+  touchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
+document.addEventListener('touchend', (e) => {
+  const dx = e.changedTouches[0].screenX - touchStartX;
+  const dy = e.changedTouches[0].screenY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) {
+    if (dx < 0) next(); else prev();
+  }
+}, { passive: true });
+
+buildDots();
+showScene(0);
+</script>
+
+</body>
+</html>

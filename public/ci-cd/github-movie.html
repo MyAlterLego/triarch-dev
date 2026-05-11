@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Triarch · GitHub 101 — and how to secure it</title>
+<link rel="icon" type="image/png" href="https://www.triarch.dev/triarch-logo.png" />
+<meta name="description" content="An interactive cinematic walkthrough of GitHub fundamentals and how to harden it. Identity, org structure, branch protection, secrets, Actions security, audit, attack patterns." />
+<style>
+  /* ================================================================
+     Triarch · GitHub 101 — The Interactive Movie
+     Cinematic, scene-by-scene presentation. Burnt-yellow palette
+     matched to the SMB CI/CD movie.
+  ================================================================ */
+  :root {
+    --bg: #0a0a0f;
+    --bg-2: #14140e;
+    --panel: #1f1d14;
+    --panel-2: #2b2818;
+    --border: #3a3424;
+    --border-strong: #5a4d2c;
+    --text: #f5ecd8;
+    --text-dim: #c9b88a;
+    --text-faint: #8a7956;
+    --accent: #e8a317;
+    --accent-2: #c97d1a;
+    --accent-3: #f5cc5b;
+    --accent-cool: #5ac8fa;
+    --accent-purple: #b794f6;
+    --warn: #d97706;
+    --danger: #c84d4d;
+    --success: #b8a045;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(1200px 700px at 10% -10%, rgba(232,163,23,0.22), transparent 65%),
+      radial-gradient(900px 600px at 95% 100%, rgba(201,125,26,0.18), transparent 65%),
+      radial-gradient(1100px 700px at 50% 50%, rgba(245,204,91,0.06), transparent 70%);
+    pointer-events: none;
+    animation: bgDrift 30s ease-in-out infinite alternate;
+  }
+  @keyframes bgDrift {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(-30px, 20px); }
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    font-size: 0.85em;
+    background: rgba(255,255,255,0.06);
+    padding: 0.05em 0.4em;
+    border-radius: 4px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .movie-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 56px;
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0 1.5rem;
+    z-index: 100;
+    background: linear-gradient(180deg, rgba(10,10,15,0.85), rgba(10,10,15,0));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .movie-bar .brand {
+    display: flex; align-items: center; gap: 0.55rem;
+    font-weight: 700;
+    font-size: 0.86rem;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  .movie-bar .brand img { height: 26px; }
+  .movie-bar .brand .mark { color: var(--accent); }
+  .movie-bar .controls { margin-left: auto; display: flex; align-items: center; gap: 0.65rem; }
+  .movie-bar a, .movie-bar button {
+    font-family: inherit;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    padding: 0.4rem 0.85rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .movie-bar a:hover, .movie-bar button:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(232,163,23,0.06);
+    text-decoration: none;
+  }
+  .movie-bar button.playing { color: var(--accent-3); border-color: rgba(245,204,91,0.4); }
+  .movie-bar .ctr-counter {
+    color: var(--text-faint);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    padding: 0 0.5rem;
+  }
+
+  /* ---------- Auto-play progress bar ---------- */
+  .autoplay-progress {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    width: 0%;
+    z-index: 95;
+    opacity: 0;
+    box-shadow: 0 0 10px var(--accent);
+    pointer-events: none;
+  }
+  .autoplay-progress.active { opacity: 1; }
+
+  /* ---------- Scene container ---------- */
+  .scene {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5rem 4rem 6rem;
+    opacity: 0;
+    transform: scale(1.02);
+    transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 10;
+  }
+  @media (max-width: 900px) { .scene { padding: 5rem 1.5rem 6rem; } }
+  .scene.active { opacity: 1; transform: scale(1); pointer-events: auto; z-index: 20; }
+  .scene.behind { opacity: 0; transform: scale(0.98); }
+  .scene-content {
+    max-width: 1100px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.5rem;
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: 0.2s;
+  }
+  .scene.active .reveal { opacity: 1; transform: translateY(0); }
+  .scene.active .reveal.d1 { transition-delay: 0.4s; }
+  .scene.active .reveal.d2 { transition-delay: 0.6s; }
+  .scene.active .reveal.d3 { transition-delay: 0.8s; }
+  .scene.active .reveal.d4 { transition-delay: 1.0s; }
+  .scene.active .reveal.d5 { transition-delay: 1.2s; }
+  .scene.active .reveal.d6 { transition-delay: 1.4s; }
+  .scene.active .reveal.d7 { transition-delay: 1.6s; }
+
+  /* ---------- Typography ---------- */
+  .eyebrow {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    background: linear-gradient(135deg, rgba(232,163,23,0.1), rgba(201,125,26,0.06));
+    border: 1px solid rgba(232,163,23,0.25);
+    padding: 0.35rem 1rem;
+    border-radius: 999px;
+    display: inline-block;
+  }
+  .eyebrow.purple { color: var(--accent-purple); background: rgba(183,148,246,0.08); border-color: rgba(183,148,246,0.25); }
+  .eyebrow.cool { color: var(--accent-cool); background: rgba(90,200,250,0.08); border-color: rgba(90,200,250,0.25); }
+  .eyebrow.warn { color: var(--warn); background: rgba(217,119,6,0.08); border-color: rgba(217,119,6,0.25); }
+  .eyebrow.danger { color: var(--danger); background: rgba(200,77,77,0.08); border-color: rgba(200,77,77,0.25); }
+  h1.movie-title {
+    font-size: clamp(2rem, 6vw, 4.5rem);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  h1.movie-title .hl,
+  h1.movie-title .hl-purple,
+  h1.movie-title .hl-green,
+  h1.movie-title .grad {
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    display: inline-block;
+  }
+  h1.movie-title .hl       { background-image: linear-gradient(135deg, #e8a317 0%, #c97d1a 100%); }
+  h1.movie-title .hl-purple{ background-image: linear-gradient(135deg, #f5cc5b 0%, #c97d1a 100%); }
+  h1.movie-title .hl-green { background-image: linear-gradient(135deg, #f5cc5b 0%, #e8a317 50%, #c97d1a 100%); }
+  h1.movie-title .grad     { background-image: linear-gradient(135deg, #f5cc5b 0%, #e8a317 50%, #5ac8fa 100%); }
+  .subtitle {
+    font-size: clamp(1rem, 1.5vw, 1.35rem);
+    color: var(--text-dim);
+    max-width: 800px;
+    line-height: 1.55;
+  }
+  .subtitle strong { color: var(--text); font-weight: 600; }
+
+  .hero-logo {
+    width: 96px; height: 96px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(232,163,23,0.06), rgba(201,125,26,0.06));
+    border: 1px solid var(--border);
+    padding: 6px;
+    margin-bottom: 0.5rem;
+    box-shadow:
+      0 0 0 2px rgba(232,163,23,0.4),
+      0 0 0 5px rgba(201,125,26,0.15),
+      0 0 40px rgba(232,163,23,0.25);
+  }
+
+  /* ---------- Bottom progress + nav ---------- */
+  .nav-arrow {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 1.4rem;
+    cursor: pointer;
+    z-index: 90;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .nav-arrow:hover { color: var(--accent); border-color: var(--accent); background: rgba(232,163,23,0.1); }
+  .nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
+  .nav-prev { left: 1rem; }
+  .nav-next { right: 1rem; }
+  @media (max-width: 600px) {
+    .nav-arrow { width: 40px; height: 40px; }
+    .nav-prev { left: 0.5rem; }
+    .nav-next { right: 0.5rem; }
+  }
+
+  .progress-rail {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 90;
+    background: linear-gradient(0deg, rgba(10,10,15,0.7), rgba(10,10,15,0));
+    pointer-events: none;
+  }
+  .progress-dots { display: flex; gap: 6px; pointer-events: auto; }
+  .progress-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    cursor: pointer;
+    transition: all 0.25s;
+    border: none; padding: 0;
+  }
+  .progress-dot:hover { background: rgba(255,255,255,0.4); transform: scale(1.4); }
+  .progress-dot.done { background: var(--accent); opacity: 0.6; }
+  .progress-dot.active {
+    background: var(--accent);
+    transform: scale(1.6);
+    box-shadow: 0 0 12px var(--accent);
+  }
+  .act-marker {
+    width: 14px;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ---------- Scene-specific visuals ---------- */
+  .stat-line {
+    display: flex; gap: 1.5rem; align-items: center; justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+  .stat-line .stat-item {
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 140px;
+  }
+  .stat-line .stat-num {
+    font-size: 2.5rem; font-weight: 700; color: var(--accent);
+    letter-spacing: -0.02em; line-height: 1;
+  }
+  .stat-line .stat-lbl {
+    font-size: 0.78rem; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-top: 0.4rem;
+  }
+
+  /* Cards (4-up grid) */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.85rem;
+    margin-top: 1.25rem;
+    width: 100%;
+  }
+  @media (max-width: 900px) { .card-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 500px) { .card-grid { grid-template-columns: 1fr; } }
+  .card-grid.three { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 800px) { .card-grid.three { grid-template-columns: 1fr; } }
+  .card-grid.two { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 600px) { .card-grid.two { grid-template-columns: 1fr; } }
+  .feat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    padding: 1.1rem 1.2rem;
+    border-radius: 10px;
+    text-align: left;
+  }
+  .feat-card .icon {
+    font-size: 1.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .feat-card h4 {
+    font-size: 0.95rem;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+  }
+  .feat-card p {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    line-height: 1.55;
+  }
+  .feat-card .lbl {
+    font-size: 0.66rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.4rem;
+    font-weight: 700;
+  }
+  .feat-card.danger { border-top-color: var(--danger); }
+  .feat-card.danger .lbl { color: var(--danger); }
+  .feat-card.cool { border-top-color: var(--accent-cool); }
+  .feat-card.cool .lbl { color: var(--accent-cool); }
+
+  /* Auth ladder */
+  .ladder {
+    display: flex; flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    width: 100%; max-width: 720px;
+  }
+  .rung {
+    display: flex; align-items: center; gap: 0.85rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 4px solid;
+    padding: 0.85rem 1.1rem;
+    border-radius: 8px;
+    text-align: left;
+  }
+  .rung.r-bad { border-left-color: var(--danger); }
+  .rung.r-ok { border-left-color: var(--warn); }
+  .rung.r-good { border-left-color: var(--success); }
+  .rung.r-best { border-left-color: var(--accent); background: rgba(232,163,23,0.06); }
+  .rung .num {
+    width: 26px; height: 26px;
+    background: var(--bg-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .rung.r-best .num { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .rung .name { font-weight: 600; color: var(--text); flex: 1; }
+  .rung .note { font-size: 0.78rem; color: var(--text-faint); }
+
+  /* Code-look */
+  .code-snippet {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.95rem 1.15rem;
+    font-family: ui-monospace, monospace;
+    font-size: 0.82rem;
+    color: #e8d4a4;
+    text-align: left;
+    margin-top: 1rem;
+    max-width: 720px;
+    line-height: 1.55;
+  }
+  .code-snippet .com { color: #837659; font-style: italic; }
+  .code-snippet .key { color: #e8a317; }
+  .code-snippet .str { color: #f5cc5b; }
+  .code-snippet .ann { color: #c97d1a; }
+  .code-snippet .ok { color: var(--success); }
+  .code-snippet .bad { color: var(--danger); }
+  .code-snippet .strike { text-decoration: line-through; opacity: 0.55; }
+
+  /* Permission tree */
+  .tree {
+    display: flex; flex-direction: column; gap: 0.4rem;
+    margin-top: 1rem;
+    text-align: left;
+    font-family: ui-monospace, monospace;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    max-width: 700px;
+  }
+  .tree .lvl1 { color: var(--accent); font-weight: 700; }
+  .tree .lvl2 { color: var(--text); padding-left: 1.5rem; }
+  .tree .lvl3 { padding-left: 3rem; }
+
+  /* Comparison table */
+  .compare {
+    width: 100%; max-width: 880px;
+    border-collapse: collapse;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 1rem;
+    font-size: 0.86rem;
+  }
+  .compare th, .compare td {
+    padding: 0.7rem 0.95rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .compare th {
+    background: var(--bg-2);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .compare tr:last-child td { border-bottom: none; }
+  .compare td .icn { font-weight: 700; }
+  .compare td .icn.bad { color: var(--danger); }
+  .compare td .icn.good { color: var(--success); }
+
+  /* Checklist */
+  .checklist {
+    display: flex; flex-direction: column;
+    gap: 0.45rem;
+    margin-top: 1rem;
+    width: 100%; max-width: 720px;
+  }
+  .check {
+    display: flex; align-items: flex-start; gap: 0.75rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--success);
+    padding: 0.7rem 1rem;
+    border-radius: 6px;
+    text-align: left;
+  }
+  .check .num {
+    width: 24px; height: 24px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--bg);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .check .body strong { display: block; color: var(--text); margin-bottom: 0.1rem; font-size: 0.92rem; }
+  .check .body span { color: var(--text-dim); font-size: 0.78rem; }
+
+  /* Setting-path callout */
+  .setting-path {
+    background: rgba(232,163,23,0.05);
+    border: 1px solid rgba(232,163,23,0.25);
+    border-radius: 6px;
+    padding: 0.6rem 0.95rem;
+    font-family: ui-monospace, monospace;
+    font-size: 0.82rem;
+    color: var(--accent-3);
+    margin-top: 0.85rem;
+    max-width: 720px;
+  }
+  .setting-path::before {
+    content: '⚙ ';
+    color: var(--accent);
+  }
+
+  /* Attack matrix (5-row) */
+  .attack-matrix {
+    width: 100%; max-width: 920px;
+    border-collapse: collapse;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+  }
+  .attack-matrix th, .attack-matrix td {
+    padding: 0.7rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .attack-matrix th {
+    background: var(--bg-2);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .attack-matrix th.attack { color: var(--danger); }
+  .attack-matrix th.fix { color: var(--success); }
+  .attack-matrix tr:last-child td { border-bottom: none; }
+
+  /* CTA */
+  .cta-buttons {
+    display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+    margin-top: 2rem;
+  }
+  .cta-btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.95rem 1.8rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--bg);
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-family: inherit;
+    box-shadow: 0 4px 20px rgba(232,163,23,0.3);
+  }
+  .cta-btn:hover { filter: brightness(1.15); transform: translateY(-2px); text-decoration: none; }
+  .cta-btn.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    box-shadow: none;
+  }
+  .cta-btn.secondary:hover { background: var(--panel); }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .scene, .reveal, body::before {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============== Top bar ============== -->
+<div class="movie-bar">
+  <div class="brand">
+    <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" />
+    <span><span class="mark">TRIARCH</span> · GitHub 101</span>
+  </div>
+  <div class="controls">
+    <span class="ctr-counter" id="ctrCounter">1 / 23</span>
+    <button id="autoPlayBtn" title="Auto-play (7s per scene)">▶ auto</button>
+    <a href="cicd-movie.html">▶ CI/CD movie</a>
+    <a href="cicd-walkthrough.html">Walkthrough →</a>
+  </div>
+</div>
+
+<div class="autoplay-progress" id="autoplayProgress"></div>
+
+<!-- ============== Scenes ============== -->
+
+<!-- ACT 1 — SETUP -->
+
+<!-- Scene 1: Title -->
+<section class="scene active" data-scene="1" data-act="1">
+  <div class="scene-content">
+    <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" class="hero-logo reveal" />
+    <div class="eyebrow reveal d1">Triarch Security · An interactive movie</div>
+    <h1 class="movie-title reveal d2">GitHub 101 —<br/>and how to <span class="hl">secure it</span>.</h1>
+    <p class="subtitle reveal d3">What it actually is, who else can see it, how attackers try to get in, and the eight settings that move you from "it works" to "it's hardened."</p>
+    <div class="reveal d4" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-faint)">
+      Press <code>→</code> or click <strong>›</strong> to begin · <code>Esc</code> to exit
+    </div>
+  </div>
+</section>
+
+<!-- Scene 2: What GitHub actually is -->
+<section class="scene behind" data-scene="2" data-act="1">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 1 · The reality</div>
+    <h1 class="movie-title reveal d1">Not just code storage.<br/><span class="hl">Four things at once.</span></h1>
+    <div class="card-grid reveal d2">
+      <div class="feat-card"><div class="icon">📁</div><div class="lbl">Layer 1</div><h4>Code</h4><p>Git hosting. Commits, branches, history.</p></div>
+      <div class="feat-card"><div class="icon">👥</div><div class="lbl">Layer 2</div><h4>Collaboration</h4><p>Pull requests, reviews, issues, discussions.</p></div>
+      <div class="feat-card"><div class="icon">⚙️</div><div class="lbl">Layer 3</div><h4>Automation</h4><p>Actions, OIDC into your cloud, releases, packages.</p></div>
+      <div class="feat-card danger"><div class="icon">🔑</div><div class="lbl">Layer 4 — most missed</div><h4>Identity</h4><p>SSO, SCIM, audit log. The front door of your engineering org.</p></div>
+    </div>
+    <p class="subtitle reveal d3" style="margin-top:1rem"><strong>Treat it like the first three. Forget the fourth. Pay later.</strong></p>
+  </div>
+</section>
+
+<!-- Scene 3: The threat model -->
+<section class="scene behind" data-scene="3" data-act="1">
+  <div class="scene-content">
+    <div class="eyebrow danger reveal">What attackers want</div>
+    <h1 class="movie-title reveal d1">Three goals.<br/>All in your <span class="hl">GitHub</span>.</h1>
+    <div class="card-grid three reveal d2">
+      <div class="feat-card danger">
+        <div class="lbl">Motive 1</div>
+        <h4>Steal source code</h4>
+        <p>IP, credentials hard-coded by mistake, customer data references, internal architecture, the .env that someone committed in 2021.</p>
+      </div>
+      <div class="feat-card danger">
+        <div class="lbl">Motive 2</div>
+        <h4>Inject malicious commits</h4>
+        <p>Supply-chain attack. Compromise one dev's PAT, push a sneaky workflow change, ship to your customers' production.</p>
+      </div>
+      <div class="feat-card danger">
+        <div class="lbl">Motive 3</div>
+        <h4>Pivot to your cloud</h4>
+        <p>Workflows have OIDC trust. Compromise the repo, the workflow runs, the cloud session is yours for an hour.</p>
+      </div>
+    </div>
+    <p class="subtitle reveal d3" style="margin-top:1rem"><strong>The vector is rarely "hack the source code."</strong> It's "compromise an account, push a commit, deploy."</p>
+  </div>
+</section>
+
+<!-- ACT 2 — IDENTITY -->
+
+<!-- Scene 4: 2FA is the floor -->
+<section class="scene behind" data-scene="4" data-act="2">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 2 · Identity</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Two-factor</span>. Required.<br/>Phishing-resistant if you can.</h1>
+    <p class="subtitle reveal d2">Not all 2FA is equal. SMS gets SIM-swapped. TOTP can be phished. Hardware keys and passkeys can't.</p>
+    <div class="ladder reveal d3">
+      <div class="rung r-bad"><div class="num">×</div><div class="name">SMS one-time codes</div><div class="note">SIM-swap attacks · phishable · last resort</div></div>
+      <div class="rung r-ok"><div class="num">2</div><div class="name">TOTP authenticator app</div><div class="note">Authy, 1Password, Google Authenticator · phishable but better</div></div>
+      <div class="rung r-good"><div class="num">3</div><div class="name">Security key (YubiKey, Solo)</div><div class="note">FIDO U2F / WebAuthn · phishing-resistant</div></div>
+      <div class="rung r-best"><div class="num">★</div><div class="name">Passkey</div><div class="note">Phishing-resistant + good UX · device-backed · what you should be on</div></div>
+    </div>
+    <div class="setting-path reveal d4">Org Settings → Authentication security → "Require two-factor authentication for everyone"</div>
+  </div>
+</section>
+
+<!-- Scene 5: Auth ladder -->
+<section class="scene behind" data-scene="5" data-act="2">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 2 · How automation authenticates</div>
+    <h1 class="movie-title reveal d1">Password → PAT → Fine-grained PAT → <span class="hl">GitHub App</span>.</h1>
+    <p class="subtitle reveal d2">Four ways to talk to the GitHub API. Each step up is more secure, more auditable, more rotation-friendly.</p>
+    <table class="compare reveal d3">
+      <thead><tr><th>Auth method</th><th>Use for</th><th>Risk</th><th>Rotation</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Password + 2FA</strong></td><td>Humans logging in</td><td>Phishing</td><td>Quarterly</td></tr>
+        <tr><td><strong>Classic PAT</strong></td><td>Legacy CI · don't use in 2026</td><td><span class="icn bad">High</span> — broad scopes, hard to audit</td><td>Per leak (often years)</td></tr>
+        <tr><td><strong>Fine-grained PAT</strong></td><td>Personal scripts, narrow access</td><td><span class="icn good">Lower</span> — specific repos + permissions</td><td>Required ≤1 year, customizable</td></tr>
+        <tr><td><strong>GitHub App</strong></td><td>Org-wide automation</td><td><span class="icn good">Lowest</span> — installable, auditable, scoped</td><td>Auto-rotated · 1-hour tokens</td></tr>
+      </tbody>
+    </table>
+    <p class="subtitle reveal d4" style="margin-top:0.85rem;font-size:0.95rem"><strong>Move automation up the ladder.</strong> Don't ship a classic PAT in 2026.</p>
+  </div>
+</section>
+
+<!-- Scene 6: SSH vs HTTPS -->
+<section class="scene behind" data-scene="6" data-act="2">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 2 · How git itself authenticates</div>
+    <h1 class="movie-title reveal d1">SSH for <span class="hl">git push</span>.<br/>Tokens for the API.</h1>
+    <div class="code-snippet reveal d2">
+<span class="com"># SSH — most common for human developers</span>
+<span class="key">ssh-keygen</span> -t ed25519 -C <span class="str">"you@example.com"</span>
+<span class="com"># Add ~/.ssh/id_ed25519.pub to your GitHub account</span>
+<span class="key">git</span> remote set-url origin git@github.com:org/repo.git
+
+<span class="com"># HTTPS + PAT — for environments that block SSH (corporate proxies)</span>
+<span class="key">git</span> remote set-url origin <span class="str">https://github.com/org/repo.git</span>
+<span class="com"># Then `git push` prompts for username + PAT (use a fine-grained one)</span>
+    </div>
+    <p class="subtitle reveal d3" style="margin-top:0.85rem;font-size:0.95rem">When a developer's laptop is lost, <strong>revoke their SSH keys + PATs immediately</strong> from their GitHub account settings. Then enforce 2FA on re-login.</p>
+  </div>
+</section>
+
+<!-- ACT 3 — ORG STRUCTURE -->
+
+<!-- Scene 7: Personal vs Org -->
+<section class="scene behind" data-scene="7" data-act="3">
+  <div class="scene-content">
+    <div class="eyebrow purple reveal">Act 3 · Org structure</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Graduate</span> from personal repos when…</h1>
+    <div class="card-grid reveal d2">
+      <div class="feat-card"><div class="icon">👯</div><h4>≥ 2 contributors</h4><p>Personal repos can't grant team-level access. You'll end up adding individual collaborators forever.</p></div>
+      <div class="feat-card"><div class="icon">💸</div><h4>It pays bills</h4><p>If the company depends on the code, the company should own it.</p></div>
+      <div class="feat-card"><div class="icon">📋</div><h4>Compliance scope</h4><p>SOC 2, HIPAA, PCI, GDPR — all expect organizational ownership and audit log.</p></div>
+      <div class="feat-card"><div class="icon">🪦</div><h4>Bus-factor 1</h4><p>If a personal account dies, so does the repo. Org repos persist.</p></div>
+    </div>
+    <p class="subtitle reveal d3" style="margin-top:1rem">Personal repos die with personal accounts. <strong>Org repos persist.</strong></p>
+  </div>
+</section>
+
+<!-- Scene 8: Teams + roles -->
+<section class="scene behind" data-scene="8" data-act="3">
+  <div class="scene-content">
+    <div class="eyebrow purple reveal">Act 3 · Permissions</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Teams</span>, then roles.<br/>Not the other way around.</h1>
+    <div class="tree reveal d2">
+      <div class="lvl1">Organization</div>
+      <div class="lvl2">└── Default base permission: <span style="color:var(--accent)"><strong>None</strong></span> (NOT "Read")</div>
+      <div class="lvl1" style="margin-top:0.4rem">Teams</div>
+      <div class="lvl2">├── @org/engineering          → granted <em>Write</em> on app repos</div>
+      <div class="lvl2">├── @org/release-managers     → granted <em>Maintain</em> on app repos</div>
+      <div class="lvl2">└── @org/security             → granted <em>Maintain</em> on .github + iac paths</div>
+      <div class="lvl1" style="margin-top:0.4rem">Roles (least → most)</div>
+      <div class="lvl2">Read · Triage · Write · Maintain · Admin</div>
+    </div>
+    <p class="subtitle reveal d3" style="margin-top:0.85rem;font-size:0.95rem">Direct user-to-repo grants are a maintenance trap. <strong>Use teams.</strong> Audit your default base permission — it's "Read" out of the box, which is too generous.</p>
+  </div>
+</section>
+
+<!-- ACT 4 — REPO SECURITY -->
+
+<!-- Scene 9: Branch protection ruleset -->
+<section class="scene behind" data-scene="9" data-act="4">
+  <div class="scene-content">
+    <div class="eyebrow cool reveal">Act 4 · Repository security</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Rulesets</span> &gt; legacy branch protection.</h1>
+    <p class="subtitle reveal d2">Same intent, more flexible, JSON-importable. The old "branch protection rules" tab still works but is deprecated.</p>
+    <div class="checklist reveal d3">
+      <div class="check"><div class="num">1</div><div class="body"><strong>Require PR review (≥1)</strong><span>Plus "require code-owner review" so CODEOWNERS auto-routes.</span></div></div>
+      <div class="check"><div class="num">2</div><div class="body"><strong>Require status checks to pass</strong><span>List exact check names: lint, semgrep, osv-scanner, etc.</span></div></div>
+      <div class="check"><div class="num">3</div><div class="body"><strong>Require signed commits</strong><span>Closes the impersonation loophole.</span></div></div>
+      <div class="check"><div class="num">4</div><div class="body"><strong>Require linear history</strong><span>Rebase only — easier audit, easier revert.</span></div></div>
+      <div class="check"><div class="num">5</div><div class="body"><strong>Block force-pushes + deletions</strong><span>Defaults to permissive — flip both off.</span></div></div>
+      <div class="check"><div class="num">6</div><div class="body"><strong>No bypass actors</strong><span>Even admins go through PR. Use break-glass workflow if needed.</span></div></div>
+    </div>
+    <div class="setting-path reveal d4">Repo Settings → Rules → Rulesets → New branch ruleset · target: refs/heads/main · enforcement: Active</div>
+  </div>
+</section>
+
+<!-- Scene 10: CODEOWNERS -->
+<section class="scene behind" data-scene="10" data-act="4">
+  <div class="scene-content">
+    <div class="eyebrow cool reveal">Act 4 · Automatic reviewers</div>
+    <h1 class="movie-title reveal d1"><span class="hl">CODEOWNERS</span> — auto-route reviews to the right team.</h1>
+    <div class="code-snippet reveal d2">
+<span class="com"># .github/CODEOWNERS</span>
+
+<span class="com"># default — engineering reviews everything</span>
+*                          @org/engineering
+
+<span class="com"># CI/CD pipeline itself — security AND release-managers must review</span>
+/.github/                  @org/security @org/release-managers
+/.github/workflows/        @org/security @org/release-managers
+/iac/                      @org/security @org/release-managers
+
+<span class="com"># auth code — extra scrutiny</span>
+/src/auth/                 @org/security
+**/secrets*                @org/security
+    </div>
+    <p class="subtitle reveal d3" style="margin-top:0.85rem;font-size:0.95rem">Pair with <code>require_code_owner_review: true</code> in the ruleset. Now the right humans <strong>have to</strong> approve, not just see.</p>
+  </div>
+</section>
+
+<!-- Scene 11: Signed commits -->
+<section class="scene behind" data-scene="11" data-act="4">
+  <div class="scene-content">
+    <div class="eyebrow cool reveal">Act 4 · Provenance</div>
+    <h1 class="movie-title reveal d1">Cryptographic <span class="hl">identity</span><br/>on every commit.</h1>
+    <p class="subtitle reveal d2">Otherwise: anyone with push access can write commits in your name. The author field is just a string.</p>
+    <div class="code-snippet reveal d3">
+<span class="com"># One-time setup — generate a signing key (or use an existing GPG/SSH one)</span>
+<span class="key">ssh-keygen</span> -t ed25519 -f ~/.ssh/git_signing_key
+
+<span class="com"># Tell git to sign with it</span>
+<span class="key">git</span> config --global user.signingkey ~/.ssh/git_signing_key.pub
+<span class="key">git</span> config --global gpg.format ssh
+<span class="key">git</span> config --global commit.gpgsign true
+
+<span class="com"># Add the public key to GitHub as a "signing key"</span>
+<span class="key">gh</span> ssh-key add ~/.ssh/git_signing_key.pub --title <span class="str">"work-laptop-signing"</span> --type signing
+    </div>
+    <p class="subtitle reveal d4" style="margin-top:0.85rem;font-size:0.95rem">Now every commit shows a <span style="color:var(--success)"><strong>Verified</strong></span> badge. The ruleset rejects unsigned ones.</p>
+  </div>
+</section>
+
+<!-- ACT 5 — SECRETS -->
+
+<!-- Scene 12: Where secrets live -->
+<section class="scene behind" data-scene="12" data-act="5">
+  <div class="scene-content">
+    <div class="eyebrow warn reveal">Act 5 · Secrets</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Three scopes</span>, plus Dependabot.</h1>
+    <p class="subtitle reveal d2">Pick the narrowest scope that works. Auditing unused org secrets quarterly catches drift.</p>
+    <div class="card-grid reveal d3">
+      <div class="feat-card"><div class="lbl">Repo secret</div><h4>This repo's workflows only</h4><p>The default. Use unless you have a reason not to.</p></div>
+      <div class="feat-card"><div class="lbl">Environment secret</div><h4>Only when deploying to that env</h4><p>Scoped <em>and</em> gated by environment protection rules. Use for production credentials.</p></div>
+      <div class="feat-card"><div class="lbl">Org secret</div><h4>Multiple repos can read</h4><p>Restrict to specific repos. Useful for things like a shared Slack webhook.</p></div>
+      <div class="feat-card cool"><div class="lbl">Dependabot secret</div><h4>Only Dependabot updates</h4><p>Lives in a separate slot — Actions workflows can't read these. Use for private package registries.</p></div>
+    </div>
+    <div class="setting-path reveal d4">Repo Settings → Secrets and variables → Actions / Dependabot · Org Settings → Secrets → Restrict to selected repositories</div>
+  </div>
+</section>
+
+<!-- Scene 13: Push protection -->
+<section class="scene behind" data-scene="13" data-act="5">
+  <div class="scene-content">
+    <div class="eyebrow warn reveal">Act 5 · Catch them before merge</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Push protection</span> blocks secrets at the source.</h1>
+    <p class="subtitle reveal d2">When secret scanning sees an AKIA-pattern in a push, it rejects the push. Developer fixes locally. No leaked secret in the git history.</p>
+    <div class="code-snippet reveal d3">
+<span class="bad">remote: error: GH013: Repository rule violations found</span>
+<span class="bad">remote: -- A potential secret was detected:</span>
+<span class="bad">remote:    Type: AWS Access Key ID</span>
+<span class="bad">remote:    Path: src/config.js:14</span>
+<span class="bad">remote: Push declined.</span>
+
+<span class="com"># Fix locally:</span>
+<span class="key">git</span> rm src/config.js
+<span class="key">git</span> commit --amend
+<span class="key">git</span> push
+    </div>
+    <div class="setting-path reveal d4">Repo Settings → Code security → Secret scanning → Push protection: <strong>Enabled</strong></div>
+    <p class="subtitle reveal d5" style="margin-top:0.6rem;font-size:0.92rem">Free for public repos. Included with GitHub Advanced Security on private. <strong>Worth the spend.</strong></p>
+  </div>
+</section>
+
+<!-- ACT 6 — CODE SECURITY -->
+
+<!-- Scene 14: Dependabot + CodeQL -->
+<section class="scene behind" data-scene="14" data-act="6">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 6 · Code &amp; supply chain</div>
+    <h1 class="movie-title reveal d1">Keep deps fresh.<br/>Catch vuln <span class="hl">patterns</span>.</h1>
+    <div class="card-grid two reveal d2">
+      <div class="feat-card cool">
+        <div class="lbl">Dependency hygiene</div>
+        <h4>Dependabot</h4>
+        <p>Weekly PRs to update vulnerable transitive deps. Free, built-in. Configure ecosystems in <code>.github/dependabot.yml</code>.</p>
+      </div>
+      <div class="feat-card cool">
+        <div class="lbl">Static analysis</div>
+        <h4>CodeQL</h4>
+        <p>Semantic SAST. Runs the <em>security-extended</em> queries by default. Free for public, GHAS for private.</p>
+      </div>
+    </div>
+    <div class="code-snippet reveal d3">
+<span class="com"># Minimal CodeQL workflow</span>
+<span class="ann">on:</span> [<span class="str">push</span>, <span class="str">pull_request</span>]
+<span class="ann">jobs:</span>
+  <span class="ann">analyze:</span>
+    <span class="ann">runs-on:</span> ubuntu-latest
+    <span class="ann">permissions:</span> { security-events: write, contents: read }
+    <span class="ann">steps:</span>
+      - <span class="ann">uses:</span> github/codeql-action/init@v3
+        <span class="ann">with:</span> { languages: javascript-typescript, queries: security-extended }
+      - <span class="ann">uses:</span> github/codeql-action/autobuild@v3
+      - <span class="ann">uses:</span> github/codeql-action/analyze@v3
+    </div>
+  </div>
+</section>
+
+<!-- Scene 15: Workflow permissions -->
+<section class="scene behind" data-scene="15" data-act="6">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 6 · The GITHUB_TOKEN scope</div>
+    <h1 class="movie-title reveal d1">Default to <span class="hl">read-only</span>.<br/>Opt in to write.</h1>
+    <p class="subtitle reveal d2"><code>GITHUB_TOKEN</code> is auto-injected into every workflow. By default it has <em>write</em> access to the entire repo. Flip the default org-wide.</p>
+    <div class="code-snippet reveal d3">
+<span class="ann">permissions:</span> <span class="ok">{ contents: read }</span>          <span class="com"># at the top of every workflow file</span>
+
+<span class="ann">jobs:</span>
+  <span class="ann">build:</span>
+    <span class="com"># Each job opts in to what it needs:</span>
+    <span class="ann">permissions:</span>
+      <span class="ann">contents:</span> read
+      <span class="ann">packages:</span> write           <span class="com"># to push containers to GHCR</span>
+      <span class="ann">id-token:</span> write          <span class="com"># to mint OIDC token for cloud auth</span>
+      <span class="ann">attestations:</span> write      <span class="com"># to publish SLSA attestations</span>
+
+<span class="bad strike">permissions: write-all</span>          <span class="com"># NEVER. This is what attackers exploit.</span>
+    </div>
+    <div class="setting-path reveal d4">Org Settings → Actions → General → Default GITHUB_TOKEN permissions: <strong>Read repository contents and packages permissions</strong></div>
+  </div>
+</section>
+
+<!-- ACT 7 — ACTIONS SECURITY -->
+
+<!-- Scene 16: Allowed actions -->
+<section class="scene behind" data-scene="16" data-act="7">
+  <div class="scene-content">
+    <div class="eyebrow danger reveal">Act 7 · Actions security</div>
+    <h1 class="movie-title reveal d1">Allowlist what runs in <span class="hl">your CI</span>.</h1>
+    <p class="subtitle reveal d2">By default, any GitHub Action from any author can run in your workflows. That's a supply-chain firehose. Lock it down.</p>
+    <div class="code-snippet reveal d3">
+<span class="com"># Minimal allowlist for the Triarch framework</span>
+github_owned_allowed: <span class="ok">true</span>           <span class="com"># actions/* always OK</span>
+verified_allowed: <span class="bad">false</span>              <span class="com"># GitHub's "verified creator" bar is too low</span>
+
+patterns_allowed:
+  - semgrep/*@*
+  - aquasecurity/trivy-action@*
+  - aquasecurity/tfsec-*@*
+  - anchore/*@*
+  - google/osv-scanner-action@*
+  - gitleaks/gitleaks-action@*
+  - bridgecrewio/checkov-action@*
+  - sigstore/cosign-installer@*
+  - slsa-framework/*@*
+  - hashicorp/setup-terraform@*
+  - opentofu/setup-opentofu@*
+    </div>
+    <div class="setting-path reveal d4">Org Settings → Actions → General → Allow specific actions and reusable workflows</div>
+    <p class="subtitle reveal d5" style="margin-top:0.5rem;font-size:0.92rem">If a marketplace action isn't on the list, it can't run. <strong>Workflows fail at parse time, not at runtime.</strong></p>
+  </div>
+</section>
+
+<!-- Scene 17: SHA pinning -->
+<section class="scene behind" data-scene="17" data-act="7">
+  <div class="scene-content">
+    <div class="eyebrow danger reveal">Act 7 · The 2026 lesson</div>
+    <h1 class="movie-title reveal d1"><span class="hl">SHA pin</span> third-party actions.<br/>Always.</h1>
+    <p class="subtitle reveal d2">Tags can be moved. SHAs can't. In March 2026 attackers hijacked 75 of 76 tags on <code>aquasecurity/trivy-action</code> to steal cloud creds from 10,000+ workflows. <strong>SHA-pinned workflows were unaffected.</strong></p>
+    <div class="code-snippet reveal d3">
+<span class="bad strike">- uses: aquasecurity/trivy-action@v1</span>                                          <span class="com"># tag — mutable</span>
+<span class="bad strike">- uses: aquasecurity/trivy-action@latest</span>                                      <span class="com"># worse</span>
+
+<span class="ok">- uses: aquasecurity/trivy-action@692973e3d937129bcbf40652eb9f2f61becf3332</span>  <span class="com"># SHA — immutable</span>
+  <span class="com">                                                            # v1.7.0 ↑ kept in trailing comment</span>
+    </div>
+    <p class="subtitle reveal d4" style="margin-top:0.85rem;font-size:0.95rem">
+      Dependabot understands the trailing version comment. It bumps the SHA + comment together. <strong>Pin once, automate forever.</strong>
+    </p>
+    <div class="setting-path reveal d5">Org policy: enforce SHA pinning via Org Settings → Actions → General → Allow specific actions → Require pinning</div>
+  </div>
+</section>
+
+<!-- Scene 18: OIDC > static keys -->
+<section class="scene behind" data-scene="18" data-act="7">
+  <div class="scene-content">
+    <div class="eyebrow danger reveal">Act 7 · Cloud auth</div>
+    <h1 class="movie-title reveal d1"><span class="hl">OIDC</span> beats long-lived API keys.</h1>
+    <p class="subtitle reveal d2">A workflow that ships an AWS access key in a secret is one leaked log line away from disaster. OIDC removes the secret entirely.</p>
+    <div class="code-snippet reveal d3">
+<span class="ann">permissions:</span> { id-token: write, contents: read }
+
+<span class="ann">jobs:</span>
+  <span class="ann">deploy:</span>
+    <span class="ann">runs-on:</span> ubuntu-latest
+    <span class="ann">environment:</span> prod
+    <span class="ann">steps:</span>
+      - <span class="ann">uses:</span> aws-actions/configure-aws-credentials@v4
+        <span class="ann">with:</span>
+          <span class="ann">role-to-assume:</span> arn:aws:iam::ACCT:role/github-actions-prod
+          <span class="ann">aws-region:</span> us-east-1
+      <span class="com"># Now `aws ...` works for the next ~1 hour. No static keys anywhere.</span>
+    </div>
+    <p class="subtitle reveal d4" style="margin-top:0.85rem;font-size:0.95rem">
+      <strong>Zero static cloud keys</strong> = zero key-rotation cron jobs = zero leaked-key incidents.<br/>
+      Trust policy on the IAM role binds <code>repo:org/repo:environment:prod</code> — no other repo can assume it.
+    </p>
+  </div>
+</section>
+
+<!-- ACT 8 — AUDIT -->
+
+<!-- Scene 19: Audit log -->
+<section class="scene behind" data-scene="19" data-act="8">
+  <div class="scene-content">
+    <div class="eyebrow purple reveal">Act 8 · Who did what</div>
+    <h1 class="movie-title reveal d1">Every action <span class="hl">logged</span>.<br/>Stream it to S3.</h1>
+    <div class="code-snippet reveal d2">
+<span class="com"># Sample audit log events GitHub emits:</span>
+{<span class="key">"action"</span>: <span class="str">"team.add_member"</span>,        <span class="key">"actor"</span>: <span class="str">"alice"</span>, <span class="key">"team"</span>: <span class="str">"admin"</span>,           <span class="key">"member"</span>: <span class="str">"bob"</span>}
+{<span class="key">"action"</span>: <span class="str">"protected_branch.policy_override"</span>, <span class="key">"actor"</span>: <span class="str">"carol"</span>, <span class="key">"branch"</span>: <span class="str">"main"</span>}
+{<span class="key">"action"</span>: <span class="str">"oauth_authorization.create"</span>, <span class="key">"actor"</span>: <span class="str">"dave"</span>,  <span class="key">"app"</span>: <span class="str">"unknown-3rd-party"</span>}
+{<span class="key">"action"</span>: <span class="str">"repo.access"</span>,              <span class="key">"actor"</span>: <span class="str">"erin"</span>,  <span class="key">"repo"</span>: <span class="str">"prod-secrets"</span>}
+{<span class="key">"action"</span>: <span class="str">"personal_access_token.access_granted"</span>, <span class="key">"actor"</span>: <span class="str">"frank"</span>, <span class="key">"scopes"</span>: [<span class="str">"admin:org"</span>]}
+    </div>
+    <div class="card-grid two reveal d3" style="margin-top:1rem">
+      <div class="feat-card"><div class="lbl">Free / Team</div><h4>90 days, query-only</h4><p>Use the audit-log API. Schedule a workflow to export weekly to your own bucket if you want longer retention.</p></div>
+      <div class="feat-card"><div class="lbl">Enterprise</div><h4>Streaming → S3 / Splunk / Datadog</h4><p>Real-time, indefinite retention, SIEM-ready. Set up: Org → Settings → Audit log → Streaming.</p></div>
+    </div>
+    <p class="subtitle reveal d4" style="margin-top:0.85rem;font-size:0.95rem">If you can't reconstruct who did what 6 months later, <strong>you don't have audit.</strong></p>
+  </div>
+</section>
+
+<!-- ACT 9 — ATTACK PATTERNS -->
+
+<!-- Scene 20: Five attacks, five mitigations -->
+<section class="scene behind" data-scene="20" data-act="9">
+  <div class="scene-content">
+    <div class="eyebrow danger reveal">Act 9 · Common patterns</div>
+    <h1 class="movie-title reveal d1">How they get in.<br/>How <span class="hl">you</span> stop them.</h1>
+    <table class="attack-matrix reveal d2">
+      <thead><tr><th class="attack">Attack</th><th class="fix">Mitigation</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Compromised PAT</strong> — phishing, leaked in repo, stolen via malware</td>
+          <td>Push protection · fine-grained PATs · 2FA · scheduled token rotation · revoke on departure</td>
+        </tr>
+        <tr>
+          <td><strong>Malicious PR</strong> — outside contributor adds workflow that exfils secrets</td>
+          <td>Workflow permissions read-only by default · required reviews · CODEOWNERS for <code>.github/</code></td>
+        </tr>
+        <tr>
+          <td><strong>Tag mutation</strong> — third-party action's tag is hijacked (March 2026)</td>
+          <td>SHA pin every external action · Dependabot for SHA bumps · org-level allowlist</td>
+        </tr>
+        <tr>
+          <td><strong>Stolen laptop</strong> — local SSH keys + cached PATs walk out</td>
+          <td>2FA · revoke SSH keys + PATs immediately on report · signed commits show what shouldn't be there</td>
+        </tr>
+        <tr>
+          <td><strong>Insider with admin</strong> — exfils source, alters branch protection</td>
+          <td>CODEOWNERS · prevent self-review on prod env · audit log streaming · separate break-glass identity</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ACT 10 — OUTCOME + CTA -->
+
+<!-- Scene 21: Plan tier reality (NEW) -->
+<section class="scene behind" data-scene="21" data-act="10">
+  <div class="scene-content">
+    <div class="eyebrow warn reveal">Act 10 · Reality check</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Some hardening</span><br/>requires a paid plan.</h1>
+    <p class="subtitle reveal d2">The framework is honest about this. Free is enough for public repos. <strong>Private repos need Team</strong> (~$4/user/month) for protection rules + environments. Streaming audit + SAML SSO need Enterprise. Some advanced security features need the GHAS add-on.</p>
+    <table class="compare reveal d3" style="font-size:0.78rem">
+      <thead>
+        <tr><th>Capability</th><th>Free<br/>(public)</th><th>Free<br/>(private)</th><th>Team<br/>(any)</th><th>Enterprise</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Branch protection · Rulesets</td>
+          <td><span class="icn good">✓</span></td>
+          <td><span class="icn bad">✕</span></td>
+          <td><span class="icn good">✓</span></td>
+          <td><span class="icn good">✓</span></td>
+        </tr>
+        <tr>
+          <td>Environments · reviewers · wait timers</td>
+          <td><span class="icn good">✓</span></td>
+          <td><span class="icn bad">✕</span></td>
+          <td><span class="icn good">✓</span></td>
+          <td><span class="icn good">✓</span></td>
+        </tr>
+        <tr>
+          <td>CODEOWNERS-aware required reviews</td>
+          <td><span class="icn good">✓</span></td>
+          <td><span class="icn bad">✕</span></td>
+          <td><span class="icn good">✓</span></td>
+          <td><span class="icn good">✓</span></td>
+        </tr>
+        <tr>
+          <td>Secret scanning + push protection</td>
+          <td><span class="icn good">✓</span></td>
+          <td>+ GHAS</td>
+          <td>+ GHAS</td>
+          <td>+ GHAS</td>
+        </tr>
+        <tr>
+          <td>CodeQL code scanning</td>
+          <td><span class="icn good">✓</span></td>
+          <td>+ GHAS</td>
+          <td>+ GHAS</td>
+          <td>+ GHAS</td>
+        </tr>
+        <tr>
+          <td>OIDC · Actions · Dependabot</td>
+          <td><span class="icn good">✓</span></td>
+          <td><span class="icn good">✓</span></td>
+          <td><span class="icn good">✓</span></td>
+          <td><span class="icn good">✓</span></td>
+        </tr>
+        <tr>
+          <td>Signed commits · pinned actions · SLSA</td>
+          <td><span class="icn good">✓</span></td>
+          <td><span class="icn good">✓</span></td>
+          <td><span class="icn good">✓</span></td>
+          <td><span class="icn good">✓</span></td>
+        </tr>
+        <tr>
+          <td>Audit log retention</td>
+          <td>90 days API</td>
+          <td>90 days API</td>
+          <td>90 days API</td>
+          <td>+ streaming</td>
+        </tr>
+        <tr>
+          <td>SAML SSO · SCIM · IP allow lists</td>
+          <td><span class="icn bad">✕</span></td>
+          <td><span class="icn bad">✕</span></td>
+          <td><span class="icn bad">✕</span></td>
+          <td><span class="icn good">✓</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="subtitle reveal d4" style="margin-top:0.85rem;font-size:0.92rem">
+      <strong>Public-by-default open source:</strong> Free is plenty.<br/>
+      <strong>Private SaaS / B2B:</strong> Team is the floor. Workflow security + provenance + SHA pinning all still work, you just can't enforce reviews on private repos without it.
+    </p>
+  </div>
+</section>
+
+<!-- Scene 22: Hardening checklist -->
+<section class="scene behind" data-scene="21" data-act="10">
+  <div class="scene-content">
+    <div class="eyebrow reveal">Act 10 · The checklist</div>
+    <h1 class="movie-title reveal d1"><span class="hl">Eight settings</span> that move you<br/>from "it works" to "it's hardened."</h1>
+    <div class="checklist reveal d2">
+      <div class="check"><div class="num">1</div><div class="body"><strong>Org-wide 2FA required</strong><span>Settings → Authentication security → "Require two-factor authentication for everyone." Passkeys or hardware keys preferred.</span></div></div>
+      <div class="check"><div class="num">2</div><div class="body"><strong>Default base permission = None</strong><span>Settings → Member privileges. Anything else means new members get reads on everything.</span></div></div>
+      <div class="check"><div class="num">3</div><div class="body"><strong>Restrict who can create classic PATs</strong><span>Settings → Personal access tokens. Block classic PATs entirely if you can; require fine-grained.</span></div></div>
+      <div class="check"><div class="num">4</div><div class="body"><strong>Branch ruleset on every important repo</strong><span>Required signed commits, CODEOWNERS review, status checks, linear history. No bypass actors.</span></div></div>
+      <div class="check"><div class="num">5</div><div class="body"><strong>Allowed actions allowlist + SHA pinning</strong><span>Org Settings → Actions → General. Curate the allowlist. Enforce SHA pinning policy.</span></div></div>
+      <div class="check"><div class="num">6</div><div class="body"><strong>OIDC for every cloud auth</strong><span>Delete static AWS_ACCESS_KEY_ID secrets. Use federated identity per environment.</span></div></div>
+      <div class="check"><div class="num">7</div><div class="body"><strong>Push protection on Secret Scanning</strong><span>Repo Security → Secret scanning. Catches secrets at push time, not at PR review time.</span></div></div>
+      <div class="check"><div class="num">8</div><div class="body"><strong>Audit log streaming (or weekly export)</strong><span>Enterprise: stream to S3 / Splunk. Team: schedule a workflow that pulls from the audit-log API.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 23: CTA -->
+<section class="scene behind" data-scene="23" data-act="10">
+  <div class="scene-content">
+    <img src="https://www.triarch.dev/triarch-logo.png" alt="Triarch" class="hero-logo reveal" />
+    <div class="eyebrow reveal d1">Ready to harden</div>
+    <h1 class="movie-title reveal d2">Now check your repos<br/>against the <span class="hl">full framework</span>.</h1>
+    <p class="subtitle reveal d3">GitHub 101 covers the <em>foundation</em>. The Triarch SMB CI/CD framework covers what sits on top — environments, OIDC IaC, signed builds, threat modelling, audit pipelines. Run discovery, get findings, deploy.</p>
+    <div class="cta-buttons reveal d4">
+      <a href="cicd-walkthrough.html" class="cta-btn">Open the CI/CD walkthrough →</a>
+      <a href="cicd-movie.html" class="cta-btn secondary">▶ Watch the CI/CD movie</a>
+      <a href="cicd-overview.html" class="cta-btn secondary">Read the overview</a>
+    </div>
+    <p class="subtitle reveal d5" style="margin-top:2rem;font-size:0.85rem;color:var(--text-faint)">
+      <strong>Triarch Security Advisors</strong> · In a market full of noise, we provide the signal.
+    </p>
+  </div>
+</section>
+
+<!-- ============== Navigation ============== -->
+<button class="nav-arrow nav-prev" id="prevBtn" aria-label="Previous scene">‹</button>
+<button class="nav-arrow nav-next" id="nextBtn" aria-label="Next scene">›</button>
+
+<!-- ============== Progress dots ============== -->
+<div class="progress-rail">
+  <div class="progress-dots" id="progressDots"></div>
+</div>
+
+<script>
+const scenes = Array.from(document.querySelectorAll('.scene'));
+const total = scenes.length;
+let current = 0;
+let autoPlay = false;
+let autoPlayTimer = null;
+const AUTOPLAY_INTERVAL = 7000;
+
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const autoBtn = document.getElementById('autoPlayBtn');
+const counter = document.getElementById('ctrCounter');
+const dotsContainer = document.getElementById('progressDots');
+const progressBar = document.getElementById('autoplayProgress');
+
+function buildDots() {
+  dotsContainer.innerHTML = '';
+  let lastAct = null;
+  scenes.forEach((s, i) => {
+    const act = s.dataset.act;
+    if (lastAct && act !== lastAct) {
+      const m = document.createElement('div');
+      m.className = 'act-marker';
+      dotsContainer.appendChild(m);
+    }
+    lastAct = act;
+    const b = document.createElement('button');
+    b.className = 'progress-dot';
+    b.title = `Scene ${i + 1}`;
+    b.addEventListener('click', () => showScene(i));
+    dotsContainer.appendChild(b);
+  });
+}
+
+function showScene(idx) {
+  if (idx < 0 || idx >= total) return;
+  scenes.forEach((s, i) => {
+    s.classList.toggle('active', i === idx);
+    s.classList.toggle('behind', i !== idx);
+  });
+  current = idx;
+  counter.textContent = `${idx + 1} / ${total}`;
+  dotsContainer.querySelectorAll('.progress-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === idx);
+    d.classList.toggle('done', i < idx);
+  });
+  prevBtn.disabled = idx === 0;
+  nextBtn.disabled = idx === total - 1;
+  if (idx === total - 1 && autoPlay) toggleAutoPlay();
+}
+
+function next() {
+  if (current < total - 1) {
+    showScene(current + 1);
+    if (autoPlay) restartAutoPlayTimer();
+  }
+}
+function prev() {
+  if (current > 0) {
+    showScene(current - 1);
+    if (autoPlay) restartAutoPlayTimer();
+  }
+}
+prevBtn.addEventListener('click', prev);
+nextBtn.addEventListener('click', next);
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  switch (e.key) {
+    case 'ArrowRight': case 'PageDown': case ' ':
+      e.preventDefault(); next(); break;
+    case 'ArrowLeft': case 'PageUp':
+      e.preventDefault(); prev(); break;
+    case 'Home': e.preventDefault(); showScene(0); break;
+    case 'End': e.preventDefault(); showScene(total - 1); break;
+    case 'Escape':
+      window.location.href = 'index.html'; break;
+    case 'p': case 'P':
+      toggleAutoPlay(); break;
+  }
+});
+
+scenes.forEach(s => {
+  s.addEventListener('click', (e) => {
+    if (e.target.closest('a, button, input')) return;
+    next();
+  });
+});
+
+function startProgressBar() {
+  progressBar.classList.add('active');
+  progressBar.style.transition = 'none';
+  progressBar.style.width = '0%';
+  void progressBar.offsetWidth;
+  progressBar.style.transition = `width ${AUTOPLAY_INTERVAL}ms linear`;
+  progressBar.style.width = '100%';
+}
+function stopProgressBar() {
+  progressBar.classList.remove('active');
+  progressBar.style.transition = 'none';
+  progressBar.style.width = '0%';
+}
+function restartAutoPlayTimer() {
+  clearInterval(autoPlayTimer);
+  autoPlayTimer = setInterval(autoAdvance, AUTOPLAY_INTERVAL);
+  startProgressBar();
+}
+function autoAdvance() {
+  if (current >= total - 1) { toggleAutoPlay(); return; }
+  showScene(current + 1);
+  startProgressBar();
+}
+function toggleAutoPlay() {
+  autoPlay = !autoPlay;
+  if (autoPlay) {
+    autoPlayTimer = setInterval(autoAdvance, AUTOPLAY_INTERVAL);
+    autoBtn.textContent = '⏸ pause';
+    autoBtn.classList.add('playing');
+    startProgressBar();
+  } else {
+    clearInterval(autoPlayTimer);
+    autoBtn.textContent = '▶ auto';
+    autoBtn.classList.remove('playing');
+    stopProgressBar();
+  }
+}
+autoBtn.addEventListener('click', toggleAutoPlay);
+
+let touchStartX = 0, touchStartY = 0;
+document.addEventListener('touchstart', (e) => {
+  touchStartX = e.changedTouches[0].screenX;
+  touchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
+document.addEventListener('touchend', (e) => {
+  const dx = e.changedTouches[0].screenX - touchStartX;
+  const dy = e.changedTouches[0].screenY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) {
+    if (dx < 0) next();
+    else prev();
+  }
+}, { passive: true });
+
+buildDots();
+showScene(0);
+</script>
+
+</body>
+</html>
