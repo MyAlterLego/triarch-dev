@@ -1,149 +1,145 @@
-# Triarch SMB CI/CD Framework — Publish Package
+# Triarch SMB CI/CD Framework
 
-Everything needed to publish the Triarch CI/CD content to **triarch.dev**.
+**Audit-ready CI/CD for SMB engineering teams in days, not months.**
+
+This package gives you a hardened, reviewer-gated, security-scanned GitHub pipeline that drops onto any new or existing repo. It assumes you have one cloud, one app, and a handful of engineers — not a security team, not a Kubernetes platform, not a six-month onboarding budget.
+
+---
+
+## What you'll have when you're done
+
+- ✅ Every PR runs **Semgrep** (SAST) + **OSV-Scanner** (SCA) + **Gitleaks** (secrets) before merge
+- ✅ `main` branch protected: PR-only, linear history, no force-push, no direct delete
+- ✅ Three GitHub environments (`dev` / `staging` / `prod`) with branch policies
+- ✅ Dependabot opens vulnerability + version-update PRs weekly
+- ✅ CODEOWNERS file enforces review on sensitive paths (`.github/`, `iac/`, etc.)
+- ✅ Threat model placeholder + drift-detection check
+- ✅ Slack/email notification on every deploy
+- ✅ Pattern matches the [target architecture](https://www.triarch.dev/ci-cd/cicd-overview.html) on day-1 SMB tier
+
+---
+
+## 5-minute quickstart
+
+You'll need:
+- `gh` CLI authenticated to your GitHub org (`gh auth login --scopes "repo,workflow,admin:org"`)
+- A target org + repo to apply this to
+- ~15 minutes for Claude Code to drive the work
+
+```bash
+# 1. Download the package
+curl -sL https://www.triarch.dev/ci-cd/triarch-cicd-package.zip | tar -xz
+cd triarch-cicd-package
+
+# 2. Run discovery against your repo (read-only — captures NO secrets, just metadata)
+./github-cicd-scaffold/discovery.sh YOUR_ORG YOUR_REPO
+
+# 3. Hand the discovery output + gap-analysis.md to Claude Code:
+#       "Run gap-analysis.md against discovery-<timestamp>.txt for YOUR_ORG/YOUR_REPO"
+#    Claude produces a Triarch-branded HTML report scoring each item.
+
+# 4. Hand deploy.md to Claude Code:
+#       "Apply the gaps in gap-analysis-YOUR_ORG-YOUR_REPO-<date>.html using deploy.md"
+#    Claude opens PRs to fix the gaps. You review and merge.
+
+# 5. After PRs merge, push a small change to trigger CI on a new branch and verify
+#    the security gates run + the deploy lands.
+```
+
+---
+
+## Pick your variant: `ci-lite.yml` (default) vs `ci-full.yml` (opt-in)
+
+| Variant | Use when | What it runs |
+|---|---|---|
+| **`ci-lite.yml`** ← **default** | Day-1 SMB. No IaC yet. No GitHub Advanced Security. | 4 unconditional jobs: lint-test, semgrep, osv-scanner, gitleaks |
+| **`ci-full.yml`** ← opt-in | Repo has `iac/` (Terraform/OpenTofu) **and** `.threatmodel/` **and** GHAS | Adds: Checkov + tfsec (IaC scanning) + threat-model-drift + SARIF upload to Security tab |
+
+The `deploy.md` runbook makes this decision for you based on `discovery.sh` output. **You almost certainly want lite first.** Switch to full when you grow into it.
+
+---
+
+## Plan-tier reality
+
+This is a 3-tier framework. Be honest about which you're on:
+
+| Tier | What works on PRIVATE repos | What you give up |
+|---|---|---|
+| **Org Free** | Files only (CODEOWNERS, Dependabot, threat-model placeholder, ci-lite.yml). No branch protection, no rulesets, no environments-with-reviewers. | Pipeline gates can't be enforced; security scans run but can't block merge. |
+| **Org Team** ← framework's assumed baseline | Everything above + branch protection, rulesets (signed commits, linear history, required reviews, required status checks), basic environments. | Env-level reviewers + wait timers (those are Enterprise-only on private repos). |
+| **GitHub Enterprise Cloud** | Everything above + env-level required reviewers + wait timers + GHAS (Code Security) for SARIF upload to Security tab. | Nothing — full architecture diagram realized. |
+
+Public repos always get full features regardless of plan.
+
+The `gap-analysis.md` rubric tags items as REQUIRED / RECOMMENDED / OPTIONAL — most "missing" items on org Free are RECOMMENDED, not REQUIRED. Don't panic.
+
+---
 
 ## What's in this package
 
 ```
 triarch-cicd-package/
-├── index.html                    ← landing page (the site root)
-├── cicd-movie.html               ← cinematic interactive presentation
-├── cicd-overview.html            ← executive overview
-├── cicd-walkthrough.html         ← hands-on engineer walkthrough
-├── gap-analysis.md               ← Claude Code prompt for gap analysis
-├── SMB-CICD-Framework.md         ← the framework reference markdown
-├── README.md                     ← (this file)
-└── github-cicd-scaffold/         ← drop-in GitHub repo scaffold
-    ├── README.md                 ← setup guide
-    ├── bootstrap.sh              ← gh-CLI bootstrap script
-    ├── Makefile                  ← day-2 ops targets
-    ├── bootstrap.config.env.example
-    ├── .gitleaks.toml
-    ├── .pre-commit-config.yaml
-    ├── .semgrepignore
-    ├── .gitignore
+├── README.md                          ← you are here
+├── index.html                         ← landing page (the site root)
+├── cicd-overview.html                 ← exec / sponsor view of the framework
+├── cicd-walkthrough.html              ← hands-on step-by-step (interactive)
+├── cicd-movie.html                    ← cinematic walkthrough (10 min watch)
+├── SMB-CICD-Framework.md              ← the architecture deep-dive (200-page reference)
+├── gap-analysis.md                    ← Claude Code prompt for the assessment
+├── deploy.md                          ← Claude Code prompt for the remediation
+└── github-cicd-scaffold/              ← drop into any GitHub repo
+    ├── README.md                      ← scaffold setup guide
+    ├── bootstrap.sh                   ← one-shot setup script (gh CLI)
+    ├── discovery.sh                   ← read-only environment probe
+    ├── Makefile                       ← day-2 ops (rotate secrets, audit log, etc.)
     ├── .github/
-    │   ├── CODEOWNERS
-    │   ├── dependabot.yml
-    │   ├── pull_request_template.md
-    │   ├── ISSUE_TEMPLATE/security-waiver.md
-    │   ├── rulesets/main-protection.json
-    │   └── workflows/
-    │       ├── ci.yml
-    │       ├── build.yml
-    │       ├── deploy-dev.yml
-    │       ├── deploy-staging.yml
-    │       ├── deploy-prod.yml
-    │       └── nightly.yml
-    └── iac/
-        └── github-oidc-aws/
-            ├── main.tf
-            ├── variables.tf
-            ├── outputs.tf
-            └── example.tfvars
+    │   ├── CODEOWNERS                 ← required-reviewer file
+    │   ├── dependabot.yml             ← weekly version-update PRs
+    │   ├── pull_request_template.md   ← security checklist on every PR
+    │   ├── workflows/
+    │   │   ├── ci-lite.yml            ← DEFAULT — 4 scanners on every PR
+    │   │   ├── ci-full.yml            ← opt-in — adds IaC + threat-model checks
+    │   │   ├── deploy-{dev,staging,prod}.yml ← per-env deploys (OIDC-backed)
+    │   │   ├── build.yml              ← reusable build + cosign + SLSA provenance
+    │   │   └── nightly.yml            ← CodeQL + license + DR drill
+    │   └── rulesets/
+    │       ├── main-protection-baseline.json ← phase-1: PR-required + linear history
+    │       └── main-protection-lite.json     ← phase-2: + required scanner checks
+    ├── .pre-commit-config.yaml        ← local hooks mirroring CI gates
+    ├── .gitleaks.toml                 ← project secret-scanning config
+    └── .semgrepignore                 ← Semgrep exclusion patterns
 ```
 
-## How to publish to triarch.dev
+---
 
-The four HTML files are **fully self-contained** — inline CSS, inline JS, no build step, no dependencies beyond:
+## Order of operations
 
-- The Triarch logo at `https://www.triarch.dev/triarch-logo.png` (already on your domain)
-- Standard browser features (CSS Grid, Flexbox, SVG `<animateMotion>`, `localStorage`)
+1. **`discovery.sh`** — read-only inventory of your GitHub + cloud state.
+2. **`gap-analysis.md`** → Claude Code → HTML report.
+3. **`deploy.md`** → Claude Code → PRs that fix the gaps. **Phase 1**: ship `ci-lite.yml` + framework files + apply `main-protection-baseline.json`. **Phase 2** (after the workflow runs once on main): upgrade ruleset to `main-protection-lite.json` for full enforcement.
+4. **Verify** — push a test PR, watch the security checks run, merge, watch the deploy land.
 
-### Option A: Static hosting (recommended)
+---
 
-Upload the contents of `triarch-cicd-package/` to your static host root. The structure becomes:
+## Honest expectations
 
-```
-/                           → index.html (landing page)
-/cicd-movie.html            → the movie
-/cicd-overview.html         → the overview
-/cicd-walkthrough.html      → the walkthrough
-/gap-analysis.md            → downloadable
-/SMB-CICD-Framework.md      → downloadable
-/github-cicd-scaffold/      → directory listing or zip download
-```
+- **PRs can fail at first.** The scanners surface real findings on real codebases — that's the point. Fix them, allowlist them, or live with the warning.
+- **Plan upgrade is the one truly-required investment.** Most of the framework doesn't enforce on org-Free private. If you can't upgrade, you get file-only value (still meaningful, but not architectural).
+- **GHAS is separate from Team.** Code Security / SARIF upload to GitHub's Security tab is a paid add-on on top of any plan. The framework works without it (findings go to workflow logs); with it, they go to the Security tab too.
+- **Two deploy patterns are valid.** Firebase App Hosting connected-repo auto-deploy (no `deploy:` job) and explicit `firebase deploy` in a workflow are both legitimate. Pick one per repo and stick with it.
 
-Cross-links between the three HTML pages use relative paths, so they all just work.
+---
 
-If your static host (e.g. Cloudflare Pages, Netlify, GitHub Pages, Vercel) doesn't show directory listings by default, you may want to either:
+## Where to go next
 
-- Add a `_redirects` rule to serve `github-cicd-scaffold/` as a downloadable zip, OR
-- Add `dirlist: on` (or equivalent) for that path, OR
-- Pre-zip the scaffold (`github-cicd-scaffold.zip`) and link to that instead
+- Exec / sponsor view: [cicd-overview.html](cicd-overview.html)
+- Hands-on walkthrough: [cicd-walkthrough.html](cicd-walkthrough.html)
+- Interactive movie: [cicd-movie.html](cicd-movie.html)
+- Architecture deep-dive: [SMB-CICD-Framework.md](SMB-CICD-Framework.md)
+- Open an issue, ask a question: <https://www.triarch.dev/contact>
 
-### Option B: Pretty URLs with subfolders
-
-If you prefer paths like `/movie/`, `/overview/`, `/walkthrough/`, rename:
-
-- `cicd-movie.html`       → `movie/index.html`
-- `cicd-overview.html`    → `overview/index.html`
-- `cicd-walkthrough.html` → `walkthrough/index.html`
-
-Then update the cross-link `<a href="...">` references in each file (search/replace `cicd-movie.html` → `../movie/`, etc.).
-
-The `index.html` landing page links can be similarly updated.
-
-## Browser support
-
-Tested patterns work in Chrome, Edge, Safari, and Firefox (latest versions).
-
-The movie uses SVG `<animateMotion>` (SMIL) for the architecture-line bubbles and CSS animations for scene transitions. SMIL is broadly supported but Chrome had threatened deprecation in the past — currently it's still supported with no replacement timeline.
-
-`prefers-reduced-motion` is respected: animations and transitions are disabled for users who set that preference, and the architecture diagram displays statically with all elements visible.
-
-## Cross-links between pages
-
-All three HTML pages reference each other via relative paths. From any page:
-
-- `<a href="cicd-movie.html">▶ Movie</a>`
-- `<a href="cicd-overview.html">Overview</a>`
-- `<a href="cicd-walkthrough.html">Walkthrough →</a>`
-
-The landing `index.html` links to all three plus the supporting docs.
-
-## Logo
-
-Every page references the logo at `https://www.triarch.dev/triarch-logo.png`. Since you're publishing to `triarch.dev`, this resolves to the same domain — no CORS concerns, fast cached delivery.
-
-If you ever want to inline the logo as base64 to make the pages truly offline-friendly, run something like:
-
-```bash
-base64 -i triarch-logo.png > logo.b64
-# then in each HTML:
-# replace https://www.triarch.dev/triarch-logo.png
-# with    data:image/png;base64,<contents-of-logo.b64>
-```
-
-## What each piece is for
-
-| Audience | File |
-|---|---|
-| Exec / sponsor / prospect (5 min, visual) | `cicd-movie.html` |
-| Technical lead scoping the work | `cicd-overview.html` + `SMB-CICD-Framework.md` |
-| Engineer doing the build | `cicd-walkthrough.html` + `github-cicd-scaffold/` |
-| Auditing an existing customer setup | `gap-analysis.md` (handed to Claude Code) |
-
-## Versioning
-
-Current: **v1.0**.
-
-Every page footer mentions the version. To bump, search-and-replace `v1.0` to `v1.1` (etc.) across the HTML files and update the framework markdown's status line.
+---
 
 ## License / attribution
 
-All content is original Triarch material. The framework is opinionated based on Triarch Security Advisors' work with SMB customers in 2026.
-
-External tools and references mentioned (GitHub Actions, OIDC, Semgrep, OSV-Scanner, Gitleaks, cosign, SLSA, Sigstore, the `josemlopez/threat-modeling-toolkit` Claude Code plugin, etc.) are credited inline in the framework markdown and walkthrough.
-
-## Updating the package
-
-If you regenerate any HTML page, just drop the new file in over the old one. The structure is flat — no build step.
-
-If you regenerate the scaffold, ensure the workflow and IaC files keep their relative paths intact (the scaffold's `bootstrap.sh` expects `.github/rulesets/main-protection.json` and `iac/github-oidc-aws/` to exist relative to the script).
-
-## Questions
-
-Pair this README with the [framework markdown](SMB-CICD-Framework.md) for the deeper "why" behind each design decision.
-
-For Triarch directly: <https://www.triarch.dev> · <https://www.triarchsecurity.com>
+MIT-ish (see SMB-CICD-Framework.md §License). Built by Triarch Security Advisors. Steal it, fork it, mash it up. We just ask: don't sell it as your own framework.

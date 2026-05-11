@@ -92,26 +92,47 @@ run "gh api -X PATCH 'repos/${REPO}' \
 run "gh api -X PUT 'repos/${REPO}/vulnerability-alerts'"
 run "gh api -X PUT 'repos/${REPO}/automated-security-fixes'"
 
-# ---------- 5. branch ruleset (replaces legacy branch protection) -------------
+# ---------- 5. branch ruleset (two-phase: baseline now, lite after ci runs) ----
+#
+# PHASE 1 (this script): apply main-protection-baseline.json
+#   Rules: deletion + non_fast_forward + required_linear_history + pull_request.
+#   NO required_status_checks → safe to apply on day-1, before ci-lite.yml has
+#   run on main even once. Won't block merges on missing check names.
+#
+# PHASE 2 (manual, after ci-lite.yml has run on main once → check names register):
+#   Upgrade to main-protection-lite.json (for standalone ci-lite callers) OR
+#   main-protection-lite-callers.json (for shared-workflows quality-gate callers).
+#   Command printed at the end of this script. See deploy.md §5/R-4 for context.
+#
+# Earlier framework versions used main-protection.json (full-fat: required_signatures
+# + 7 required_status_checks). That blocks PRs on the named checks even when the
+# producing workflows aren't on main yet — the foot-gun this two-phase model avoids.
 
-echo "==> Applying ruleset to ${DEFAULT_BRANCH}"
-RULESET_JSON=".github/rulesets/main-protection.json"
+echo "==> Applying baseline ruleset to ${DEFAULT_BRANCH}"
+RULESET_JSON=".github/rulesets/main-protection-baseline.json"
 
-# Resolve actor IDs for bypass list
-RM_TEAM_ID=$(gh api "orgs/${GITHUB_ORG}/teams/${TEAM_RELEASE_MANAGERS}" -q .id 2>/dev/null || echo "")
-
-# Render ruleset (substitute team id if you choose to allow break-glass bypass)
+# Render ruleset with the customer's actual default-branch substituted
 TMP_RULESET=$(mktemp)
 jq --arg branch "refs/heads/${DEFAULT_BRANCH}" \
    '.conditions.ref_name.include = [$branch]' \
    "$RULESET_JSON" > "$TMP_RULESET"
 
-# Delete any existing ruleset of the same name, then create fresh
-EXISTING=$(gh api "repos/${REPO}/rulesets" --jq ".[] | select(.name==\"main-protection\") | .id" 2>/dev/null || true)
+# Delete any existing ruleset of the same name, then create fresh (idempotent)
+EXISTING=$(gh api "repos/${REPO}/rulesets" --jq ".[] | select(.name==\"main-protection-baseline\") | .id" 2>/dev/null || true)
 if [[ -n "$EXISTING" ]]; then
   run "gh api -X DELETE 'repos/${REPO}/rulesets/${EXISTING}'"
 fi
 run "gh api -X POST 'repos/${REPO}/rulesets' --input '${TMP_RULESET}'"
+
+echo ""
+echo "==> Phase 1 baseline ruleset applied."
+echo "    After ci-lite.yml has run on ${DEFAULT_BRANCH} at least once,"
+echo "    upgrade to lite for required-status-check enforcement:"
+echo ""
+echo "      OLD_ID=\$(gh api repos/${REPO}/rulesets --jq '.[] | select(.name==\"main-protection-baseline\") | .id')"
+echo "      gh api -X DELETE repos/${REPO}/rulesets/\$OLD_ID"
+echo "      gh api -X POST   repos/${REPO}/rulesets --input .github/rulesets/main-protection-lite.json"
+echo ""
 
 # ---------- 6. environments ---------------------------------------------------
 
