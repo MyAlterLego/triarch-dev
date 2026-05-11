@@ -57,6 +57,15 @@ cd triarch-cicd-package
 
 The `deploy.md` runbook makes this decision for you based on `discovery.sh` output. **You almost certainly want lite first.** Switch to full when you grow into it.
 
+## Pick your deploy target: AWS/OIDC (3-env) vs Firebase (2-env)
+
+| Target | Environments | Best for | Reference |
+|---|---|---|---|
+| **AWS / GCP / Azure with OIDC** | 3 (dev / staging / prod) | Multi-cloud, regulated environments, teams ≥3 engineers | [SMB-CICD-Framework.md §3.1](SMB-CICD-Framework.md#31-three-track-promotion) (default) |
+| **Firebase App Hosting** | 2 (dev / prod) | Single GCP project, solo / small-team Next.js apps, fastest path to production-ready CI/CD | [firebase-2env-pattern.md](firebase-2env-pattern.md) (variant) |
+
+The Firebase variant uses a single GCP project with two App Hosting backends per app, a `dev` branch wired to the dev backend, and `main` wired to the prod backend. It preserves the same enforcement properties as the AWS pattern (branch-gated deploys, GitHub Environment binding, hard bypass prevention via a `verify-dev-deployed` CI gate) while fitting Firebase's constraints.
+
 ---
 
 ## Plan-tier reality

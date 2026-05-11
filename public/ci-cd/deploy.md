@@ -126,7 +126,17 @@ gcloud auth application-default login           # required for Terraform
 ```bash
 npm install -g firebase-tools
 firebase login
+
+# After login, probe for the 2-environment App Hosting topology that the
+# Firebase variant of this framework expects. For each app in scope:
+firebase apphosting:backends:list --project <project-id>
 ```
+
+Each app should show **two backends** — `<app>` (or `<app>-prod`) for production and `<app>-dev` for development. If only one exists, the Firebase 2-environment pattern (see [firebase-2env-pattern.md](firebase-2env-pattern.md)) has not yet been applied — flag this and recommend the migration playbook in that doc as a separate remediation before continuing with CI/CD hardening.
+
+Additionally check:
+- The dev backend's **Environment Name** Console field must be set to `dev` for `apphosting.dev.yaml` auto-overlay to load. CLI can't read this — you'll have to ask the user to verify in Console: Backend → Settings → Environment.
+- Each backend's **Source → Branch** wiring should match the convention: prod backend ↔ `main`, dev backend ↔ `dev` branch.
 
 #### Azure (if cloud = Azure)
 ```bash

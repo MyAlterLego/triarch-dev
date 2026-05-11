@@ -138,6 +138,20 @@ hotfix/*  ──●──────────PR─────/
 
 Trunk-based, short-lived branches, squash merge, conventional commits, signed commits required (`git config commit.gpgsign true` enforced via repo ruleset). Releases happen by tagging `v*` on `main`; the tag is what triggers the prod environment workflow.
 
+### 3.3 Firebase variant (2-environment model)
+
+The 3-environment AWS/OIDC pattern above is the canonical recommendation. For teams running on **Firebase App Hosting**, a simpler **2-environment** variant (dev + prod, single GCP project, two FAH backends per app) is in use across every Triarch internal project. The pattern preserves the same enforcement properties — branch-gated deploys, GitHub Environment binding on prod, hard bypass prevention — adapted to the constraints of FAH (Console-driven branch wiring, repo-attached package secrets, no per-environment GCP project).
+
+See [firebase-2env-pattern.md](firebase-2env-pattern.md) for the full pattern, including:
+
+- Backend provisioning + Console "Environment Name" field for `apphosting.dev.yaml` auto-overlay
+- The shared `deploy-firebase.yml@v7.1` reusable workflow with `dev_backend` input
+- The four layers of bypass prevention (branch protection + PR flow + `verify-dev-deployed` CI gate + GitHub Environment branch policy)
+- Naming-convention caveats (when the auto-suffix breaks and you need `dev_backend` override)
+- Migration playbook from a 1-env setup
+
+If you're greenfielding on AWS, use §3.1. If you're on Firebase or migrating an existing Firebase project, use the variant doc.
+
 ---
 
 ## 4. Pipeline & security gates
