@@ -91,7 +91,15 @@ async function main() {
     console.log('');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`✓ Token minted for agent: ${agentName}`);
+    // apiKeyPrefix is the public 8-char identifier (stored as agent_identities.api_key_prefix
+    // for display in admin UI/CLI). It is NOT secret material; only the full plaintext token
+    // — printed below this block — is.
+    // codeql[js/clear-text-logging]
     console.log(`  prefix:    ${apiKeyPrefix}`);
+    // apiKeyHash is sha256(plaintext) — by design, this hash is what's stored in the DB.
+    // Logging the first 16 chars is for operator confirmation; the full token cannot be
+    // reversed from this hash.
+    // codeql[js/clear-text-logging]
     console.log(`  hash (db): ${apiKeyHash.slice(0, 16)}…`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('');
