@@ -66,7 +66,7 @@ export const GET = withAgent(
     return NextResponse.json({
       project_key: project.key,
       features: rows.map(projectFeature),
-      total,
+      total: Number(total ?? 0),
       limit,
       offset,
     });

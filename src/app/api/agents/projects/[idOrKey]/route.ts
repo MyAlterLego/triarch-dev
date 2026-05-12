@@ -70,11 +70,11 @@ export const GET = withAgent(
     return NextResponse.json({
       project: projectProject(project),
       counts: {
-        bugs_total: totalBugs,
-        bugs_open: openBugs,
-        features_total: totalFeatures,
-        features_open: openFeatures,
-        releases_total: totalReleases,
+        bugs_total: Number(totalBugs ?? 0),
+        bugs_open: Number(openBugs ?? 0),
+        features_total: Number(totalFeatures ?? 0),
+        features_open: Number(openFeatures ?? 0),
+        releases_total: Number(totalReleases ?? 0),
       },
     });
   },

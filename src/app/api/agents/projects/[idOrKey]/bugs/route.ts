@@ -72,7 +72,7 @@ export const GET = withAgent(
     return NextResponse.json({
       project_key: project.key,
       bugs: rows.map(projectBug),
-      total,
+      total: Number(total ?? 0),
       limit,
       offset,
     });

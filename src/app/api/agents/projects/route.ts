@@ -41,11 +41,13 @@ export const GET = withAgent(
               ne(bugReports.status, 'wontfix'),
             ),
           );
+        const openBugsN = Number(openBugs ?? 0);
 
         const [{ requestedFeatures }] = await db
           .select({ requestedFeatures: sql<number>`count(*)::int` })
           .from(featureRequests)
           .where(and(eq(featureRequests.project, p.key), eq(featureRequests.status, 'submitted')));
+        const requestedFeaturesN = Number(requestedFeatures ?? 0);
 
         const [latestDev] = await db
           .select()
@@ -62,8 +64,8 @@ export const GET = withAgent(
           .limit(1);
 
         const health = computeHealth({
-          openBugs,
-          requestedFeatures,
+          openBugs: openBugsN,
+          requestedFeatures: requestedFeaturesN,
           latestDev,
           latestProd,
         });
@@ -78,8 +80,8 @@ export const GET = withAgent(
           deployed_url: p.deployedUrl,
           health: health.rollup,
           health_reasons: health.reasons,
-          open_bugs: openBugs,
-          requested_features: requestedFeatures,
+          open_bugs: openBugsN,
+          requested_features: requestedFeaturesN,
           latest_dev_at: latestDev?.deployedAt ?? null,
           latest_prod_at: latestProd?.deployedAt ?? null,
         };

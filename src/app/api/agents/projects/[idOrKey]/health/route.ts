@@ -58,18 +58,20 @@ export const GET = withAgent(
     const bySev: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
     let openBugsTotal = 0;
     for (const row of severityBreakdown) {
-      if (row.severity) bySev[row.severity] = row.count;
-      openBugsTotal += row.count;
+      const n = Number(row.count ?? 0);
+      if (row.severity) bySev[row.severity] = n;
+      openBugsTotal += n;
     }
 
     const [{ requestedFeatures }] = await db
       .select({ requestedFeatures: sql<number>`count(*)::int` })
       .from(featureRequests)
       .where(and(eq(featureRequests.project, project.key), eq(featureRequests.status, 'submitted')));
+    const requestedFeaturesN = Number(requestedFeatures ?? 0);
 
     const health = computeHealth({
       openBugs: openBugsTotal,
-      requestedFeatures,
+      requestedFeatures: requestedFeaturesN,
       latestDev,
       latestProd,
       criticalBugsOpen: bySev.critical,
@@ -96,7 +98,7 @@ export const GET = withAgent(
       },
       open_bugs: bySev,
       open_bugs_total: openBugsTotal,
-      requested_features: requestedFeatures,
+      requested_features: requestedFeaturesN,
       health: health.rollup,
       reasons: health.reasons,
     });
