@@ -131,7 +131,8 @@ jobs:
     if: |
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
-      (needs.gate-prod.result == 'success' || needs.gate-prod.result == 'skipped')
+      (needs.gate-prod.result == 'success' || needs.gate-prod.result == 'skipped') &&
+      (needs.verify-dev-deployed.result == 'success' || needs.verify-dev-deployed.result == 'skipped')
     uses: triarchsecurity/shared-workflows/.github/workflows/deploy-firebase.yml@v7.1
     with:
       firebase_project_id: triarch-dev-website
