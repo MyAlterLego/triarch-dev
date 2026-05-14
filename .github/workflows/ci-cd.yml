@@ -128,12 +128,22 @@ jobs:
 
   deploy:
     needs: [quality-gate, validate-apphosting, env-select, verify-dev-deployed, gate-prod]
+    # 2026-05-14: `always() &&` prefix is REQUIRED. Without it, GitHub Actions
+    # applies an implicit success() wrapper that skips the deploy job when ANY
+    # `needs` is in non-success state — including legitimately-skipped jobs
+    # like verify-dev-deployed and gate-prod on dev pushes. The explicit
+    # success/skipped checks below were already there but had no effect because
+    # the implicit success() ran first. always() removes the implicit wrapper.
     if: |
+      always() &&
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') &&
+      needs.quality-gate.result == 'success' &&
+      needs.validate-apphosting.result == 'success' &&
+      needs.env-select.result == 'success' &&
       (needs.gate-prod.result == 'success' || needs.gate-prod.result == 'skipped') &&
       (needs.verify-dev-deployed.result == 'success' || needs.verify-dev-deployed.result == 'skipped')
-    uses: triarchsecurity/shared-workflows/.github/workflows/deploy-firebase.yml@v7.1
+    uses: triarchsecurity/shared-workflows/.github/workflows/deploy-firebase.yml@v8
     with:
       firebase_project_id: triarch-dev-website
       app_hosting_backend: triarch-dev
