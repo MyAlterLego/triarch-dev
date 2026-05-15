@@ -294,6 +294,7 @@ For each row below, evaluate the discovery output and assign a status. Use the e
 | C-12 | `verify-dev-deployed` CI gate (Layer 3 of the bypass-prevention model) | Grep each workflow body for a job containing `verify-dev-deployed` / `verify_dev_deployed` / "assert HEAD ... origin/dev" | Pass: a job exists whose body asserts HEAD is on `origin/dev` before any prod-only job runs. Partial: a job is named but its assertion is commented out or weakened (e.g. `[hotfix-bypass-dev]` token still wired). Fail: no such job. Without it, a force-merge to `main` can ship code that never deployed to the dev backend — the exact failure mode this framework exists to prevent. |
 | C-13 | Version-invariants gate on prod promotion (`gate-prod-version` or equivalent) | Grep each workflow body for `gate-prod-version` / `gate_prod_version` / a step that POSTs to a version-registry endpoint before prod deploy | Pass: a job verifies the prod-target version satisfies the framework's INV-1..INV-5 invariants (target ≤ dev_version, target > prod_version, target == dev_version, dev_age ≥ bake_minimum). Partial: a callback exists but doesn't enforce all five invariants. Fail: no callback, prod can deploy any commit that passes earlier gates. See `firebase-2env-pattern.md` §"GATE-12 promotion callback". |
 | C-14 | Promotion branch protected from deletion | Check `gh api repos/$ORG/$REPO/rulesets` for a ruleset whose `conditions.ref_name.include` covers `refs/heads/dev` (or `/staging`) AND whose `rules[]` includes `{ "type": "deletion" }`. Also check the repo setting `delete_branch_on_merge`: if true and no deletion-blocking ruleset, the dev branch will be auto-deleted on every dev→main merge | Pass: deletion-blocking ruleset present on the promotion branch (overrides the repo's auto-delete policy). Fail: `delete_branch_on_merge: true` AND no protection on the promotion branch — every dev→main merge will silently delete `origin/dev`, breaking the `verify-dev-deployed` gate on the *next* prod deploy until someone recreates dev. This is the framework's most subtle promotion-flow failure mode. |
+| C-15 | Promotion PRs can be merged with merge-commit method | Check repo settings: `gh api repos/$ORG/$REPO --jq '{allow_merge_commit, allow_squash_merge}'`. AND check main ruleset: `gh api repos/$ORG/$REPO/rulesets/<id> --jq '.rules[].type'` must NOT include `required_linear_history` | Pass: `allow_merge_commit=true` AND no `required_linear_history` on the main ruleset. Fail: either is missing — every dev→main squash creates a new main SHA that breaks `verify-dev-deployed`'s ancestry check, forcing a manual recovery step on every prod promotion. Partial: setting is correct but the framework docs in the repo (if any) still recommend squash for dev→main. See `firebase-2env-pattern.md` §"Promotion merge method". |
 
 ### TIER: OPTIONAL — capacity-allowing additions
 
@@ -476,6 +477,18 @@ C-14:
       gh api -X POST repos/$ORG/$REPO/rulesets --input .github/rulesets/dev-protection.json
     The ruleset's `deletion` rule overrides the repo's `delete_branch_on_merge` policy specifically for `dev` and `staging`, so feature branches still auto-cleanup after merge but the long-lived promotion branch survives. Without this, every dev→main merge silently deletes `origin/dev` and the next prod deploy's verify-dev-deployed gate fails — the failure mode caught live on `triarchsecurity/platform` 2026-05-15.
   reference: "github-cicd-scaffold/.github/rulesets/dev-protection.json + bootstrap.sh §5b"
+
+C-15:
+  fix: |
+    Two settings, both required:
+      # 1. Enable merge-commit at the repo level (squash stays enabled for feature → dev):
+      gh api -X PATCH repos/$ORG/$REPO -F allow_merge_commit=true -F allow_squash_merge=true
+      # 2. Strip required_linear_history from the main ruleset (it forces squash/rebase):
+      RULESET_ID=$(gh api repos/$ORG/$REPO/rulesets --jq '.[] | select(.name | test("main-protection")) | .id' | head -1)
+      gh api -X DELETE repos/$ORG/$REPO/rulesets/$RULESET_ID
+      gh api -X POST   repos/$ORG/$REPO/rulesets --input .github/rulesets/main-protection-baseline.json   # framework v2.13.9+, linear_history removed
+    Then on the next dev → main PR, choose "Create a merge commit" in the GitHub UI (or `gh pr merge --merge`). Squash will still fail the gate.
+  reference: "firebase-2env-pattern.md §'Promotion merge method'"
 
 O-1:
   fix: |

@@ -408,7 +408,8 @@ Missing any of these → CI will fail in a specific predictable way. Use the dia
 | `npm error 401 Unauthorized` on `@triarchsecurity/...` | Consumer repo not in package's "Manage Actions access" list | Add the repo via package settings |
 | `npm error 403 Permission installation not allowed` | Trying to use a GitHub App installation token | Use `secrets.GITHUB_TOKEN` instead — GitHub Packages npm registry doesn't honor cross-repo App tokens despite docs claiming otherwise |
 | Dev backend deploys but uses prod config | "Environment Name" Console field is not set to `dev` on the dev backend | Set it. FAH only loads `apphosting.dev.yaml` when this field matches |
-| `verify-dev-deployed` blocks a hotfix push to main | Hotfix commit isn't on `dev` branch yet | Merge the hotfix to dev first, then to main. OR (rare): temporarily comment out the gate, document in commit message |
+| `verify-dev-deployed` blocks a hotfix push to main | Hotfix commit isn't on `dev` branch yet | Merge the hotfix to dev first, then to main. There is no in-band bypass — commenting out the gate defeats the framework's entire purpose. |
+| `verify-dev-deployed` fails immediately after a squash-merge of dev → main | The squash created a new SHA on main with no path back to dev's history (see §"Promotion merge method" below) | Use **merge-commit** for dev → main PRs (not squash). If you already squash-merged, recover by `git checkout dev && git merge origin/main --no-ff && git push origin dev` then re-run the failed prod workflow. |
 | `gate-prod` job stays in "Waiting" forever | GitHub Environment `prod` has reviewer rule but no one to approve | Add a reviewer, or remove the rule if solo-dev |
 | Push to main deploys to dev backend | Branch ref evaluation bug in `env-select` job | Check the `if` condition matches `refs/heads/main` exactly |
 
@@ -439,6 +440,41 @@ If you currently push to main and it deploys to whatever your single backend is 
 10. **Second test**: PR `dev` → `main`. Merge. Should deploy to prod backend.
 
 11. **Bypass test**: try to push directly to main from a feature branch that isn't on dev. The `verify-dev-deployed` gate should refuse.
+
+### Promotion merge method — why dev → main must be a merge-commit
+
+The `verify-dev-deployed` gate asserts `git merge-base --is-ancestor HEAD origin/dev` on every prod deploy. That assertion is **SHA-level**, not tree-level. Which method GitHub uses to combine the dev → main PR determines whether the assertion can ever pass:
+
+| Merge method | What it does to main's HEAD | `is-ancestor HEAD origin/dev`? |
+|---|---|---|
+| **Merge commit** | New commit on main with parents `[old_main_tip, dev_tip]`. `dev_tip` is reachable from main. | ✅ **Passes** — dev_tip is literally one of main HEAD's parents. |
+| **Squash** | New commit on main with single parent `old_main_tip` and dev's tree squashed in. SHA never existed on dev. | ❌ **Fails** — squash commit is not reachable from origin/dev. |
+| **Rebase-and-merge** | dev's commits replayed onto main as new SHAs. None of those SHAs exist on dev. | ❌ **Fails** — same reason. |
+
+The framework defaults: **squash** for feature → dev (clean dev history), **merge-commit** for dev → main (preserves ancestry).
+
+#### Repo config that enables this
+
+`bootstrap.sh` sets both:
+- `allow_squash_merge=true`
+- `allow_merge_commit=true`
+
+And the main rulesets in `.github/rulesets/` **do not** include `required_linear_history`. That rule forces squash/rebase only and is incompatible with the promotion model — older framework versions had it and produced exactly the failure mode above. Apply or upgrade the ruleset accordingly.
+
+#### Recovery if a dev → main PR was squash-merged by mistake
+
+The failed prod deploy can be unblocked without reverting:
+
+```bash
+git checkout dev
+git pull origin dev
+git merge origin/main --no-ff -m "merge main into dev (post-squash align — closes verify-dev-deployed gap)"
+git push origin dev
+# Then re-run the failed prod workflow:
+gh run rerun <runId> --failed --repo <org>/<repo>
+```
+
+This adds a merge commit to dev whose parents include the new main HEAD, restoring the ancestry relationship.
 
 ### Bootstrap caveat — first deploy after adding `verify-dev-deployed`
 

@@ -77,9 +77,16 @@ done
 # ---------- 4. repository settings --------------------------------------------
 
 echo "==> Applying repository settings"
+# Both squash and merge-commit are enabled. Squash is the default for
+# feature → dev PRs (keeps dev history clean). Merge-commit is the only
+# correct method for dev → main promotion PRs — squash creates a new SHA
+# on main that breaks verify-dev-deployed's `git merge-base --is-ancestor
+# HEAD origin/dev` ancestry check, forcing a manual "merge main back into
+# dev" recovery step every time. See firebase-2env-pattern.md §"Promotion
+# merge method".
 run "gh api -X PATCH 'repos/${REPO}' \
   -F allow_squash_merge=true \
-  -F allow_merge_commit=false \
+  -F allow_merge_commit=true \
   -F allow_rebase_merge=false \
   -F delete_branch_on_merge=true \
   -F allow_auto_merge=true \
