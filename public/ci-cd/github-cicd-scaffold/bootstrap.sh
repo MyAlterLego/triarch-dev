@@ -134,6 +134,30 @@ echo "      gh api -X DELETE repos/${REPO}/rulesets/\$OLD_ID"
 echo "      gh api -X POST   repos/${REPO}/rulesets --input .github/rulesets/main-protection-lite.json"
 echo ""
 
+# ---------- 5b. dev-branch protection (blocks deletion + force-push) -----------
+#
+# The 4-layer bypass-prevention model (firebase-2env-pattern.md §"Layer 3")
+# checks `git merge-base --is-ancestor HEAD origin/dev` on every prod deploy.
+# If the repo has `delete_branch_on_merge: true` (typical), the `dev` branch
+# gets auto-deleted whenever a dev→main PR merges, and the next prod deploy
+# fails because there's no origin/dev to compare against. Two fixes — pick one:
+#   A) Apply this ruleset so dev (and staging) can't be deleted by the
+#      auto-delete policy. Recommended — surgical and reversible.
+#   B) Turn off delete_branch_on_merge repo-wide. Blunter — also loses cleanup
+#      on feature branches.
+#
+# This block applies (A). Idempotent: delete existing same-name ruleset, recreate.
+
+DEV_RULESET_JSON=".github/rulesets/dev-protection.json"
+if [[ -f "$DEV_RULESET_JSON" ]]; then
+  echo "==> Applying dev/staging protection ruleset (block deletion + force-push)"
+  EXISTING_DEV=$(gh api "repos/${REPO}/rulesets" --jq ".[] | select(.name==\"dev-protection\") | .id" 2>/dev/null || true)
+  if [[ -n "$EXISTING_DEV" ]]; then
+    run "gh api -X DELETE 'repos/${REPO}/rulesets/${EXISTING_DEV}'"
+  fi
+  run "gh api -X POST 'repos/${REPO}/rulesets' --input '${DEV_RULESET_JSON}'"
+fi
+
 # ---------- 6. environments ---------------------------------------------------
 
 create_env() {
