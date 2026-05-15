@@ -167,6 +167,43 @@ if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
       echo "(R-7 fails — without a promotion branch, all merges go straight to the default branch)" | tee -a "$OUT"
     fi
 
+    # C-14 probe — is the promotion branch protected from deletion?
+    if [ -n "$PROMOTION_BRANCH" ]; then
+      DEV_RULESET_PROTECTED=0
+      for rid in $(gh api "repos/$ORG/$REPO/rulesets" --jq '.[].id' 2>/dev/null); do
+        rs_json=$(gh api "repos/$ORG/$REPO/rulesets/$rid" 2>/dev/null)
+        covers=$(printf '%s' "$rs_json" | jq -r --arg ref "refs/heads/$PROMOTION_BRANCH" '.conditions.ref_name.include // [] | index($ref)' 2>/dev/null)
+        has_deletion=$(printf '%s' "$rs_json" | jq -r '[.rules[].type] | index("deletion")' 2>/dev/null)
+        if [ "$covers" != "null" ] && [ "$has_deletion" != "null" ]; then
+          DEV_RULESET_PROTECTED=1
+          break
+        fi
+      done
+      AUTO_DELETE=$(gh api "repos/$ORG/$REPO" --jq '.delete_branch_on_merge' 2>/dev/null)
+      echo "C-14 promotion_branch_protected_from_deletion=$DEV_RULESET_PROTECTED auto_delete_on_merge=$AUTO_DELETE" | tee -a "$OUT"
+      if [ "$DEV_RULESET_PROTECTED" -eq 0 ] && [ "$AUTO_DELETE" = "true" ]; then
+        echo "(C-14 fails — delete_branch_on_merge is true and no ruleset protects the promotion branch; every dev→main merge will silently delete origin/$PROMOTION_BRANCH)" | tee -a "$OUT"
+      fi
+    fi
+
+    # C-15 probe — is merge-commit method actually mergeable to main?
+    ALLOW_MERGE_COMMIT=$(gh api "repos/$ORG/$REPO" --jq '.allow_merge_commit' 2>/dev/null)
+    LEGACY_LINEAR=$(gh api "repos/$ORG/$REPO/branches/$DEFAULT_BRANCH/protection" --jq '.required_linear_history.enabled // false' 2>/dev/null)
+    RULESET_LINEAR=0
+    for rid in $(gh api "repos/$ORG/$REPO/rulesets" --jq '.[].id' 2>/dev/null); do
+      rs_json=$(gh api "repos/$ORG/$REPO/rulesets/$rid" 2>/dev/null)
+      covers_main=$(printf '%s' "$rs_json" | jq -r --arg ref "refs/heads/$DEFAULT_BRANCH" '.conditions.ref_name.include // [] | index($ref)' 2>/dev/null)
+      has_linear=$(printf '%s' "$rs_json" | jq -r '[.rules[].type] | index("required_linear_history")' 2>/dev/null)
+      if [ "$covers_main" != "null" ] && [ "$has_linear" != "null" ]; then
+        RULESET_LINEAR=1
+        break
+      fi
+    done
+    echo "C-15 allow_merge_commit=$ALLOW_MERGE_COMMIT legacy_linear_history=$LEGACY_LINEAR ruleset_linear_history=$RULESET_LINEAR" | tee -a "$OUT"
+    if [ "$ALLOW_MERGE_COMMIT" != "true" ] || [ "$LEGACY_LINEAR" = "true" ] || [ "$RULESET_LINEAR" -eq 1 ]; then
+      echo "(C-15 fails — dev→main can't use merge-commit. Squash will create a new SHA that fails verify-dev-deployed's ancestry check.)" | tee -a "$OUT"
+    fi
+
     # Per-workflow: extract on.push.branches and on.pull_request.branches, plus job-name fingerprints
     # for verify-dev-deployed / gate-prod-version. These are framework-prescribed and the gap-analysis
     # validators (R-8, C-12, C-13) read this section.

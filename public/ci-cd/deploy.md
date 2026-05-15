@@ -364,8 +364,20 @@ Each entry maps a gap-analysis ID to the action you take. Use `github-cicd-scaff
 - **Action:** Copy `github-cicd-scaffold/.github/dependabot.yml`. Adjust ecosystem mix if the repo isn't `npm` + Docker + Terraform.
 - **Verify:** Within 24h of merge, Dependabot opens its first PR.
 
-### C-8 — Require linear history
-- **Action:** Add `{ "type": "required_linear_history" }` to ruleset rules; re-apply. Tell developers they must rebase instead of merge-commit.
+### C-8 — Do NOT require linear history on main
+- **Action:** This used to be a recommendation; it is now an anti-recommendation. `required_linear_history` forces every PR to main to land as squash or rebase, which severs the SHA link between dev's tip and main HEAD and breaks the `verify-dev-deployed` ancestry check (see firebase-2env-pattern.md §"Promotion merge method"). If a customer repo has this rule (in a ruleset or in legacy branch protection), **remove it**:
+  ```bash
+  # Ruleset path:
+  RULESET_ID=$(gh api repos/$ORG/$REPO/rulesets --jq '.[] | select(.name | test("main-protection")) | .id' | head -1)
+  gh api repos/$ORG/$REPO/rulesets/$RULESET_ID | \
+    jq '{name, target, enforcement, bypass_actors, conditions, rules: [.rules[] | select(.type != "required_linear_history")]}' > /tmp/r.json
+  gh api -X PUT repos/$ORG/$REPO/rulesets/$RULESET_ID --input /tmp/r.json
+  # Legacy branch-protection path (independent of rulesets):
+  gh api repos/$ORG/$REPO/branches/main/protection > /tmp/p.json
+  jq '.required_linear_history = false | del(.url, .required_pull_request_reviews.url, .required_signatures.url, .enforce_admins.url, .allow_force_pushes.url, .allow_deletions.url, .required_conversation_resolution.url, .lock_branch.url, .allow_fork_syncing.url, .block_creations.url, .required_status_checks.url)' /tmp/p.json > /tmp/p-fixed.json
+  gh api -X PUT repos/$ORG/$REPO/branches/main/protection --input /tmp/p-fixed.json
+  ```
+- **Verify:** `gh api repos/$ORG/$REPO/branches/main/protection --jq '.required_linear_history.enabled'` returns `false`, and the main ruleset's rules array does not include `required_linear_history`.
 
 ### C-9 — Add a threat model
 - **Action:** Two paths:
@@ -506,7 +518,7 @@ gh api -X PUT repos/$ORG/$REPO/branches/main/protection --input - <<EOF
   "enforce_admins": false,
   "required_pull_request_reviews": null,
   "restrictions": null,
-  "required_linear_history": true,
+  "required_linear_history": false,
   "allow_force_pushes": false,
   "allow_deletions": false
 }

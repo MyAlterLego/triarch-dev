@@ -129,7 +129,7 @@ GitHub allows up to six deployment-protection rules per environment ([docs](http
 
 - **dev** — branch restriction (`dev` only), no reviewers, smoke-test job is the only gate.
 - **staging** *(optional)* — 1 required reviewer (any engineer), prevent-self-review on, 5-minute wait timer, SLSA provenance required.
-- **prod** — branch restriction (`main` only), `verify-dev-deployed` gate (HEAD must be ancestor of `origin/dev` — see [firebase-2env-pattern.md](firebase-2env-pattern.md) for the canonical implementation), reviewer rule when multi-developer (Enterprise-only on private repos). Solo-dev orgs can skip the reviewer rule — the mechanical block (`verify-dev-deployed`) enforces promotion discipline.
+- **prod** — branch restriction (`main` only), `verify-dev-deployed` gate (`origin/dev` must be ancestor of main HEAD — i.e., dev's tip is reachable from HEAD, which only happens when dev → main was merged using "Create a merge commit"; see [firebase-2env-pattern.md](firebase-2env-pattern.md) §"Promotion merge method" for the canonical implementation), reviewer rule when multi-developer (Enterprise-only on private repos). Solo-dev orgs can skip the reviewer rule — the mechanical block (`verify-dev-deployed`) enforces promotion discipline.
 
 Hard separation rules (apply at any environment count):
 
