@@ -987,7 +987,7 @@
           <div style="position: absolute; top: -10px; right: 10px; background: #f87171; color: #1f1d14; font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; letter-spacing: 1px;">LOAD-BEARING</div>
           <div style="color: #f87171; font-weight: 700; font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 0.5rem;">LAYER 3</div>
           <div style="color: #f5ecd8; font-weight: 600; margin-bottom: 0.4rem;">verify-dev-deployed CI gate</div>
-          <div style="color: #c9b88a; font-size: 0.8rem;"><code style="color: #f87171;">git merge-base --is-ancestor HEAD origin/dev</code> must succeed. <strong>The mechanical block</strong> — commit must be on dev's history first.</div>
+          <div style="color: #c9b88a; font-size: 0.8rem;"><code style="color: #f87171;">git merge-base --is-ancestor origin/dev HEAD</code> must succeed. <strong>The mechanical block</strong> — dev's tip must be reachable from main HEAD, which only happens when dev → main uses "Create a merge commit".</div>
         </div>
 
         <div style="background: rgba(248,113,113,0.08); border: 1px solid #f87171; border-radius: 8px; padding: 1rem;">

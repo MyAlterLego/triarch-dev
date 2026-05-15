@@ -164,16 +164,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0   # full history needed for ancestor check
-      - name: Assert HEAD is on origin/dev
+      - name: Assert dev tip is in main's ancestry
         run: |
           git fetch origin dev
-          if ! git merge-base --is-ancestor HEAD origin/dev; then
-            echo "::error::Refusing to deploy to prod: $(git rev-parse HEAD) has not been deployed to dev yet."
-            echo "::error::Merge this commit to dev first, verify it deploys cleanly, then promote to main."
-            echo "::error::No bypass — every prod deploy passes through dev."
+          if ! git merge-base --is-ancestor origin/dev HEAD; then
+            echo "::error::Refusing to deploy to prod: origin/dev tip ($(git rev-parse origin/dev)) is not reachable from HEAD ($(git rev-parse HEAD))."
+            echo "::error::dev → main must be merged using 'Create a merge commit' so dev's tip becomes a parent of main HEAD."
+            echo "::error::If you squash-merged, push main HEAD onto dev (or merge main into dev) to restore ancestry, then rerun."
             exit 1
           fi
-          echo "Verified: $(git rev-parse HEAD) is an ancestor of origin/dev — safe to promote to prod."
+          echo "Verified: origin/dev is an ancestor of HEAD — safe to promote to prod."
 
   # 4. Read target version (for the gate to compare against).
   version:
@@ -279,10 +279,10 @@ Single-PR flow (base `main`, head feature) is caught by Layer 3.
 This is the **mechanical block** built into the workflow above. Before the prod deploy job runs, the workflow checks:
 
 ```bash
-git merge-base --is-ancestor HEAD origin/dev
+git merge-base --is-ancestor origin/dev HEAD
 ```
 
-If `HEAD` (the commit being deployed to prod) is **not** an ancestor of `origin/dev`, the job fails with a clear error. **No bypass token.** A commit can only reach prod if it has already been pushed to dev. The only way around this would be force-pushing dev to include the commit just-in-time — a deliberate end-run, not an accident, and visible in dev's reflog.
+If `origin/dev`'s tip is **not** reachable from `HEAD` (the commit being deployed to prod), the job fails with a clear error. **No bypass token.** Prod can only deploy a commit that has dev's tip as an ancestor — the only way to satisfy that is to merge dev → main using "Create a merge commit", which gives main HEAD parents `[old_main_tip, dev_tip]`. A direct push to main, or a squash/rebase that severs the parent link, is rejected. Force-pushing dev just-in-time would also satisfy it but is visible in dev's reflog and blocked by the `dev-protection` ruleset's `non_fast_forward` rule.
 
 ### Layer 4: GitHub Environment `prod` with branch policy
 
@@ -443,15 +443,20 @@ If you currently push to main and it deploys to whatever your single backend is 
 
 ### Promotion merge method — why dev → main must be a merge-commit
 
-The `verify-dev-deployed` gate asserts `git merge-base --is-ancestor HEAD origin/dev` on every prod deploy. That assertion is **SHA-level**, not tree-level. Which method GitHub uses to combine the dev → main PR determines whether the assertion can ever pass:
+The `verify-dev-deployed` gate asserts `git merge-base --is-ancestor origin/dev HEAD` on every prod deploy. That assertion is **SHA-level**, not tree-level. The question is: "Is dev's tip reachable from main HEAD?" Which method GitHub uses to combine the dev → main PR determines whether the answer is yes:
 
-| Merge method | What it does to main's HEAD | `is-ancestor HEAD origin/dev`? |
+| Merge method | What it does to main's HEAD | `is-ancestor origin/dev HEAD`? |
 |---|---|---|
-| **Merge commit** | New commit on main with parents `[old_main_tip, dev_tip]`. `dev_tip` is reachable from main. | ✅ **Passes** — dev_tip is literally one of main HEAD's parents. |
-| **Squash** | New commit on main with single parent `old_main_tip` and dev's tree squashed in. SHA never existed on dev. | ❌ **Fails** — squash commit is not reachable from origin/dev. |
-| **Rebase-and-merge** | dev's commits replayed onto main as new SHAs. None of those SHAs exist on dev. | ❌ **Fails** — same reason. |
+| **Merge commit** | New commit on main with parents `[old_main_tip, dev_tip]`. `dev_tip` is one of main HEAD's parents. | ✅ **Passes** — dev's tip is reachable from main HEAD by following the parent edge. |
+| **Squash** | New commit on main with single parent `old_main_tip` and dev's tree squashed in. No parent link back to dev. | ❌ **Fails** — dev's tip is not reachable from main HEAD. Recovery: see below. |
+| **Rebase-and-merge** | dev's commits replayed onto main as new SHAs, no link to original dev SHAs. | ❌ **Fails** — same reason. |
+| **Direct push to main** | New commit, no relation to dev at all. | ❌ **Fails** — correct behavior, this is the failure mode the gate exists to prevent. |
 
 The framework defaults: **squash** for feature → dev (clean dev history), **merge-commit** for dev → main (preserves ancestry).
+
+#### Earlier broken-by-design direction
+
+Before v2.13.10 the gate ran `is-ancestor HEAD origin/dev` — the reverse — which required main's exact commit to live on dev. No merge method satisfies that without a separate "merge main back into dev" step after every prod promotion. Flipping the direction in v2.13.10 made the merge-commit path work first-try and kept the same "no bypass" property for direct pushes.
 
 #### Repo config that enables this
 
@@ -460,6 +465,8 @@ The framework defaults: **squash** for feature → dev (clean dev history), **me
 - `allow_merge_commit=true`
 
 And the main rulesets in `.github/rulesets/` **do not** include `required_linear_history`. That rule forces squash/rebase only and is incompatible with the promotion model — older framework versions had it and produced exactly the failure mode above. Apply or upgrade the ruleset accordingly.
+
+If the repo also has **legacy branch protection** on main (`gh api repos/$ORG/$REPO/branches/main/protection`), check its `required_linear_history.enabled` flag too — it acts independently of the ruleset and was the actual blocker on `triarchsecurity/platform` until 2026-05-15. Disable it via a `PUT` to `/branches/main/protection` with `required_linear_history: false`.
 
 #### Recovery if a dev → main PR was squash-merged by mistake
 
