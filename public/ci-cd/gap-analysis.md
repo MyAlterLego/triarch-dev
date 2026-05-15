@@ -446,11 +446,11 @@ C-12:
         steps:
           - uses: actions/checkout@v4
             with: { fetch-depth: 0 }
-          - name: Assert HEAD is on origin/dev
+          - name: Assert dev tip is in main's ancestry
             run: |
               git fetch origin dev --depth=50
-              git merge-base --is-ancestor HEAD origin/dev || {
-                echo "::error::HEAD is not an ancestor of origin/dev. Promote via dev → main."
+              git merge-base --is-ancestor origin/dev HEAD || {
+                echo "::error::origin/dev tip is not reachable from HEAD. dev → main must be merged using 'Create a merge commit'."
                 exit 1
               }
     Then list it in the prod deploy job's `needs:` block AND in the ruleset's `required_status_checks`. This is Layer 3 of the 4-layer bypass-prevention model.
@@ -488,6 +488,13 @@ C-15:
       gh api -X DELETE repos/$ORG/$REPO/rulesets/$RULESET_ID
       gh api -X POST   repos/$ORG/$REPO/rulesets --input .github/rulesets/main-protection-baseline.json   # framework v2.13.9+, linear_history removed
     Then on the next dev → main PR, choose "Create a merge commit" in the GitHub UI (or `gh pr merge --merge`). Squash will still fail the gate.
+
+    Also check `gh api repos/$ORG/$REPO/branches/main/protection --jq '.required_linear_history.enabled'`. If `true`, that **legacy** branch protection rule independently blocks merge-commits even if the ruleset and repo settings are correct. Disable it:
+      gh api repos/$ORG/$REPO/branches/main/protection --jq '.' > /tmp/prot.json
+      jq '.required_linear_history = false' /tmp/prot.json > /tmp/prot-fixed.json
+      gh api -X PUT repos/$ORG/$REPO/branches/main/protection --input /tmp/prot-fixed.json
+
+    Lastly, ensure the workflow's verify-dev-deployed step uses the correct direction: `is-ancestor origin/dev HEAD`. The earlier reversed direction (`HEAD origin/dev`) required a manual "merge main back into dev" step after every prod promotion — a known framework bug fixed in v2.13.10.
   reference: "firebase-2env-pattern.md §'Promotion merge method'"
 
 O-1:

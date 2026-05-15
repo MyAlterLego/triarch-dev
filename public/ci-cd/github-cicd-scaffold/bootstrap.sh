@@ -144,7 +144,7 @@ echo ""
 # ---------- 5b. dev-branch protection (blocks deletion + force-push) -----------
 #
 # The 4-layer bypass-prevention model (firebase-2env-pattern.md §"Layer 3")
-# checks `git merge-base --is-ancestor HEAD origin/dev` on every prod deploy.
+# checks `git merge-base --is-ancestor origin/dev HEAD` on every prod deploy.
 # If the repo has `delete_branch_on_merge: true` (typical), the `dev` branch
 # gets auto-deleted whenever a dev→main PR merges, and the next prod deploy
 # fails because there's no origin/dev to compare against. Two fixes — pick one:
