@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Dev/Prod Contract Adoption
-status: verifying
+status: planning
 stopped_at: "Completed 28-03-PLAN.md (phase close: 28-SUMMARY.md + 28-HUMAN-UAT.md; all 10 checks passed; feat/cl4-self-adopt-gate branch)"
-last_updated: "2026-05-16T18:35:25.473Z"
+last_updated: "2026-05-16T18:36:35.932Z"
 progress:
   total_phases: 9
   completed_phases: 1
@@ -23,8 +23,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 ## Current Position
 
-Phase: 28 (CL-4 Platform Self-Adopt) — EXECUTING
-Plan: 3 of 3
+Phase: 29
+Plan: Not started
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -49,7 +49,7 @@ Plan: 3 of 3
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Phase complete — ready for verification
+**Status:** Ready to plan
 
 ## Performance Metrics
 
