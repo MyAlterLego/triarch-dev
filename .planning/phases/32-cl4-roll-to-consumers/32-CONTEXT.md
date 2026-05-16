@@ -8,11 +8,12 @@
 
 Wire `gate-prod-version.yml@v8.2` into 4 consumer repos' ci-cd.yml as `needs:` prerequisite of deploy-prod. Mirror Phase 28's platform self-adopt exactly. Per-repo ADMIN_API_TOKEN secret is a HUMAN-UAT step (Settings → Actions secrets, can't be set autonomously).
 
-4 consumer repos:
-- dev-portal (project_key: triarchsecurity-dev-portal — verify by reading admin DB seed or Project record)
-- darksouls (project_key: darksouls)
-- tmi (project_key: tmi)
-- truthtreason (project_key: truthtreason)
+3 consumer repos with valid admin project keys (verified via `triarch_projects_list` MCP 2026-05-16):
+- darksouls (project_key: `darksouls-rpg`)
+- tmi (project_key: `triarch-dev-tmi`)
+- truthtreason (project_key: `truth-treason`)
+
+**dev-portal is NOT autonomously wireable in Phase 32:** the repo has no corresponding project row in admin's `projects` table → no Bearer apiKey exists for it → the gate-verdict POST would 401. Deferred to a follow-up (Phase 32.1) that first creates the project record in admin, then wires the workflow. Captured in 32-HUMAN-UAT.md.
 
 Also: per the roadmap entry, tmi + truthtreason need back-patching to v2.13.10 framework (corrected C-12 verify-dev-deployed direction; remove `[hotfix-bypass-dev]` token). This may already be done in their `dev` branches — verify per-repo during execution.
 
