@@ -23,3 +23,19 @@ env:
   # Dev environment uses the same INTERNAL_HMAC_SECRET from triarch-vault.
   - variable: INTERNAL_HMAC_SECRET
     secret: INTERNAL_HMAC_SECRET
+
+  # CL-6 server-side adoption enforcement mode (Phase 27).
+  # Dev backend also defaults to 'warn' - safe default during rollout.
+  - variable: CL6_ENFORCEMENT_MODE
+    value: warn
+    availability:
+      - RUNTIME
+
+  # CL-2 dev chrome badge (Phase 29). NEXT_PUBLIC_* vars are baked into the
+  # client bundle at build time, so BUILD availability is required.
+  # Prod (apphosting.yaml) leaves this absent so the badge renders nothing.
+  - variable: NEXT_PUBLIC_ENV
+    value: dev
+    availability:
+      - BUILD
+      - RUNTIME

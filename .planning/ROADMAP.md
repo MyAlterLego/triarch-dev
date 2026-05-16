@@ -54,15 +54,15 @@
 
 Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-contract.md) (PR #91 / v2.13.12) across the Triarch portfolio. The framework gate (`shared-workflows/gate-prod-version.yml@v8.1`) and the admin endpoint (`/api/platform/version-snapshot`) both already exist; the work below makes them non-bypassable (CL-6), self-adopts on platform first (CL-4), and rolls customer-facing surface contracts (CL-1 hostnames, CL-2 env badge, CL-3 DB namespace) to every project.
 
-- [ ] **Phase 27: CL-6 Server-Side Adoption Enforcement (P0)** — `/api/platform/ingest/release-logs` REJECTS `env=prod` release ingests without a paired pass-verdict `deploy_gate_check` audit row in the prior 15 min. Without this, CL-4 is opt-out — a consumer that strips its workflow gate still gets prod recorded.
-- [ ] **Phase 28: CL-4 Platform Self-Adopt** — Wire `gate-prod-version.yml@v8.1` into platform's own `ci-cd.yml` as a `needs:` prereq of every prod deploy. Self-eats the dog food + provides golden template for phase 32.
-- [ ] **Phase 29: CL-2 EnvBadge Component** — Build `<EnvBadge env={NEXT_PUBLIC_ENV}/>` in `@myalterlego/triarch-shared`; mount in root layout of platform + dev-portal + darksouls + tmi + truthtreason + security-admin + security-portal. Admin compliance scan fetches dev URL and asserts presence.
-- [ ] **Phase 30: DNS Sweep — CL-1 Hostnames** — Claim 6 missing `*-dev.<zone>` hostnames (admin-dev / portal-dev on both `.triarch.dev` AND `.triarchsecurity.com`, tmi-dev, truthtreason-dev). Interactive Firebase Console + GoDaddy MCP per the 2026-05-14 walkthrough. Verify TLS provisioning per host.
-- [ ] **Phase 31: CL-3 DB Namespace Audit + Migration** — For every project: confirm `apphosting.dev.yaml` DATABASE_URL points to `<project>_dev` database and `apphosting.yaml` points to `<project>` (same cluster OK, distinct database required). Create the missing `_dev` databases; migrate any shared-DB projects to namespaced.
-- [ ] **Phase 32: CL-4 Roll to Consumers** — Wire `gate-prod-version.yml@v8.1` into `dev-portal`, `darksouls-rpg`, `tmi`, `truthtreason` ci-cd.yml. Per repo: add gate job, add ADMIN_API_TOKEN secret bound to project's `apiKey` from CRDB, verify a dry-run blocks correctly. Also back-patch tmi + truthtreason to v2.13.10 framework (corrected C-12 direction; remove `[hotfix-bypass-dev]`).
-- [ ] **Phase 33: security-admin Dev Path Restructure** — Create FAH backend `admin-dev` in `triarchsecurity-admin` Firebase project. Add `dev` branch. Restructure workflow `on.push` + `on.pull_request` to include `dev`. Wire CL-4 gate. Claim `admin-dev.triarchsecurity.com` DNS. Verify dev URL serves; verify gate blocks on contrived violation.
-- [ ] **Phase 34: security-portal Dev Path Restructure** — Same as Phase 33 for security-portal. Rebase or delete the dormant `dev` branch (20 commits behind main). Claim `portal-dev.triarchsecurity.com`. Wire CL-4 gate.
-- [ ] **Phase 35: Admin Compliance Matrix UI Extension** — Extend `/admin/modules/ci-cd` to render CL-1..CL-6 columns per project (today only CL-4 readiness shown). Each cell: green pass / red fail / grey N/A with one-line reason on hover. Page becomes the live compliance dashboard for the contract.
+- [x] **Phase 27: CL-6 Server-Side Adoption Enforcement (P0)** — `/api/platform/ingest/release-logs` REJECTS `env=prod` release ingests without a paired pass-verdict `deploy_gate_check` audit row in the prior 15 min. Without this, CL-4 is opt-out — a consumer that strips its workflow gate still gets prod recorded. (completed 2026-05-16)
+- [x] **Phase 28: CL-4 Platform Self-Adopt** — Wire `gate-prod-version.yml@v8.1` into platform's own `ci-cd.yml` as a `needs:` prereq of every prod deploy. Self-eats the dog food + provides golden template for phase 32. (completed 2026-05-16)
+- [x] **Phase 29: CL-2 EnvBadge Component** — Build `<EnvBadge env={NEXT_PUBLIC_ENV}/>` in `@triarchsecurity/shared-ui` (repo: `triarchsecurity/shared-ui`); mount in root layout of 5 clean projects (platform, dev-portal, darksouls, tmi, truthtreason). security-admin + security-portal mounts deferred to Phase 33/34 (they restructure to add dev paths first). Admin compliance scan fetches dev URL and asserts presence. (completed 2026-05-16)
+- [x] **Phase 30: DNS Sweep — CL-1 Hostnames** — Claim 6 missing `*-dev.<zone>` hostnames (admin-dev / portal-dev on both `.triarch.dev` AND `.triarchsecurity.com`, tmi-dev, truthtreason-dev). Interactive Firebase Console + GoDaddy MCP per the 2026-05-14 walkthrough. Verify TLS provisioning per host. (completed 2026-05-16)
+- [x] **Phase 31: CL-3 DB Namespace Audit + Migration** — For every project: confirm `apphosting.dev.yaml` DATABASE_URL points to `<project>_dev` database and `apphosting.yaml` points to `<project>` (same cluster OK, distinct database required). Create the missing `_dev` databases; migrate any shared-DB projects to namespaced. (completed 2026-05-16)
+- [x] **Phase 32: CL-4 Roll to Consumers** — Wire `gate-prod-version.yml@v8.1` into `dev-portal`, `darksouls-rpg`, `tmi`, `truthtreason` ci-cd.yml. Per repo: add gate job, add ADMIN_API_TOKEN secret bound to project's `apiKey` from CRDB, verify a dry-run blocks correctly. Also back-patch tmi + truthtreason to v2.13.10 framework (corrected C-12 direction; remove `[hotfix-bypass-dev]`). (completed 2026-05-16)
+- [x] **Phase 33: security-admin Dev Path Restructure** — Repo-side work complete: `apphosting.dev.yaml` (CL-3 _DEV secrets + CL-2 NEXT_PUBLIC_ENV), ci-cd.yml restructured (dev trigger + version + verify-dev-deployed v2.13.10 + cl4-gate@v8.2 + deploy-dev + deploy-prod), EnvBadge mounted (CL-2), v3.55.0. Commit `09346e0f` on `feat/dev-path-cl4-cl2-cl3`. HUMAN-UAT required: FAH backend, dev branch push, DNS, GCP secrets, ADMIN_API_TOKEN, npm install. (repo-side complete 2026-05-16; HUMAN-UAT pending)
+- [x] **Phase 34: security-portal Dev Path Restructure** — Repo-side work complete: `apphosting.dev.yaml` expanded (CL-3 _DEV secrets: DATABASE_URL_DEV + PORTAL_JWT_SECRET_DEV + PORTAL_TOTP_ENCRYPTION_KEY_DEV + CL-2 NEXT_PUBLIC_ENV), ci-cd.yml restructured (dev trigger + version + env-select + verify-dev-deployed v2.13.10 + cl4-gate@v8.2 + deploy-dev portal-dev + deploy-prod), EnvBadge mounted (CL-2), v0.15.0. Commit `294f8ab` on `feat/dev-path-cl4-cl2-cl3` off `fix/bump-shared-workflows-v8`. HUMAN-UAT required: resolve dormant dev branch (Option A: delete+recreate recommended), FAH portal-dev backend, DNS portal-dev.triarchsecurity.com, GCP _DEV secrets, ADMIN_API_TOKEN, npm install after shared-ui publishes. (repo-side complete 2026-05-16; HUMAN-UAT pending)
+- [x] **Phase 35: Admin Compliance Matrix UI Extension** — Extend `/admin/modules/ci-cd` to render CL-1..CL-6 columns per project (today only CL-4 readiness shown). Each cell: green pass / red fail / grey N/A with one-line reason on hover. Page becomes the live compliance dashboard for the contract. (completed 2026-05-16)
 
 **Out of scope (deferred to v2.4 customer-exposure milestone):** per-PR preview channels, `/changelog` route, seeded sandbox fixtures, `/status` three-lane view. These are the four primitives from the deep-dive's section 4; they amplify the contract but aren't required to make CL-1..CL-6 enforceable.
 
@@ -77,24 +77,39 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
   4. Contrived test (strip `needs: gate` from a consumer workflow): release row never appears, compliance matrix flags red
 
 ### Phase 28: CL-4 Platform Self-Adopt
-**Goal**: Platform's own `ci-cd.yml` declares `gate-prod-version.yml@v8.1` as `needs:` prerequisite of every prod deploy job. Self-eats the dog food + provides golden template for Phase 32 rollout.
+**Goal**: Platform's own `ci-cd.yml` declares `gate-prod-version.yml@v8.2` as `needs:` prerequisite of every prod deploy job. Self-eats the dog food + provides golden template for Phase 32 rollout.
 **Depends on**: Phase 27 (CL-6 must be live so a misadoption fails closed)
 **Requirements**: CL4-01
 **Success Criteria** (what must be TRUE):
   1. `triarchsecurity/platform/.github/workflows/ci-cd.yml` declares gate job; deploy job has `needs: gate`
   2. `ADMIN_API_TOKEN` secret bound from `triarch-vault` to GitHub Actions
   3. Contrived dry-run (deploy with version dev hasn't seen) blocks correctly with INV-2 error
-  4. Real prod deploy of v2.13.13+ passes gate and ships normally
+  4. Real prod deploy of v2.13.15+ passes gate and ships normally
+**Plans**: 3 plans
+- [x] 28-01-PLAN.md — shared-workflows v8.2: gate-prod-version posts verdict to /api/platform/cicd/gate-verdict (CL-6 paired-verdict round-trip)
+- [x] 28-02-PLAN.md — platform ci-cd.yml: add `cl4-gate` + `version` jobs pinned to @v8.2, extend deploy.needs/deploy.if, bump v2.13.15
+- [ ] 28-03-PLAN.md — verification + write 28-SUMMARY.md + 28-HUMAN-UAT.md (push/PR/merge/tag, ADMIN_API_TOKEN secret, contrived dry-run, real prod-deploy)
 
 ### Phase 29: CL-2 EnvBadge Component
-**Goal**: Customers can tell at a glance whether they're on dev — `<EnvBadge env={NEXT_PUBLIC_ENV}/>` lives in shared package, mounts in every project's root layout, renders a persistent "DEV" pill in dev chrome.
+**Goal**: Customers can tell at a glance whether they're on dev — `<EnvBadge env={NEXT_PUBLIC_ENV}/>` lives in `@triarchsecurity/shared-ui`, mounts in every project's root layout, renders a persistent "DEV" pill in dev chrome.
 **Depends on**: Nothing (pure shared-ui work + per-app mount)
 **Requirements**: CL2-01, CL2-02, CL2-03, CL2-04
 **Success Criteria** (what must be TRUE):
-  1. `<EnvBadge/>` exported from `@myalterlego/triarch-shared`; renders only when env in `('dev','staging')`
+  1. `<EnvBadge/>` exported from `@triarchsecurity/shared-ui` (private repo `triarchsecurity/shared-ui`, cloned locally to `/Users/mikegeehan/claude/triarch/shared/shared-ui`); renders only when env in `('dev','staging')`
   2. Component emits `data-env="dev"` attribute for compliance-scan assertion
-  3. Mounted in root layout of all 7 active projects (platform, dev-portal, darksouls, tmi, truthtreason, security-admin, security-portal)
+  3. Mounted in root layout of 5 projects in this phase: platform, dev-portal, darksouls, tmi, truthtreason. security-admin mount handled by Phase 33; security-portal mount handled by Phase 34 (both need dev paths created first)
   4. `NEXT_PUBLIC_ENV=dev` in every `apphosting.dev.yaml`; absent or `prod` in every `apphosting.yaml`
+
+**Scope corrections (2026-05-16):** Original roadmap text said `@myalterlego/triarch-shared` — corrected to `@triarchsecurity/shared-ui` (registry-confirmed via package.json in installed node_modules). shared-ui is its own private GitHub repo (`triarchsecurity/shared-ui`, last updated 2026-05-15), not a workspace package in platform. Per-consumer mounts are 1-line edits to `src/app/layout.tsx` + 1 env entry in `apphosting.dev.yaml`. Three consumer repos (dev-portal, darksouls, tmi) currently sit on stale `fix/deploy-skip-bug` branches (27h old; abandoned backport of platform v2.13.5 — never merged because platform v2.13.7+ superseded). Phase 29 work branches off origin/main in each repo, ignoring the stale branches (those can be cleaned up incidentally).
+
+**Plans**: 7 plans
+- [x] 29-01-PLAN.md — shared-ui v1.5.0: EnvBadge component + TDD test suite (CL2-01, CL2-02)
+- [x] 29-02-PLAN.md — platform mount + apphosting.dev.yaml NEXT_PUBLIC_ENV=dev (CL2-03, CL2-04)
+- [x] 29-03-PLAN.md — dev-portal mount + apphosting.dev.yaml NEXT_PUBLIC_ENV=dev (CL2-03, CL2-04)
+- [x] 29-04-PLAN.md — darksouls mount + apphosting.dev.yaml NEXT_PUBLIC_ENV=dev (CL2-03, CL2-04)
+- [x] 29-05-PLAN.md — tmi mount + apphosting.dev.yaml NEXT_PUBLIC_ENV=dev (CL2-03, CL2-04)
+- [x] 29-06-PLAN.md — truthtreason mount + new shared-ui dep + transpilePackages + NEXT_PUBLIC_ENV=dev (CL2-03, CL2-04)
+- [x] 29-07-PLAN.md — cross-repo verification + 29-SUMMARY.md + 29-HUMAN-UAT.md push/PR/merge/publish runbook
 
 ### Phase 30: DNS Sweep — CL-1 Hostnames
 **Goal**: Claim the 6 missing `*-dev.<zone>` hostnames so every project has a customer-disambiguatable dev URL. Interactive per 2026-05-14 walkthrough — Firebase Console "Add custom domain" + GoDaddy DNS records + TLS provisioning verify.
@@ -128,20 +143,24 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
   5. Compliance matrix shows CL-4 pass for all 4 consumers
 
 ### Phase 33: security-admin Dev Path Restructure
-**Goal**: triarchsecurity/security-admin becomes two-env: create FAH dev backend `admin-dev`, add `dev` branch, restructure workflow triggers, claim `admin-dev.triarchsecurity.com` DNS, wire CL-4 gate.
-**Depends on**: Phase 30 (DNS) + Phase 28 (gate template)
-**Requirements**: CL4-06
+**Goal**: triarchsecurity/security-admin becomes two-env: create FAH dev backend `admin-dev`, add `dev` branch, restructure workflow triggers, claim `admin-dev.triarchsecurity.com` DNS, wire CL-4 gate. Folds in EnvBadge mount + NEXT_PUBLIC_ENV env vars (deferred from Phase 29).
+**Depends on**: Phase 30 (DNS) + Phase 28 (gate template) + Phase 29 (shared-ui v1.5.0+ with EnvBadge component published)
+**Requirements**: CL4-06, CL2-03 (security-admin mount), CL2-04 (security-admin env vars)
 **Success Criteria** (what must be TRUE):
   1. FAH backend `admin-dev` exists in `triarchsecurity-admin` Firebase project
   2. `admin-dev.triarchsecurity.com` resolves and serves
   3. `dev` branch exists; workflow triggers on push/PR `[dev, main, ...]`
   4. CL-4 gate wired and verified
   5. Verify-dev-deployed (C-12 from gap analysis) wired with v2.13.10 direction
+  6. `<EnvBadge/>` mounted in security-admin's root layout (`src/app/layout.tsx`)
+  7. `apphosting.dev.yaml` created with `NEXT_PUBLIC_ENV=dev`; `apphosting.yaml` left absent NEXT_PUBLIC_ENV (defaults to prod chrome)
+
+**Coordination note (2026-05-16):** security-admin currently sits on local branch `fix/bump-shared-workflows-v8` (2 days old, 1 ahead of main) — active in-flight work that Phase 33 will likely supersede or build on top of. Decide at execute time whether to rebase that branch onto the new restructure work or to land Phase 33 on a separate branch and reconcile via PR review.
 
 ### Phase 34: security-portal Dev Path Restructure
-**Goal**: Same as Phase 33 for security-portal. Also resolve the dormant dev branch (20 commits behind main) — rebase or delete.
-**Depends on**: Phase 30 + Phase 28
-**Requirements**: CL4-07
+**Goal**: Same as Phase 33 for security-portal — including EnvBadge mount + NEXT_PUBLIC_ENV env vars (deferred from Phase 29). Also resolve the dormant dev branch (20 commits behind main) — rebase or delete.
+**Depends on**: Phase 30 + Phase 28 + Phase 29 (shared-ui v1.5.0+ with EnvBadge published)
+**Requirements**: CL4-07, CL2-03 (security-portal mount), CL2-04 (security-portal env vars)
 **Success Criteria** (what must be TRUE):
   1. FAH backend `portal-dev` exists in `triarchsecurity-portal` Firebase project
   2. `portal-dev.triarchsecurity.com` resolves and serves

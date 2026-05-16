@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: { unoptimized: true },
-  transpilePackages: ['@myalterlego/shared-ui'],
+  transpilePackages: ['@triarchsecurity/shared-ui'],
   serverExternalPackages: ['@google-cloud/secret-manager', '@myalterlego/secrets'],
   async redirects() {
     return [

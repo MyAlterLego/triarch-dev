@@ -65,6 +65,26 @@ jobs:
       - name: Validate apphosting.yaml against env schema
         run: npx tsx scripts/validate-apphosting.ts
 
+  # Extracts package.json version ONCE for downstream consumers (cl4-gate).
+  # Mirrors the inline extraction inside shared-workflows deploy-firebase.yml so
+  # the gate input and the deployed version stay byte-identical.
+  version:
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: extract
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          if [ -z "$VER" ]; then
+            echo "::error::package.json version is empty"
+            exit 1
+          fi
+          echo "version=$VER" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VER"
+
   # Pick deploy environment from branch. admin/www's prod backend is named
   # `triarch-dev` (legacy) and the dev backend is `admin-dev` — does NOT
   # follow the v4 auto-suffix convention. v7+ `dev_backend` input handles this.
@@ -116,6 +136,22 @@ jobs:
           fi
           echo "Verified: origin/dev is an ancestor of HEAD — safe to promote to prod."
 
+  # CL-4 platform self-adopt (Phase 28). Calls shared-workflows v8.2 which:
+  #   1. GETs /api/platform/version-snapshot (dev + prod recorded versions)
+  #   2. Enforces 5 invariants (INV-1..INV-5) — fails the job if any violated
+  #   3. POSTs the verdict to /api/platform/cicd/gate-verdict (CL-6 paired-verdict)
+  # Prod-only; dev pushes skip this entirely. Project key matches admin's
+  # `projects.key = triarch-dev` row (this repo's own registry entry).
+  cl4-gate:
+    needs: [env-select, version]
+    if: needs.env-select.outputs.environment == 'prod'
+    uses: triarchsecurity/shared-workflows/.github/workflows/gate-prod-version.yml@v8.2
+    with:
+      project_key: triarch-dev
+      target_version: ${{ needs.version.outputs.version }}
+    secrets:
+      ADMIN_API_TOKEN: ${{ secrets.ADMIN_API_TOKEN }}
+
   # GitHub Environment binding — Layer 4 of bypass prevention via env branch
   # policy. Skipped for dev pushes. Currently no reviewer/timer (solo-dev org).
   gate-prod:
@@ -127,7 +163,7 @@ jobs:
       - run: echo "Production deploy approved for admin/www."
 
   deploy:
-    needs: [quality-gate, validate-apphosting, env-select, verify-dev-deployed, gate-prod]
+    needs: [quality-gate, validate-apphosting, version, env-select, verify-dev-deployed, gate-prod, cl4-gate]
     # 2026-05-14: `always() &&` prefix is REQUIRED. Without it, GitHub Actions
     # applies an implicit success() wrapper that skips the deploy job when ANY
     # `needs` is in non-success state — including legitimately-skipped jobs
@@ -142,7 +178,8 @@ jobs:
       needs.validate-apphosting.result == 'success' &&
       needs.env-select.result == 'success' &&
       (needs.gate-prod.result == 'success' || needs.gate-prod.result == 'skipped') &&
-      (needs.verify-dev-deployed.result == 'success' || needs.verify-dev-deployed.result == 'skipped')
+      (needs.verify-dev-deployed.result == 'success' || needs.verify-dev-deployed.result == 'skipped') &&
+      (needs.cl4-gate.result == 'success' || needs.cl4-gate.result == 'skipped')
     uses: triarchsecurity/shared-workflows/.github/workflows/deploy-firebase.yml@v8
     with:
       firebase_project_id: triarch-dev-website

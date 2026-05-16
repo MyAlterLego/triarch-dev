@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Rajdhani, Exo_2, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
+import { EnvBadge } from '@triarchsecurity/shared-ui';
 
 const rajdhani = Rajdhani({
   variable: "--font-rajdhani",
@@ -47,6 +48,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
+        <EnvBadge env={process.env.NEXT_PUBLIC_ENV} />
       </body>
     </html>
   );

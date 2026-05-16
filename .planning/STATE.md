@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Dev/Prod Contract Adoption
-status: planning
-stopped_at: "v2.3 milestone setup committed 2026-05-16. ROADMAP + REQUIREMENTS + phase dirs (27-35) created from the Dev/Prod Distinction Contract (PR #91, v2.13.12). Phase 27 (CL-6 server-side adoption enforcement, P0) is the next executable target. Awaiting /gsd:autonomous from platform cwd to begin smart-discuss + plan + execute on phase 27."
-last_updated: "2026-05-16T14:55:00Z"
+status: completed
+stopped_at: Completed Phase 35 Plan 01 (CL-1..CL-6 compliance matrix UI on admin ci-cd page; v2.13.17)
+last_updated: "2026-05-16T21:56:27.083Z"
 progress:
   total_phases: 9
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  completed_phases: 2
+  total_plans: 13
+  completed_plans: 18
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,13 +19,12 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 24 — CI/CD Deploy Safety structurally complete under reduced scope. CI-03 (24-02) + CI-04 (24-03) shipped. Phase 24-01 + 24-04 skipped per scope decision. Verifier can audit Phase 24 next, then Phase 25 cutover unblocked.
+**Current focus:** Phase 28 — CL-4 Platform Self-Adopt
 
 ## Current Position
 
-Phase: 25
+Phase: 35
 Plan: Not started
-Last completed: Phase 24-03 validate-apphosting.ts CI lint (2026-05-09; admin v2.11.1 commits fad2268+a33000f PR #55; portal v0.5.2 commits f5ef27f+a2cb5d4 PR #27)
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -50,7 +49,7 @@ Last completed: Phase 24-03 validate-apphosting.ts CI lint (2026-05-09; admin v2
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Ready to plan
+**Status:** Milestone complete
 
 ## Performance Metrics
 
@@ -194,6 +193,31 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 24-03-validate-apphosting]: import.meta.url === `file://${process.argv[1]}` guard at script bottom — keeps script unit-testable (test imports do not run main()), still runs main() when invoked via `npx tsx scripts/validate-apphosting.ts`.
 - [Phase 24-03-validate-apphosting]: deploy: needs: [quality-gate, validate-apphosting] — NOT three prerequisites with verify-deploy-target. Plan 24-01 was scoped out per Mike's reduced-scope call; the job does not exist in either repo's ci-cd.yml. Listing it would cause CI to fail with "job not found." If 24-01 ships in a future plan, that plan extends the array in one line per repo.
 - [Phase 24-03-validate-apphosting]: scripts/validate-apphosting.ts byte-identical between admin and portal (only ../src/lib/env-schema.ts content differs — admin 18 entries, portal 12 entries). Future shared-package extraction (V2.3 candidate) only needs to relocate the script; call sites stay unchanged. Verifiable via `diff` on the two paths.
+- [Phase 27]: text (not pgEnum) for verdict column in deployGateCheck — matches established codebase pattern (promoteAttempts.result uses varchar, no DB CHECK constraints)
+- [Phase 27]: deployGateCheck added to src/db/schema.ts local additions file, NOT packages/triarch-shared/ — admin-internal table requires no publish step
+- [Phase 27]: Bearer token extracted from Authorization header before requireApiKey call — SHA-256 hashed, never stored plaintext (api_key_hash field)
+- [Phase 27]: target_version and dev_version trimmed on write (.trim()) for Plan 03 byte-for-byte match consistency
+- [Phase 27]: reject_no_pair verdict is server-synthesized only — gate-verdict endpoint rejects any caller passing it
+- [Phase 27]: CL6_ENFORCEMENT_MODE read at call time inside POST handler — mirrors PORTAL_BASE_URL pattern; allows test override via process.env mutation
+- [Phase 27]: warn mode ships as default (Phase 27); manual flip to enforce after Phase 28 verifies round-trip + 7-day grace window (D-Rollout per CONTEXT.md)
+- [Phase 28-cl4-platform-self-adopt]: Step inserted BEFORE existing Audit log step; if always() fires on pass+fail; continue-on-error true; dev_version sentinel vnone; commit on local feature branch only
+- [Phase 28]: cl4-gate job named to avoid collision with existing gate-prod GitHub Environment binding; deploy.needs extended with both version and cl4-gate
+- [Phase 28]: version job extracts package.json version once (needs: quality-gate only); cl4-gate needs [env-select, version] so it only resolves on push paths
+- [Phase 28-cl4-platform-self-adopt]: Platform project_key is triarch-dev (not triarchsecurity-platform); cl4-gate job avoids gate-prod collision; version job added for deterministic gate input; deploy.if extended for dev-path safety
+- [Phase 29-01-envbadge]: EnvBadge uses inline CSS-in-JS (not className/Tailwind) — shared-ui component sources do not use Tailwind directly; themes/*.css is the CSS mechanism
+- [Phase 29-01-envbadge]: Yellow (#facc15) for dev, orange (#fb923c) for staging; zIndex 9000 (above app content, below modal overlays); data-env normalized to lowercase
+- [Phase 29-01-envbadge]: Consumer mount plans (29-02..29-06) are blocked on human push + PR + tag + npm publish of shared-ui v1.5.0 before npm install works
+- [Phase 29-02-platform-mount]: Replaced stale @myalterlego/shared-ui in transpilePackages — grep confirmed 0 source consumers; EnvBadge mounted as last child in body after Providers; NEXT_PUBLIC_ENV=dev bound with BUILD+RUNTIME in apphosting.dev.yaml; npm install deferred pending v1.5.0 publish
+- [Phase 29]: darksouls: @triarchsecurity/shared-ui added to transpilePackages keeping legacy @triarch/shared-ui + @myalterlego/shared-ui entries; EnvBadge mounted after Providers as last body child; NEXT_PUBLIC_ENV=dev wired in apphosting.dev.yaml BUILD+RUNTIME; version 7.7.12→7.7.13
+- [Phase 29-03-dev-portal-mount]: dev-portal: transpilePackages already had @triarchsecurity/shared-ui (no edit needed); EnvBadge mounted as last body child after StaffCallout + PreviewModeBanner conditionals; NEXT_PUBLIC_ENV=dev wired with BUILD+RUNTIME; version 0.7.4→0.7.5; branched off main (not stale fix/deploy-skip-bug)
+- [Phase 29-cl2-envbadge-component]: truthtreason first-time shared-ui consumer: added dep + transpilePackages + EnvBadge mount in single atomic v1.1.19 commit
+- [Phase 29-cl2-envbadge-component]: Version bump 4.44.1->4.44.2 (not 4.44.4): plan context referenced stale branch version; corrected to patch increment from actual main baseline
+- [Phase 29-cl2-envbadge-component]: Replaced @myalterlego/shared-ui with @triarchsecurity/shared-ui in transpilePackages after confirming 0 src imports of stale name
+- [Phase Phase 29]: Phase 29 closes CL2-01..CL2-04 for 5 of 7 projects; security-admin/portal mounts deferred to Phases 33/34; consumer CI blocked on shared-ui v1.5.0 publish until HUMAN-UAT B1 completes
+- [Phase 32-03 truthtreason]: gate-prod-version job renamed to cl4-gate + bumped @v8.1→@v8.2; needs aligned to [env-select, version] matching platform pattern; v2.13.10 verify-dev-deployed direction was already correct (no back-patch needed); version 1.1.18→1.1.20 on feat/cl4-consumer-gate branch
+- [Phase 33-01 security-admin]: quality-gate bumped from @v1.8 to @v8.2 to match full v8 adoption; deploy split into deploy-dev + deploy-prod; verify-dev-deployed uses v2.13.10 direction (is-ancestor origin/dev HEAD); cl4-gate project_key=triarchsecurity-admin; apphosting.dev.yaml is standalone (full env + _DEV secret variants); NEXTAUTH_SECRET_DEV added alongside DATABASE_URL_DEV; EnvBadge from @triarchsecurity/shared-ui mounted as last body child; v3.54.1→v3.55.0 on feat/dev-path-cl4-cl2-cl3 off fix/bump-shared-workflows-v8
+- [Phase 34-01 security-portal]: quality-gate bumped from @v1 to @v8.2; deploy split into deploy-dev (portal-dev backend) + deploy-prod; verify-dev-deployed uses v2.13.10 direction; cl4-gate project_key=triarchsecurity-portal; apphosting.dev.yaml expanded from stub (was DATABASE_URL only) to full _DEV secret set (PORTAL_JWT_SECRET_DEV, PORTAL_TOTP_ENCRYPTION_KEY_DEV, DATABASE_URL_DEV); HUMAN-UAT includes dormant dev branch resolution (Option A: delete + recreate recommended); v0.14.8→v0.15.0 on feat/dev-path-cl4-cl2-cl3 off fix/bump-shared-workflows-v8
+- [Phase 35]: CL-1 derives expected dev hostname from deployedUrl (green=pattern derivable); CL-6 uses single inArray batch query; CL-4 reuses existing verdict; CL-2/3/5 scaffolded grey with deferred HTTP/GitHub fetch reason
 
 ### Pending Todos
 
@@ -211,13 +235,26 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-09T00:55:32Z
-Stopped at: Completed 24-03-PLAN.md (CI-04 validate-apphosting CI lint; admin v2.11.1 PR #55; portal v0.5.2 PR #27; +10 Vitest cases — 5 per repo using temp-file fixtures). Both PRs open against main, awaiting Mike's review + merge. Phase 24 structurally complete under reduced scope (24-02 + 24-03 shipped; 24-01 + 24-04 SKIPPED).
+Last session: 2026-05-16T21:55:09.677Z
+Stopped at: Completed Phase 35 Plan 01 (CL-1..CL-6 compliance matrix UI on admin ci-cd page; v2.13.17)
 Resume file: None
-Next action: After both 24-03 PRs merge, run `/gsd:verify-work 24` to audit Phase 24 under reduced scope, then `/gsd:plan-phase 25` for cutover (admin 301 → portal). Phase 24 is now done as a hard prerequisite for Phase 25.
+Next action: Complete HUMAN-UAT A-G for security-portal (resolve dormant dev branch, FAH portal-dev backend, DNS, GCP secrets, ADMIN_API_TOKEN, npm install after shared-ui publishes, merge PR). See 34-HUMAN-UAT.md.
 
 ## Performance Metrics (24-03)
 
 | Plan | Duration | Tasks | Files | Test cases |
 |------|----------|-------|-------|------------|
 | 24-03 | 5 min | 2 (admin + portal) | 4 created + 4 modified | +10 (5 per repo) |
+| Phase 27 P01 | 2 | 2 tasks | 2 files |
+| Phase 27 P02 | 3m | 2 tasks | 2 files |
+| Phase 27 P03 | 4m | 4 tasks | 5 files |
+| Phase 28-cl4-platform-self-adopt P01 | 5 | 3 tasks | 2 files |
+| Phase 28 P02 | ~7 minutes | 2 tasks | 2 files |
+| Phase 28 P03 | 8 | 3 tasks | 2 files |
+| Phase 29 P04 | 8 | 2 tasks | 4 files |
+| Phase 29-cl2-envbadge-component P06 | 8 | 2 tasks | 4 files |
+| Phase 29-cl2-envbadge-component P05 | 8 | 2 tasks | 4 files |
+| Phase 32 P03 (truthtreason cl4-gate) | ~5 min | 1 task | 2 files |
+| Phase 32 P02 (tmi cl4-gate + v2.13.10 backpatch) | ~5 min | 1 task | 2 files |
+| Phase 33 P01 (security-admin two-env restructure) | ~25 min | 5 tasks | 5 files |
+| Phase 34 P01 (security-portal two-env restructure) | ~20 min | 5 tasks | 5 files |
