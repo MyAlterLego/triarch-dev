@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Dev/Prod Contract Adoption
-status: planning
-stopped_at: "v2.3 milestone setup committed 2026-05-16. ROADMAP + REQUIREMENTS + phase dirs (27-35) created from the Dev/Prod Distinction Contract (PR #91, v2.13.12). Phase 27 (CL-6 server-side adoption enforcement, P0) is the next executable target. Awaiting /gsd:autonomous from platform cwd to begin smart-discuss + plan + execute on phase 27."
-last_updated: "2026-05-16T14:55:00Z"
+status: executing
+stopped_at: "Completed 27-01-PLAN.md (deploy_gate_check schema + migration 0019; tsc GREEN; no test regressions; db:push manual step flagged in SUMMARY)"
+last_updated: "2026-05-16T17:14:19.281Z"
 progress:
   total_phases: 9
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,13 +19,12 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 24 — CI/CD Deploy Safety structurally complete under reduced scope. CI-03 (24-02) + CI-04 (24-03) shipped. Phase 24-01 + 24-04 skipped per scope decision. Verifier can audit Phase 24 next, then Phase 25 cutover unblocked.
+**Current focus:** Phase 27 — CL-6 Server-Side Adoption Enforcement
 
 ## Current Position
 
-Phase: 25
-Plan: Not started
-Last completed: Phase 24-03 validate-apphosting.ts CI lint (2026-05-09; admin v2.11.1 commits fad2268+a33000f PR #55; portal v0.5.2 commits f5ef27f+a2cb5d4 PR #27)
+Phase: 27 (CL-6 Server-Side Adoption Enforcement) — EXECUTING
+Plan: 2 of 3
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -50,7 +49,7 @@ Last completed: Phase 24-03 validate-apphosting.ts CI lint (2026-05-09; admin v2
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Ready to plan
+**Status:** Ready to execute
 
 ## Performance Metrics
 
@@ -194,6 +193,8 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 24-03-validate-apphosting]: import.meta.url === `file://${process.argv[1]}` guard at script bottom — keeps script unit-testable (test imports do not run main()), still runs main() when invoked via `npx tsx scripts/validate-apphosting.ts`.
 - [Phase 24-03-validate-apphosting]: deploy: needs: [quality-gate, validate-apphosting] — NOT three prerequisites with verify-deploy-target. Plan 24-01 was scoped out per Mike's reduced-scope call; the job does not exist in either repo's ci-cd.yml. Listing it would cause CI to fail with "job not found." If 24-01 ships in a future plan, that plan extends the array in one line per repo.
 - [Phase 24-03-validate-apphosting]: scripts/validate-apphosting.ts byte-identical between admin and portal (only ../src/lib/env-schema.ts content differs — admin 18 entries, portal 12 entries). Future shared-package extraction (V2.3 candidate) only needs to relocate the script; call sites stay unchanged. Verifiable via `diff` on the two paths.
+- [Phase 27]: text (not pgEnum) for verdict column in deployGateCheck — matches established codebase pattern (promoteAttempts.result uses varchar, no DB CHECK constraints)
+- [Phase 27]: deployGateCheck added to src/db/schema.ts local additions file, NOT packages/triarch-shared/ — admin-internal table requires no publish step
 
 ### Pending Todos
 
@@ -211,8 +212,8 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-09T00:55:32Z
-Stopped at: Completed 24-03-PLAN.md (CI-04 validate-apphosting CI lint; admin v2.11.1 PR #55; portal v0.5.2 PR #27; +10 Vitest cases — 5 per repo using temp-file fixtures). Both PRs open against main, awaiting Mike's review + merge. Phase 24 structurally complete under reduced scope (24-02 + 24-03 shipped; 24-01 + 24-04 SKIPPED).
+Last session: 2026-05-16T17:14:19.279Z
+Stopped at: Completed 27-01-PLAN.md (deploy_gate_check schema + migration 0019; tsc GREEN; no test regressions; db:push manual step flagged in SUMMARY)
 Resume file: None
 Next action: After both 24-03 PRs merge, run `/gsd:verify-work 24` to audit Phase 24 under reduced scope, then `/gsd:plan-phase 25` for cutover (admin 301 → portal). Phase 24 is now done as a hard prerequisite for Phase 25.
 
@@ -221,3 +222,4 @@ Next action: After both 24-03 PRs merge, run `/gsd:verify-work 24` to audit Phas
 | Plan | Duration | Tasks | Files | Test cases |
 |------|----------|-------|-------|------------|
 | 24-03 | 5 min | 2 (admin + portal) | 4 created + 4 modified | +10 (5 per repo) |
+| Phase 27 P01 | 2 | 2 tasks | 2 files |

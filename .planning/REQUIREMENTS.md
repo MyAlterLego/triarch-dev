@@ -292,7 +292,7 @@ Customer-shareable projects MUST surface `/projects/[slug]/releases` showing dev
 
 Admin `/api/platform/ingest/release-logs` MUST reject `env=prod` ingests without a paired pass-verdict gate audit row in prior 15 min.
 
-- [ ] **CL6-01**: Endpoint reads the most-recent `deploy_gate_check` audit row for `(project_key, action=deploy_gate_check)` written in prior 15 minutes
+- [x] **CL6-01**: Endpoint reads the most-recent `deploy_gate_check` audit row for `(project_key, action=deploy_gate_check)` written in prior 15 minutes
 - [ ] **CL6-02**: Endpoint asserts `verdict=pass` AND `target_version == ingested_version` AND same bearer apiKey wrote both rows
 - [ ] **CL6-03**: On mismatch/missing: return 409 with structured error, do NOT insert release row, write rejection to audit log
 - [ ] **CL6-04**: Contrived test — strip `needs: gate` line from a workflow, deploy, confirm release row never appears in DB AND compliance matrix flags project red
@@ -330,7 +330,7 @@ Live per-project, per-clause status on `/admin/modules/ci-cd`.
 | CL5-01 | Phase 35 | Pending |
 | CL5-02 | Phase 35 | Pending |
 | CL5-03 | Phase 35 | Pending |
-| CL6-01 | Phase 27 | Pending |
+| CL6-01 | Phase 27 | Complete |
 | CL6-02 | Phase 27 | Pending |
 | CL6-03 | Phase 27 | Pending |
 | CL6-04 | Phase 27 | Pending |
