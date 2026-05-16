@@ -272,7 +272,7 @@ Dev backend MUST connect to `<project>_dev` database; prod to `<project>`. Clust
 
 Every consumer repo's prod deploy MUST declare `gate-prod-version.yml@v8.x` as `needs:`.
 
-- [ ] **CL4-01**: Platform self-adopts — `triarchsecurity/platform/.github/workflows/ci-cd.yml` declares the gate, ADMIN_API_TOKEN secret bound, contrived dry-run blocks correctly
+- [x] **CL4-01**: Platform self-adopts — `triarchsecurity/platform/.github/workflows/ci-cd.yml` declares the gate, ADMIN_API_TOKEN secret bound, contrived dry-run blocks correctly
 - [ ] **CL4-02**: dev-portal wired same way; gate verified blocking
 - [ ] **CL4-03**: darksouls-rpg wired same way; gate verified blocking
 - [ ] **CL4-04**: tmi wired same way; ALSO back-patched to v2.13.10 framework (corrected C-12 direction; remove `[hotfix-bypass-dev]` token)
@@ -320,7 +320,7 @@ Live per-project, per-clause status on `/admin/modules/ci-cd`.
 | CL3-02 | Phase 31 | Pending |
 | CL3-03 | Phase 31 | Pending |
 | CL3-04 | Phase 35 | Pending |
-| CL4-01 | Phase 28 | Pending |
+| CL4-01 | Phase 28 | Complete |
 | CL4-02 | Phase 32 | Pending |
 | CL4-03 | Phase 32 | Pending |
 | CL4-04 | Phase 32 | Pending |
