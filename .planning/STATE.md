@@ -4,7 +4,7 @@ milestone: v2.3
 milestone_name: Dev/Prod Contract Adoption
 status: planning
 stopped_at: "Completed 29-cl2-envbadge-component-29-07-PLAN.md (phase close: verification + HUMAN-UAT)"
-last_updated: "2026-05-16T21:21:52.336Z"
+last_updated: "2026-05-16T21:22:50.038Z"
 progress:
   total_phases: 9
   completed_phases: 2
@@ -23,8 +23,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 
 ## Current Position
 
-Phase: 29
-Plan: 02 (complete)
+Phase: 30
+Plan: Not started
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
