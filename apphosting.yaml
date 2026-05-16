@@ -94,3 +94,15 @@ env:
   # Shared between admin and portal runtimes via same GCP secret in triarch-vault.
   - variable: INTERNAL_HMAC_SECRET
     secret: INTERNAL_HMAC_SECRET
+
+  # CL-6 server-side adoption enforcement mode (Phase 27).
+  # Values: 'off' | 'warn' | 'enforce'
+  #   off     - gate check skipped entirely (rollback escape hatch)
+  #   warn    - log violations + write audit row but DO NOT block release insert (safe ship default)
+  #   enforce - return 409 on missing/mismatched gate verdict; do NOT insert release_logs row
+  # Flip to 'enforce' MANUALLY after Phase 28 self-adopt verifies the round-trip
+  # and a 7-day grace window passes (CONTEXT.md D-Rollout).
+  - variable: CL6_ENFORCEMENT_MODE
+    value: warn
+    availability:
+      - RUNTIME

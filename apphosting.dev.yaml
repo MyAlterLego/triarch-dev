@@ -23,3 +23,10 @@ env:
   # Dev environment uses the same INTERNAL_HMAC_SECRET from triarch-vault.
   - variable: INTERNAL_HMAC_SECRET
     secret: INTERNAL_HMAC_SECRET
+
+  # CL-6 server-side adoption enforcement mode (Phase 27).
+  # Dev backend also defaults to 'warn' - safe default during rollout.
+  - variable: CL6_ENFORCEMENT_MODE
+    value: warn
+    availability:
+      - RUNTIME
