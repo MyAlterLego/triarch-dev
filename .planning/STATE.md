@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Dev/Prod Contract Adoption
-status: executing
-stopped_at: Completed 27-02-PLAN.md (POST /api/platform/cicd/gate-verdict; 7/7 Vitest GREEN; tsc + next build clean; TDD RED+GREEN committed)
-last_updated: "2026-05-16T17:19:37.965Z"
+status: verifying
+stopped_at: Completed 27-03-PLAN.md (CL-6 ingest pre-check; 9/9 Vitest GREEN; tsc + next build clean; TDD RED+GREEN committed; apphosting yamls + v2.13.14 shipped)
+last_updated: "2026-05-16T17:27:25.089Z"
 progress:
   total_phases: 9
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Triarch Dev Admin — Project State
@@ -49,7 +49,7 @@ Plan: 3 of 3
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 
 ## Performance Metrics
 
@@ -198,6 +198,8 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 27]: Bearer token extracted from Authorization header before requireApiKey call — SHA-256 hashed, never stored plaintext (api_key_hash field)
 - [Phase 27]: target_version and dev_version trimmed on write (.trim()) for Plan 03 byte-for-byte match consistency
 - [Phase 27]: reject_no_pair verdict is server-synthesized only — gate-verdict endpoint rejects any caller passing it
+- [Phase 27]: CL6_ENFORCEMENT_MODE read at call time inside POST handler — mirrors PORTAL_BASE_URL pattern; allows test override via process.env mutation
+- [Phase 27]: warn mode ships as default (Phase 27); manual flip to enforce after Phase 28 verifies round-trip + 7-day grace window (D-Rollout per CONTEXT.md)
 
 ### Pending Todos
 
@@ -215,8 +217,8 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-16T17:19:37.962Z
-Stopped at: Completed 27-02-PLAN.md (POST /api/platform/cicd/gate-verdict; 7/7 Vitest GREEN; tsc + next build clean; TDD RED+GREEN committed)
+Last session: 2026-05-16T17:27:25.087Z
+Stopped at: Completed 27-03-PLAN.md (CL-6 ingest pre-check; 9/9 Vitest GREEN; tsc + next build clean; TDD RED+GREEN committed; apphosting yamls + v2.13.14 shipped)
 Resume file: None
 Next action: After both 24-03 PRs merge, run `/gsd:verify-work 24` to audit Phase 24 under reduced scope, then `/gsd:plan-phase 25` for cutover (admin 301 → portal). Phase 24 is now done as a hard prerequisite for Phase 25.
 
@@ -227,3 +229,4 @@ Next action: After both 24-03 PRs merge, run `/gsd:verify-work 24` to audit Phas
 | 24-03 | 5 min | 2 (admin + portal) | 4 created + 4 modified | +10 (5 per repo) |
 | Phase 27 P01 | 2 | 2 tasks | 2 files |
 | Phase 27 P02 | 3m | 2 tasks | 2 files |
+| Phase 27 P03 | 4m | 4 tasks | 5 files |
