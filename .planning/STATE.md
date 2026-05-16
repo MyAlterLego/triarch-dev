@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.2
-milestone_name: Customer Portal Split
+milestone: v2.3
+milestone_name: Dev/Prod Contract Adoption
 status: planning
-stopped_at: "Completed 24-03-PLAN.md (CI-04 validate-apphosting CI lint; admin v2.11.1 PR #55; portal v0.5.2 PR #27; +10 Vitest cases — 5 per repo using temp-file fixtures). Both PRs open against main, awaiting Mike's review + merge. Phase 24 structurally complete under reduced scope (24-02 + 24-03 shipped; 24-01 + 24-04 SKIPPED)."
-last_updated: "2026-05-10T01:42:25.632Z"
+stopped_at: "v2.3 milestone setup committed 2026-05-16. ROADMAP + REQUIREMENTS + phase dirs (27-35) created from the Dev/Prod Distinction Contract (PR #91, v2.13.12). Phase 27 (CL-6 server-side adoption enforcement, P0) is the next executable target. Awaiting /gsd:autonomous from platform cwd to begin smart-discuss + plan + execute on phase 27."
+last_updated: "2026-05-16T14:55:00Z"
 progress:
-  total_phases: 20
-  completed_phases: 12
-  total_plans: 46
-  completed_plans: 63
+  total_phases: 9
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Triarch Dev Admin — Project State
