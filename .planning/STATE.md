@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Dev/Prod Contract Adoption
-status: planning
+status: completed
 stopped_at: Completed Phase 35 Plan 01 (CL-1..CL-6 compliance matrix UI on admin ci-cd page; v2.13.17)
-last_updated: "2026-05-16T21:55:14.162Z"
+last_updated: "2026-05-16T21:56:27.083Z"
 progress:
   total_phases: 9
   completed_phases: 2
@@ -49,7 +49,7 @@ Plan: Not started
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Ready to plan
+**Status:** Milestone complete
 
 ## Performance Metrics
 
