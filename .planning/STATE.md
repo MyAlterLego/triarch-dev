@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Dev/Prod Contract Adoption
 status: planning
-stopped_at: "Completed 29-01-PLAN.md (EnvBadge component in shared-ui v1.5.0; feat/v1.5.0-envbadge branch; 6/6 tests GREEN; atomic commit 78f2771)"
-last_updated: "2026-05-16T21:09:00.000Z"
+stopped_at: "Completed 29-02-PLAN.md (platform EnvBadge mount; feat/cl2-envbadge-mount branch; atomic commit 7462f40; build verification deferred pending shared-ui v1.5.0 publish)"
+last_updated: "2026-05-16T21:25:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 1
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
 ## Current Position
 
 Phase: 29
-Plan: 01 (complete)
+Plan: 02 (complete)
 
 ## Active Milestone: v2.2 — Customer Portal Split
 
@@ -207,6 +207,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 29-01-envbadge]: EnvBadge uses inline CSS-in-JS (not className/Tailwind) — shared-ui component sources do not use Tailwind directly; themes/*.css is the CSS mechanism
 - [Phase 29-01-envbadge]: Yellow (#facc15) for dev, orange (#fb923c) for staging; zIndex 9000 (above app content, below modal overlays); data-env normalized to lowercase
 - [Phase 29-01-envbadge]: Consumer mount plans (29-02..29-06) are blocked on human push + PR + tag + npm publish of shared-ui v1.5.0 before npm install works
+- [Phase 29-02-platform-mount]: Replaced stale @myalterlego/shared-ui in transpilePackages — grep confirmed 0 source consumers; EnvBadge mounted as last child in body after Providers; NEXT_PUBLIC_ENV=dev bound with BUILD+RUNTIME in apphosting.dev.yaml; npm install deferred pending v1.5.0 publish
 
 ### Pending Todos
 
@@ -224,10 +225,10 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-16T21:09:00.000Z
-Stopped at: Completed 29-01-PLAN.md (EnvBadge component in shared-ui v1.5.0; feat/v1.5.0-envbadge branch; 6/6 tests GREEN; atomic commit 78f2771)
+Last session: 2026-05-16T21:25:00.000Z
+Stopped at: Completed 29-02-PLAN.md (platform EnvBadge mount; feat/cl2-envbadge-mount branch; atomic commit 7462f40; build verification deferred pending shared-ui v1.5.0 publish)
 Resume file: None
-Next action: Human must push feat/v1.5.0-envbadge, PR → main, merge, tag v1.5.0, await CI npm publish to GitHub Packages. Then run consumer mount plans (29-02..29-06) to mount EnvBadge in platform + 4 other consumer repos.
+Next action: Continue consumer mount plans (29-03..29-06) for dev-portal, darksouls, tmi, truthtreason. All mounts blocked on shared-ui v1.5.0 publish for npm install + CI pass. Then run 29-07 verify gate.
 
 ## Performance Metrics (24-03)
 
