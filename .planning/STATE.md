@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Dev/Prod Contract Adoption
-status: executing
-stopped_at: Completed 28-02-PLAN.md (platform ci-cd.yml wired with cl4-gate + version job; v2.13.15; local feature branch feat/cl4-self-adopt-gate)
-last_updated: "2026-05-16T18:29:57.989Z"
+status: verifying
+stopped_at: "Completed 28-03-PLAN.md (phase close: 28-SUMMARY.md + 28-HUMAN-UAT.md; all 10 checks passed; feat/cl4-self-adopt-gate branch)"
+last_updated: "2026-05-16T18:35:25.473Z"
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Triarch Dev Admin — Project State
@@ -49,7 +49,7 @@ Plan: 3 of 3
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 
 ## Performance Metrics
 
@@ -203,6 +203,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 28-cl4-platform-self-adopt]: Step inserted BEFORE existing Audit log step; if always() fires on pass+fail; continue-on-error true; dev_version sentinel vnone; commit on local feature branch only
 - [Phase 28]: cl4-gate job named to avoid collision with existing gate-prod GitHub Environment binding; deploy.needs extended with both version and cl4-gate
 - [Phase 28]: version job extracts package.json version once (needs: quality-gate only); cl4-gate needs [env-select, version] so it only resolves on push paths
+- [Phase 28-cl4-platform-self-adopt]: Platform project_key is triarch-dev (not triarchsecurity-platform); cl4-gate job avoids gate-prod collision; version job added for deterministic gate input; deploy.if extended for dev-path safety
 
 ### Pending Todos
 
@@ -220,8 +221,8 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-16T18:29:57.986Z
-Stopped at: Completed 28-02-PLAN.md (platform ci-cd.yml wired with cl4-gate + version job; v2.13.15; local feature branch feat/cl4-self-adopt-gate)
+Last session: 2026-05-16T18:35:25.471Z
+Stopped at: Completed 28-03-PLAN.md (phase close: 28-SUMMARY.md + 28-HUMAN-UAT.md; all 10 checks passed; feat/cl4-self-adopt-gate branch)
 Resume file: None
 Next action: After both 24-03 PRs merge, run `/gsd:verify-work 24` to audit Phase 24 under reduced scope, then `/gsd:plan-phase 25` for cutover (admin 301 → portal). Phase 24 is now done as a hard prerequisite for Phase 25.
 
@@ -235,3 +236,4 @@ Next action: After both 24-03 PRs merge, run `/gsd:verify-work 24` to audit Phas
 | Phase 27 P03 | 4m | 4 tasks | 5 files |
 | Phase 28-cl4-platform-self-adopt P01 | 5 | 3 tasks | 2 files |
 | Phase 28 P02 | ~7 minutes | 2 tasks | 2 files |
+| Phase 28 P03 | 8 | 3 tasks | 2 files |

@@ -87,7 +87,7 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
   4. Real prod deploy of v2.13.15+ passes gate and ships normally
 **Plans**: 3 plans
 - [x] 28-01-PLAN.md — shared-workflows v8.2: gate-prod-version posts verdict to /api/platform/cicd/gate-verdict (CL-6 paired-verdict round-trip)
-- [ ] 28-02-PLAN.md — platform ci-cd.yml: add `cl4-gate` + `version` jobs pinned to @v8.2, extend deploy.needs/deploy.if, bump v2.13.15
+- [x] 28-02-PLAN.md — platform ci-cd.yml: add `cl4-gate` + `version` jobs pinned to @v8.2, extend deploy.needs/deploy.if, bump v2.13.15
 - [ ] 28-03-PLAN.md — verification + write 28-SUMMARY.md + 28-HUMAN-UAT.md (push/PR/merge/tag, ADMIN_API_TOKEN secret, contrived dry-run, real prod-deploy)
 
 ### Phase 29: CL-2 EnvBadge Component
