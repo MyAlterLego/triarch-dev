@@ -235,5 +235,114 @@ Updated by roadmapper during phase mapping.
 - Unmapped: 0
 
 ---
-*Requirements defined: 2026-05-08*
-*Last updated: 2026-05-08 — phase traceability mapped by roadmapper*
+
+## v2.3 Requirements — Dev/Prod Contract Adoption
+
+**Defined:** 2026-05-16
+**Contract source:** [`public/ci-cd/dev-prod-customer-contract.md`](../public/ci-cd/dev-prod-customer-contract.md) (CL-1..CL-6)
+**Milestone goal:** Make the contract clauses non-bypassable from the customer's perspective. Today the framework gate exists but no consumer has adopted it; today no doc codifies the customer-visible naming/badge/DB clauses; today the platform admin accepts prod release ingests even when no gate ran. v2.3 closes all three.
+
+### CL-1 Hostname Pattern Enforcement
+
+Every project's dev URL MUST be `<short>-dev.<zone>`; prod is `<short>.<zone>` or external brand `.com`.
+
+- [ ] **CL1-01**: Six missing dev shortnames claimed in Firebase + DNS — `admin-dev.triarch.dev`, `portal-dev.triarch.dev`, `tmi-dev.triarch.dev`, `truthtreason-dev.triarch.dev`, `admin-dev.triarchsecurity.com`, `portal-dev.triarchsecurity.com`
+- [ ] **CL1-02**: TLS provisioning verified on all 6 new hostnames (cert subject matches expected, expiry > 60d)
+- [ ] **CL1-03**: Admin compliance scan (in `/admin/modules/ci-cd`) flags any project whose `dev_url` doesn't end with `-dev.` segment (exception allowed when project carries documented external-brand record)
+
+### CL-2 Persistent Environment Badge
+
+Dev UIs MUST render a visible "DEV" badge in persistent chrome.
+
+- [ ] **CL2-01**: `<EnvBadge env={NEXT_PUBLIC_ENV} />` exists in `@myalterlego/triarch-shared`; renders only when env in `('dev','staging')`
+- [ ] **CL2-02**: Component emits `data-env="dev"` attribute so admin compliance scan can assert via HTML parse
+- [ ] **CL2-03**: Mounted in root layout of platform + dev-portal + darksouls + tmi + truthtreason + security-admin + security-portal — verified by manual fetch of each dev URL
+- [ ] **CL2-04**: `NEXT_PUBLIC_ENV` set to `dev` in every project's `apphosting.dev.yaml`; set to `prod` (or unset) in `apphosting.yaml`
+
+### CL-3 Database Namespace Separation
+
+Dev backend MUST connect to `<project>_dev` database; prod to `<project>`. Cluster sharing allowed; database sharing forbidden.
+
+- [ ] **CL3-01**: For every project, `apphosting.dev.yaml` DATABASE_URL contains `/<project_key>_dev` path component
+- [ ] **CL3-02**: For every project, `apphosting.yaml` DATABASE_URL contains `/<project_key>` (no `_dev` suffix) path component
+- [ ] **CL3-03**: CRDB cluster has both databases (`<project>` and `<project>_dev`); migration runner ran against both
+- [ ] **CL3-04**: Admin compliance scan reads both yaml files via raw GitHub content URL + asserts path suffix delta — fail if same
+
+### CL-4 Version-Promotion Gate Adoption
+
+Every consumer repo's prod deploy MUST declare `gate-prod-version.yml@v8.x` as `needs:`.
+
+- [ ] **CL4-01**: Platform self-adopts — `triarchsecurity/platform/.github/workflows/ci-cd.yml` declares the gate, ADMIN_API_TOKEN secret bound, contrived dry-run blocks correctly
+- [ ] **CL4-02**: dev-portal wired same way; gate verified blocking
+- [ ] **CL4-03**: darksouls-rpg wired same way; gate verified blocking
+- [ ] **CL4-04**: tmi wired same way; ALSO back-patched to v2.13.10 framework (corrected C-12 direction; remove `[hotfix-bypass-dev]` token)
+- [ ] **CL4-05**: truthtreason wired same way; ALSO back-patched to v2.13.10 framework
+- [ ] **CL4-06**: security-admin wired same way (depends on Phase 33 dev path existing first)
+- [ ] **CL4-07**: security-portal wired same way (depends on Phase 34 dev path existing first)
+
+### CL-5 Customer-Readable Release Page
+
+Customer-shareable projects MUST surface `/projects/[slug]/releases` showing dev + prod lanes with diff.
+
+- [ ] **CL5-01**: Page already exists on platform — confirm responds 200 for any project with `prod_visible_to_customer=true`
+- [ ] **CL5-02**: Page renders both "On dev (v X.Y.Z)" and "On prod (v X.Y.Z)" lanes with diff summary when versions differ
+- [ ] **CL5-03**: Admin compliance scan HEAD-checks the URL for any project where `prod_visible_to_customer=true`
+
+### CL-6 Server-Side Adoption Enforcement (P0)
+
+Admin `/api/platform/ingest/release-logs` MUST reject `env=prod` ingests without a paired pass-verdict gate audit row in prior 15 min.
+
+- [ ] **CL6-01**: Endpoint reads the most-recent `deploy_gate_check` audit row for `(project_key, action=deploy_gate_check)` written in prior 15 minutes
+- [ ] **CL6-02**: Endpoint asserts `verdict=pass` AND `target_version == ingested_version` AND same bearer apiKey wrote both rows
+- [ ] **CL6-03**: On mismatch/missing: return 409 with structured error, do NOT insert release row, write rejection to audit log
+- [ ] **CL6-04**: Contrived test — strip `needs: gate` line from a workflow, deploy, confirm release row never appears in DB AND compliance matrix flags project red
+
+### Compliance Matrix UI
+
+Live per-project, per-clause status on `/admin/modules/ci-cd`.
+
+- [ ] **MATRIX-01**: Page renders one row per project × 6 columns (CL-1..CL-6) plus existing CL-4 readiness column
+- [ ] **MATRIX-02**: Each cell shows green/red/grey badge with one-line reason on hover
+- [ ] **MATRIX-03**: Page recomputes live on each render (no stale cache); under 2s response time for portfolio-wide scan
+
+### Traceability
+
+| Req | Phase | Status |
+|-----|-------|--------|
+| CL1-01 | Phase 30 | Pending |
+| CL1-02 | Phase 30 | Pending |
+| CL1-03 | Phase 35 | Pending |
+| CL2-01 | Phase 29 | Pending |
+| CL2-02 | Phase 29 | Pending |
+| CL2-03 | Phase 29 | Pending |
+| CL2-04 | Phase 29 | Pending |
+| CL3-01 | Phase 31 | Pending |
+| CL3-02 | Phase 31 | Pending |
+| CL3-03 | Phase 31 | Pending |
+| CL3-04 | Phase 35 | Pending |
+| CL4-01 | Phase 28 | Pending |
+| CL4-02 | Phase 32 | Pending |
+| CL4-03 | Phase 32 | Pending |
+| CL4-04 | Phase 32 | Pending |
+| CL4-05 | Phase 32 | Pending |
+| CL4-06 | Phase 33 | Pending |
+| CL4-07 | Phase 34 | Pending |
+| CL5-01 | Phase 35 | Pending |
+| CL5-02 | Phase 35 | Pending |
+| CL5-03 | Phase 35 | Pending |
+| CL6-01 | Phase 27 | Pending |
+| CL6-02 | Phase 27 | Pending |
+| CL6-03 | Phase 27 | Pending |
+| CL6-04 | Phase 27 | Pending |
+| MATRIX-01 | Phase 35 | Pending |
+| MATRIX-02 | Phase 35 | Pending |
+| MATRIX-03 | Phase 35 | Pending |
+
+**Coverage:**
+- v2.3 requirements: 28 total (CL-1: 3 · CL-2: 4 · CL-3: 4 · CL-4: 7 · CL-5: 3 · CL-6: 4 · MATRIX: 3)
+- Mapped to phases (27–35): 28 (100%)
+- Unmapped: 0
+
+---
+*v2.2 requirements defined: 2026-05-08*
+*v2.3 requirements defined: 2026-05-16 — derived from Dev/Prod Distinction Contract (PR #91)*
