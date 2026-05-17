@@ -1,6 +1,6 @@
 {
   "name": "triarch-dev",
-  "version": "2.13.19",
+  "version": "2.13.20",
   "private": true,
   "scripts": {
     "dev": "next dev",

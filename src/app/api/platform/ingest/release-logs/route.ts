@@ -64,11 +64,12 @@ export async function POST(req: NextRequest) {
       .orderBy(desc(deployGateCheck.createdAt))
       .limit(1);
 
+    const stripV = (s: string) => s.replace(/^v/i, '');
     const normalizedIngestVersion = String(version).trim();
     const matched =
       latestVerdict &&
       latestVerdict.verdict === 'pass' &&
-      latestVerdict.targetVersion.trim() === normalizedIngestVersion &&
+      stripV(latestVerdict.targetVersion.trim()) === stripV(normalizedIngestVersion) &&
       latestVerdict.apiKeyHash === currentApiKeyHash;
 
     if (!matched) {
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
         rejectReason = 'No deploy_gate_check row found in prior 15 minutes';
       } else if (latestVerdict.verdict !== 'pass') {
         rejectReason = `Latest verdict was '${latestVerdict.verdict}', expected 'pass'`;
-      } else if (latestVerdict.targetVersion.trim() !== normalizedIngestVersion) {
+      } else if (stripV(latestVerdict.targetVersion.trim()) !== stripV(normalizedIngestVersion)) {
         rejectReason = `target_version mismatch: verdict had '${latestVerdict.targetVersion}', ingest had '${normalizedIngestVersion}'`;
       } else {
         rejectReason = 'api_key_hash mismatch (key may have rotated between gate and deploy)';
