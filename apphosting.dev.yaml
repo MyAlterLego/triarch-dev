@@ -6,7 +6,7 @@
 
 env:
   - variable: NEXTAUTH_URL
-    value: https://admin-dev--triarch-dev-website.us-central1.hosted.app
+    value: https://admin-dev.triarch.dev
     availability:
       - BUILD
       - RUNTIME
