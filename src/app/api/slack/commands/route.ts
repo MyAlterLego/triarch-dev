@@ -23,7 +23,7 @@ import { db } from '@/lib/db';
 import { releaseLogs } from '@/db/schema';
 import { verifySlackSignature } from '@/lib/slack-crypto';
 import { resolveSlackUserEmail } from '@/lib/slack-identity';
-import { dispatchWorkflow } from '@/lib/github-app';
+import { dispatchWorkflow, mergeBranchToMain } from '@/lib/github-app';
 import { recordSlackAudit } from '@/lib/slack-audit';
 import {
   fetchProjectStatus,
@@ -31,10 +31,34 @@ import {
   listProjectKeys,
 } from '@/lib/slack-status';
 
+/**
+ * Parses + validates a Slack-issued response_url. Returns a URL object only
+ * if the input is https://hooks.slack.com/* — anything else returns null.
+ * Slack always issues from that host; anything else is a misconfigured
+ * client or a forged request that slipped past HMAC verification.
+ *
+ * Returns URL (not string) deliberately: CodeQL js/request-forgery recognizes
+ * fetch(URLobject) where the URL was constructed AND host-checked as
+ * sanitized, but does not recognize a string returned from a separate
+ * validator helper. The caller passes the URL object directly to fetch().
+ */
+function parseSlackResponseUrl(url: string): URL | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'https:') return null;
+  if (parsed.hostname !== 'hooks.slack.com') return null;
+  return parsed;
+}
+
 const HELP_TEXT = [
   '*OttoBot — Triarch deploy automation*',
   '',
-  '• `/triarch deploy <project> <version>` — Promote `<version>` of `<project>` to production. Staff only.',
+  '• `/triarch promote <project> [<head>] [<base>]` — Merge the open dev→main PR for `<project>` as a *merge commit* (preserves verify-dev-deployed ancestry). Defaults: head=dev, base=main. Staff only.',
+  '• `/triarch deploy <project> <version>` — *Legacy* — dispatches `promote-branch.yml` (only works for projects with that workflow file). Use `promote` for PR-based dev→main projects. Staff only.',
   '• `/triarch status <project>` — Show current dev/prod release status for `<project>`.',
   '',
   'Tip: also try `@OttoBot status <project>` in any channel.',
@@ -279,6 +303,139 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       response_type: 'ephemeral',
       text: `:gear: Dispatching \`promote-branch.yml\` for \`${projectArg} ${versionArg}\` on branch \`${branch}\`...`,
+    });
+  }
+
+  // ─── STEP 8b: /triarch promote <project> [<head>] [<base>] ──────────────
+  // PR-based dev→main promotion. Calls GitHub API to merge the open PR with
+  // merge_method='merge' (preserves dev's commit hashes in main's ancestry so
+  // verify-dev-deployed gate on consumer repos passes). Replaces the legacy
+  // `deploy` path for projects that have adopted the dev→main PR flow.
+  if (subcommand === 'promote') {
+    const isStaff = actorEmail?.endsWith('@triarchsecurity.com') ?? false;
+    if (!isStaff) {
+      void recordSlackAudit({
+        actionId: 'slash_promote',
+        actorEmail,
+        actorSlackId: userId || 'unknown',
+        rawBody,
+        responseStatus: 200,
+        latencyMs: Date.now() - requestReceivedAt,
+      });
+      return NextResponse.json({
+        response_type: 'ephemeral',
+        text: ':no_entry: This command requires Triarch staff access.',
+      });
+    }
+
+    const [projectArg, headBranchArg, baseBranchArg] = rest;
+    if (!projectArg) {
+      void recordSlackAudit({
+        actionId: 'slash_promote',
+        actorEmail,
+        actorSlackId: userId || 'unknown',
+        rawBody,
+        responseStatus: 200,
+        latencyMs: Date.now() - requestReceivedAt,
+      });
+      return NextResponse.json({
+        response_type: 'ephemeral',
+        text: ':warning: Usage: `/triarch promote <project> [<head-branch>] [<base-branch>]` (defaults: head=dev base=main)',
+      });
+    }
+    const headBranch = headBranchArg || 'dev';
+    const baseBranch = baseBranchArg || 'main';
+
+    const projectStatus = await fetchProjectStatus(projectArg);
+    if (!projectStatus) {
+      void recordSlackAudit({
+        actionId: 'slash_promote',
+        actorEmail,
+        actorSlackId: userId || 'unknown',
+        rawBody,
+        responseStatus: 200,
+        latencyMs: Date.now() - requestReceivedAt,
+      });
+      return NextResponse.json({
+        response_type: 'ephemeral',
+        text: `:warning: Project '${projectArg}' not found.`,
+      });
+    }
+    if (!projectStatus.project.githubRepo) {
+      void recordSlackAudit({
+        actionId: 'slash_promote',
+        actorEmail,
+        actorSlackId: userId || 'unknown',
+        rawBody,
+        responseStatus: 200,
+        latencyMs: Date.now() - requestReceivedAt,
+      });
+      return NextResponse.json({
+        response_type: 'ephemeral',
+        text: `:warning: Project '${projectArg}' has no GitHub repo configured.`,
+      });
+    }
+
+    const [owner, repo] = projectStatus.project.githubRepo.split('/');
+
+    // Fire-and-forget: merge + response_url follow-up per Slack 3-sec rule.
+    // response_url is HMAC-verified upstream; we additionally parse it as a
+    // URL object and verify it points at hooks.slack.com before fetch. Passing
+    // the parsed URL object (not the raw string) to fetch is the pattern
+    // CodeQL js/request-forgery recognizes as sanitized.
+    const safeUrl = responseUrl ? parseSlackResponseUrl(responseUrl) : null;
+    void (async () => {
+      try {
+        const result = await mergeBranchToMain({ owner, repo, headBranch, baseBranch });
+        if (!safeUrl) return;
+        let message: string;
+        if (result.merged) {
+          message =
+            `:white_check_mark: Merged \`${projectArg}\` ${headBranch} → ${baseBranch} as merge commit. ` +
+            `<https://github.com/${owner}/${repo}/pull/${result.prNumber}|PR #${result.prNumber}> · sha \`${result.sha.slice(0, 7)}\``;
+        } else if (result.reason === 'no_open_pr') {
+          message =
+            `:warning: No open PR from \`${result.headBranch}\` → \`${result.baseBranch}\` for \`${projectArg}\`. ` +
+            `Open one first (\`gh pr create --base ${result.baseBranch} --head ${result.headBranch}\` on the repo).`;
+        } else {
+          message =
+            `:x: Merge failed for PR #${result.prNumber} (HTTP ${result.statusCode}): ` +
+            `${result.message}`;
+        }
+        // lgtm[js/request-forgery] safeUrl is parseSlackResponseUrl-validated (https + hooks.slack.com)
+        await fetch(safeUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ response_type: 'ephemeral', replace_original: false, text: message }),
+        });
+      } catch (err) {
+        console.error('[slack-commands] mergeBranchToMain failed', err);
+        if (safeUrl) {
+          // lgtm[js/request-forgery] safeUrl is parseSlackResponseUrl-validated (https + hooks.slack.com)
+          await fetch(safeUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              response_type: 'ephemeral',
+              replace_original: false,
+              text: ':x: Promote failed — check server logs.',
+            }),
+          }).catch(() => {});
+        }
+      }
+    })();
+
+    void recordSlackAudit({
+      actionId: 'slash_promote',
+      actorEmail,
+      actorSlackId: userId || 'unknown',
+      rawBody,
+      responseStatus: 200,
+      latencyMs: Date.now() - requestReceivedAt,
+    });
+    return NextResponse.json({
+      response_type: 'ephemeral',
+      text: `:gear: Promoting \`${projectArg}\` \`${headBranch}\` → \`${baseBranch}\` as merge commit (preserves dev ancestry for verify-dev-deployed gate)...`,
     });
   }
 
