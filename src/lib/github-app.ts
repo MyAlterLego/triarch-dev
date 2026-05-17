@@ -147,6 +147,77 @@ export async function dispatchWorkflow(input: DispatchWorkflowInput): Promise<{ 
   return { ok: true, status: res.status };
 }
 
+// ---------------------------------------------------------------------------
+// Pull request merge — PR-based dev→main promotion via GitHub API.
+//
+// Used by /triarch promote <project> to merge the open dev→main PR for a
+// project as a real merge commit (NOT squash). Squash breaks consumer projects'
+// verify-dev-deployed gate because dev's commit hashes do not survive into
+// main's ancestry under squash. Always uses merge_method='merge'.
+// ---------------------------------------------------------------------------
+
+export type MergeBranchInput = {
+  owner: string;
+  repo: string;
+  headBranch: string;
+  baseBranch: string;
+};
+
+export type MergeBranchResult =
+  | { merged: true; prNumber: number; sha: string; htmlUrl: string }
+  | { merged: false; reason: 'no_open_pr'; headBranch: string; baseBranch: string }
+  | { merged: false; reason: 'merge_failed'; prNumber: number; statusCode: number; message: string };
+
+export async function mergeBranchToMain(input: MergeBranchInput): Promise<MergeBranchResult> {
+  const token = await getInstallationToken();
+  const { owner, repo, headBranch, baseBranch } = input;
+
+  const listUrl =
+    `https://api.github.com/repos/${owner}/${repo}/pulls` +
+    `?state=open&base=${encodeURIComponent(baseBranch)}&head=${encodeURIComponent(owner + ':' + headBranch)}`;
+  const listRes = await fetch(listUrl, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+    },
+  });
+  if (!listRes.ok) {
+    const body = await listRes.text();
+    throw new Error(`[github-app] list PRs failed for ${owner}/${repo}: ${listRes.status} ${body}`);
+  }
+  const prs = (await listRes.json()) as Array<{ number: number; html_url: string }>;
+  if (prs.length === 0) {
+    return { merged: false, reason: 'no_open_pr', headBranch, baseBranch };
+  }
+  const pr = prs[0];
+
+  const mergeUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${pr.number}/merge`;
+  const mergeRes = await fetch(mergeUrl, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ merge_method: 'merge' }),
+  });
+  if (!mergeRes.ok) {
+    const body = await mergeRes.text();
+    return {
+      merged: false,
+      reason: 'merge_failed',
+      prNumber: pr.number,
+      statusCode: mergeRes.status,
+      message: body.slice(0, 300),
+    };
+  }
+  const mergeData = (await mergeRes.json()) as { sha: string; merged: boolean };
+  console.log(
+    `[github-app] merged PR #${pr.number} for ${owner}/${repo} ${headBranch}→${baseBranch} sha=${mergeData.sha}`
+  );
+  return { merged: true, prNumber: pr.number, sha: mergeData.sha, htmlUrl: pr.html_url };
+}
+
 /** Test-only helper. Resets module-level cache + in-flight latch between tests. */
 export function resetTokenCacheForTests(): void {
   cached = null;
