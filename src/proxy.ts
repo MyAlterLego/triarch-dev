@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PASSTHROUGH_PREFIXES = ['/api/', '/login', '/_next/', '/favicon.ico'];
+const PASSTHROUGH_PREFIXES = ['/api/', '/login', '/_next/', '/favicon.ico', '/ci-cd/', '/ci-cd'];
 
 /**
  * Known-host allowlist. This app serves two domains:

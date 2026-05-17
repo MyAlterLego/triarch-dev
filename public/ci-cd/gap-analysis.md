@@ -52,7 +52,7 @@ Ask the user (using AskUserQuestion if available, otherwise just ask in chat):
 |---|---|
 | Yes | What is the GitHub organization name? |
 | Yes | What is the repository name? |
-| Yes | Which cloud do they use (or plan to use)? AWS / GCP / Firebase / Azure / Cloudflare-only / none yet |
+| Yes | Which cloud do they use (or plan to use)? AWS / GCP / Firebase / Azure / DigitalOcean / Cloudflare-only / none yet |
 | Optional | If AWS: do you have read access to their AWS account(s)? (will run `aws sts get-caller-identity` etc.) |
 | Optional | What's their compliance scope, if any? SOC 2 / HIPAA / PCI / GDPR / multiple / none |
 
@@ -73,6 +73,7 @@ aws --version         # only if AWS in scope
 gcloud --version      # only if GCP / Firebase in scope
 firebase --version    # only if Firebase in scope
 az --version          # only if Azure in scope
+doctl version         # only if DigitalOcean in scope
 ```
 
 Then check authentication state:
@@ -83,6 +84,7 @@ aws sts get-caller-identity 2>/dev/null || echo "AWS: not authenticated"
 gcloud auth list 2>/dev/null
 az account show 2>/dev/null || echo "Azure: not authenticated"
 firebase projects:list 2>/dev/null | head -3
+doctl account get 2>/dev/null || echo "DigitalOcean: not authenticated"
 ```
 
 If anything the user needs is **not authenticated**, stop and print the exact login command. Do not proceed with discovery — the output will be incomplete and the gap-analysis will be wrong.
@@ -137,6 +139,16 @@ az login                                       # browser flow
 az account set --subscription "Name or ID"
 ```
 
+#### DigitalOcean login (if cloud target = DigitalOcean App Platform / Droplets / DOKS)
+
+```bash
+brew install doctl                             # macOS — or per https://docs.digitalocean.com/reference/doctl/how-to/install/
+doctl auth init                                # paste a personal access token at the prompt (token stays in their config, not chat)
+doctl account get                              # confirm authentication
+```
+
+> **Credential safety reminder:** the PAT lands in `~/.config/doctl/config.yaml` on macOS/Linux. Never have the user paste the token into chat. If they do paste it, instruct them to rotate immediately in DO Console → API → Tokens.
+
 **Critical:** every login above runs in the user's terminal. Tokens land in CLI config files in their home directory. None of those values should ever appear in your chat output, your reasoning trace, or the HTML report.
 
 ### Step 2 — Run the discovery sweep
@@ -190,7 +202,12 @@ for wf in $(gh api repos/$ORG/$REPO/contents/.github/workflows --jq '.[].name');
   push_b=$(printf '%s' "$body" | awk '/^on:/,/^[a-zA-Z]/' | grep -oE -- "- (main|dev|staging)" | sort -u | tr '\n' ',')
   v_dev=$(printf '%s' "$body" | grep -c "verify[-_]dev[-_]deployed")
   g_prod=$(printf '%s' "$body" | grep -c "gate[-_]prod[-_]version")
-  echo "$wf push=[$push_b] verify-dev=$v_dev gate-prod-version=$g_prod"
+  # Deploy target detection — informs which sibling pattern doc applies
+  dep_fb=$(printf '%s' "$body" | grep -cE "deploy-firebase\.yml|firebase apphosting|firebase deploy")
+  dep_do=$(printf '%s' "$body" | grep -cE "deploy-do\.yml|doctl apps|digitalocean/action-doctl")
+  dep_aws=$(printf '%s' "$body" | grep -cE "aws-actions/configure-aws-credentials|aws ecs|aws s3 sync|sam deploy|cdk deploy")
+  dep_gcp=$(printf '%s' "$body" | grep -cE "google-github-actions/auth|gcloud run deploy|gcloud functions deploy")
+  echo "$wf push=[$push_b] verify-dev=$v_dev gate-prod-version=$g_prod target=fb:$dep_fb,do:$dep_do,aws:$dep_aws,gcp:$dep_gcp"
 done
 
 # CODEOWNERS
@@ -255,6 +272,49 @@ gcloud iam workload-identity-pools list --location=global 2>/dev/null
 
 # === Firebase ===
 firebase projects:list 2>/dev/null
+
+# === DigitalOcean ===
+# Account + apps inventory
+doctl account get 2>/dev/null
+doctl apps list --format ID,Spec.Name,LiveURL,DefaultIngress,ActiveDeployment.Phase,Spec.Services.0.Git.Branch 2>/dev/null
+
+# Dev/prod pair detection — look for two apps whose names differ only by a -dev suffix
+doctl apps list --format Spec.Name 2>/dev/null | tail -n +2 | sort | awk '
+  { names[$1]=1 }
+  END {
+    for (n in names) {
+      base=n; sub(/-dev$/,"",base)
+      if (base != n && (base in names)) print "pair_found: " base " + " n
+    }
+    if (!found) print "pair_check: enumerate manually if names don'\''t follow -dev convention"
+  }'
+
+# Per-app: git branch the app deploys from (CL-1 check — dev app must deploy from `dev`)
+for app_id in $(doctl apps list --format ID --no-header 2>/dev/null); do
+  name=$(doctl apps get $app_id --format Spec.Name --no-header 2>/dev/null)
+  branch=$(doctl apps get $app_id --format Spec.Services.0.Git.Branch --no-header 2>/dev/null)
+  echo "app=$name branch=$branch"
+done
+
+# Database inventory — CL-3 requires per-env databases
+doctl databases list --format ID,Name,Engine,Region,Status 2>/dev/null
+
+# Custom domains per app — CL-1 hostname check
+for app_id in $(doctl apps list --format ID --no-header 2>/dev/null); do
+  doctl apps spec get $app_id 2>/dev/null | grep -E "^  - domain:|^    type:|name:" | head -10
+done
+
+# OIDC trust (DO added GitHub Actions OIDC late 2024)
+# No direct CLI flag — must check DO Console → API → OAuth or examine workflow auth pattern.
+# Discovery proxy: search workflow files for digitalocean/action-doctl@v2 with id-token: write.
+gh api repos/$ORG/$REPO/contents/.github/workflows --jq '.[].name' 2>/dev/null | while read wf; do
+  body=$(gh api "repos/$ORG/$REPO/contents/.github/workflows/$wf" --jq '.content' 2>/dev/null | base64 -d 2>/dev/null)
+  if printf '%s' "$body" | grep -q "digitalocean/action-doctl"; then
+    has_oidc=$(printf '%s' "$body" | grep -c "id-token: write")
+    has_long=$(printf '%s' "$body" | grep -cE "DIGITALOCEAN_ACCESS_TOKEN|DO_ACCESS_TOKEN")
+    echo "$wf doctl=yes oidc=$has_oidc long_token_ref=$has_long"
+  fi
+done
 ```
 
 ---
@@ -292,7 +352,9 @@ For each row below, evaluate the discovery output and assign a status. Use the e
 | C-10 | IaC checked into repo | `iac/`, `terraform/`, `infra/`, or `infrastructure/` dir contains `.tf` / `.tofu` files | Pass / Partial (some IaC) / Fail (click-ops) |
 | C-11 | Audit log routed somewhere | GitHub Enterprise audit-log streaming OR `aws s3 ls` shows audit bucket OR Loki/Splunk visible | Pass / Partial / Fail |
 | C-12 | `verify-dev-deployed` CI gate (Layer 3 of the bypass-prevention model) | Grep each workflow body for a job containing `verify-dev-deployed` / `verify_dev_deployed` / "assert HEAD ... origin/dev" | Pass: a job exists whose body asserts HEAD is on `origin/dev` before any prod-only job runs. Partial: a job is named but its assertion is commented out or weakened (e.g. `[hotfix-bypass-dev]` token still wired). Fail: no such job. Without it, a force-merge to `main` can ship code that never deployed to the dev backend — the exact failure mode this framework exists to prevent. |
-| C-13 | Version-invariants gate on prod promotion (`gate-prod-version` or equivalent) | Grep each workflow body for `gate-prod-version` / `gate_prod_version` / a step that POSTs to a version-registry endpoint before prod deploy | Pass: a job verifies the prod-target version satisfies the framework's INV-1..INV-5 invariants (target ≤ dev_version, target > prod_version, target == dev_version, dev_age ≥ bake_minimum). Partial: a callback exists but doesn't enforce all five invariants. Fail: no callback, prod can deploy any commit that passes earlier gates. See `firebase-2env-pattern.md` §"GATE-12 promotion callback". |
+| C-13 | Version-invariants gate on prod promotion (`gate-prod-version` or equivalent) | Grep each workflow body for `gate-prod-version` / `gate_prod_version` / a step that POSTs to a version-registry endpoint before prod deploy | Pass: a job verifies the prod-target version satisfies the framework's INV-1..INV-5 invariants (target ≤ dev_version, target > prod_version, target == dev_version, dev_age ≥ bake_minimum). Partial: a callback exists but doesn't enforce all five invariants. Fail: no callback, prod can deploy any commit that passes earlier gates. See `firebase-2env-pattern.md` §"GATE-12 promotion callback" (Firebase consumers) or `digitalocean-2env-pattern.md` §"How the CI workflow calls them" (DO App Platform consumers). The gate logic is cloud-agnostic — only the deploy step downstream differs. |
+| C-13-DO | DO-specific: per-app `git.branch` correctness | For each app surfaced in `doctl apps list`: `app_name` ending in `-dev` MUST have `Spec.Services.0.Git.Branch=dev`; non-`-dev` app MUST have `branch=main`. From the Step 3 DO sweep output | Pass: every DO app's deploying branch matches its naming convention. Fail: a `<name>-dev` app deploys from `main`, or a prod app deploys from `dev` — the CL-1 environment binding is inverted and any "dev deploy" actually overwrites prod (or vice versa). Remediation: update the app spec's `services[].git.branch` via DO Console → App → Settings, or `doctl apps update <id> --spec <updated-yaml>`. |
+| C-13-DO-OIDC | DO-specific: OIDC trust instead of long-lived `DIGITALOCEAN_ACCESS_TOKEN` | From the Step 3 DO OIDC probe output (per-workflow `oidc=N long_token_ref=M`) | Pass: every workflow using `digitalocean/action-doctl` has `id-token: write` AND zero references to `DIGITALOCEAN_ACCESS_TOKEN` secret. Partial: OIDC is wired but the long-lived token is still set as a repo secret (fallback path exists). Fail: workflow uses `DIGITALOCEAN_ACCESS_TOKEN` exclusively, no OIDC. DO added GitHub Actions OIDC trust in late 2024 — same posture as the framework's AWS/GCP recommendation. See `digitalocean-2env-pattern.md` §"Authentication". |
 | C-14 | Promotion branch protected from deletion | Check `gh api repos/$ORG/$REPO/rulesets` for a ruleset whose `conditions.ref_name.include` covers `refs/heads/dev` (or `/staging`) AND whose `rules[]` includes `{ "type": "deletion" }`. Also check the repo setting `delete_branch_on_merge`: if true and no deletion-blocking ruleset, the dev branch will be auto-deleted on every dev→main merge | Pass: deletion-blocking ruleset present on the promotion branch (overrides the repo's auto-delete policy). Fail: `delete_branch_on_merge: true` AND no protection on the promotion branch — every dev→main merge will silently delete `origin/dev`, breaking the `verify-dev-deployed` gate on the *next* prod deploy until someone recreates dev. This is the framework's most subtle promotion-flow failure mode. |
 | C-15 | Promotion PRs can be merged with merge-commit method | Check repo settings: `gh api repos/$ORG/$REPO --jq '{allow_merge_commit, allow_squash_merge}'`. AND check main ruleset: `gh api repos/$ORG/$REPO/rulesets/<id> --jq '.rules[].type'` must NOT include `required_linear_history` | Pass: `allow_merge_commit=true` AND no `required_linear_history` on the main ruleset. Fail: either is missing — every dev→main squash creates a new main SHA that breaks `verify-dev-deployed`'s ancestry check, forcing a manual recovery step on every prod promotion. Partial: setting is correct but the framework docs in the repo (if any) still recommend squash for dev→main. See `firebase-2env-pattern.md` §"Promotion merge method". |
 
