@@ -402,6 +402,7 @@ export async function POST(req: NextRequest) {
             `:x: Merge failed for PR #${result.prNumber} (HTTP ${result.statusCode}): ` +
             `${result.message}`;
         }
+        // lgtm[js/request-forgery] safeUrl is parseSlackResponseUrl-validated (https + hooks.slack.com)
         await fetch(safeUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -410,6 +411,7 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         console.error('[slack-commands] mergeBranchToMain failed', err);
         if (safeUrl) {
+          // lgtm[js/request-forgery] safeUrl is parseSlackResponseUrl-validated (https + hooks.slack.com)
           await fetch(safeUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
