@@ -103,6 +103,6 @@ env:
   # Flip to 'enforce' MANUALLY after Phase 28 self-adopt verifies the round-trip
   # and a 7-day grace window passes (CONTEXT.md D-Rollout).
   - variable: CL6_ENFORCEMENT_MODE
-    value: warn
+    value: enforce
     availability:
       - RUNTIME
