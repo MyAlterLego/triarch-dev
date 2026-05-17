@@ -857,9 +857,9 @@
         <!-- Dependency line: env:dev → gate → env:prod (vertical chain, red, prominent) -->
         <line class="arch-line lDevToGate" x1="580" y1="149" x2="580" y2="200" stroke="#f87171" stroke-width="2" stroke-dasharray="3,3" />
         <line class="arch-line lGateToProd" x1="580" y1="236" x2="580" y2="248" stroke="#f87171" stroke-width="2" />
-        <!-- Side label callout -->
-        <text x="410" y="220" fill="#fca5a5" font-size="9" font-weight="700" letter-spacing="0.4" text-anchor="middle">DEV MUST DEPLOY</text>
-        <text x="410" y="232" fill="#fca5a5" font-size="9" font-weight="700" letter-spacing="0.4" text-anchor="middle">BEFORE PROD CAN</text>
+        <!-- "DEV MUST DEPLOY" side label removed 2026-05-17 — it overlapped the GHCR
+             box and was visually redundant: the gate box's "no bypass" copy plus the
+             dashed env:dev → gate → env:prod chain already conveys the dependency. -->
 
         <g class="arch-node n8">
           <rect x="710" y="50" width="170" height="50" rx="10" fill="url(#ghBg)" stroke="#5a4d2c" stroke-width="1.5" />
