@@ -131,7 +131,10 @@ jobs:
           if ! git merge-base --is-ancestor origin/dev HEAD; then
             echo "::error::Refusing to deploy to prod: origin/dev tip ($(git rev-parse origin/dev)) is not reachable from HEAD ($(git rev-parse HEAD))."
             echo "::error::dev → main must be merged using 'Create a merge commit' so dev's tip becomes a parent of main HEAD."
-            echo "::error::If you squash-merged, push main HEAD onto dev (or merge main into dev) to restore ancestry, then rerun."
+            echo "::error::Recovery if you already squash-merged (pick ONE):"
+            echo "::error::  A) Re-merge dev → main locally with --no-ff and push: git checkout main && git merge --no-ff origin/dev -m 'merge dev (post-squash repair)' && git push origin main"
+            echo "::error::  B) Force-push dev to match main: git checkout dev && git reset --hard origin/main && git push --force-with-lease origin dev   (requires temporarily disabling the dev-protection ruleset's non_fast_forward rule)"
+            echo "::error::Do NOT 'git merge origin/main --no-ff' on dev — that creates a merge commit on dev that is newer than main HEAD and the check still fails."
             exit 1
           fi
           echo "Verified: origin/dev is an ancestor of HEAD — safe to promote to prod."

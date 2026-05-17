@@ -217,7 +217,7 @@ For teams running this Triarch platform — per-project staff UI at `admin.triar
 |-------|---------------|-------------|
 | CI quality-gate | Every PR | Fix the code (lint/test/build error) |
 | cl4-gate INV-1..5 | Every prod PR | Make sure dev has the exact version you're promoting (INV-4: target == dev_version). Wait 5 min if dev was just deployed (INV-5: dev age ≥ 300s). |
-| verify-dev-deployed | Every prod push | Merge with "Create a merge commit", not squash. If you squashed, push main HEAD back to dev to restore ancestry. |
+| verify-dev-deployed | Every prod push | Merge with "Create a merge commit", not squash. If you squashed, re-merge dev → main with `--no-ff` (creates a real merge commit on main with dev's tip as a parent — see firebase-2env-pattern.md §"Recovery if a dev → main PR was squash-merged by mistake"). |
 | CL-6 server-side | Every prod ingest | If cl4-gate didn't run or didn't post a verdict, admin's ingest returns 409 + audit. Inspect the run logs. |
 
 ### Hotfix path

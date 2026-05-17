@@ -409,7 +409,7 @@ Missing any of these → CI will fail in a specific predictable way. Use the dia
 | `npm error 403 Permission installation not allowed` | Trying to use a GitHub App installation token | Use `secrets.GITHUB_TOKEN` instead — GitHub Packages npm registry doesn't honor cross-repo App tokens despite docs claiming otherwise |
 | Dev backend deploys but uses prod config | "Environment Name" Console field is not set to `dev` on the dev backend | Set it. FAH only loads `apphosting.dev.yaml` when this field matches |
 | `verify-dev-deployed` blocks a hotfix push to main | Hotfix commit isn't on `dev` branch yet | Merge the hotfix to dev first, then to main. There is no in-band bypass — commenting out the gate defeats the framework's entire purpose. |
-| `verify-dev-deployed` fails immediately after a squash-merge of dev → main | The squash created a new SHA on main with no path back to dev's history (see §"Promotion merge method" below) | Use **merge-commit** for dev → main PRs (not squash). If you already squash-merged, recover by `git checkout dev && git merge origin/main --no-ff && git push origin dev` then re-run the failed prod workflow. |
+| `verify-dev-deployed` fails immediately after a squash-merge of dev → main | The squash created a new SHA on main with no path back to dev's history (see §"Promotion merge method" below) | Use **merge-commit** for dev → main PRs (not squash). If you already squash-merged, see §"Recovery if a dev → main PR was squash-merged by mistake" below — the recovery is to re-merge dev into main with `--no-ff` (NOT the reverse). |
 | `gate-prod` job stays in "Waiting" forever | GitHub Environment `prod` has reviewer rule but no one to approve | Add a reviewer, or remove the rule if solo-dev |
 | Push to main deploys to dev backend | Branch ref evaluation bug in `env-select` job | Check the `if` condition matches `refs/heads/main` exactly |
 
@@ -470,18 +470,48 @@ If the repo also has **legacy branch protection** on main (`gh api repos/$ORG/$R
 
 #### Recovery if a dev → main PR was squash-merged by mistake
 
-The failed prod deploy can be unblocked without reverting:
+> **Earlier versions of this doc recommended `git checkout dev && git merge origin/main --no-ff && git push origin dev` here. That recovery is wrong** — it creates a new merge commit on dev that is *newer than main HEAD*, so `is-ancestor(origin/dev, main_HEAD)` still fails. Pick one of the two recoveries below instead. (Pre-2026-05-17 framework error messages also suggested the broken recipe; updated v2.13.x.)
+
+The check is `git merge-base --is-ancestor origin/dev HEAD` (where `HEAD` is main). It passes iff dev's tip is reachable from main HEAD by walking parents. After a squash, main HEAD's only parent is `old_main_tip` — dev's tip is unreachable. Two recoveries actually restore the ancestry:
+
+**Recovery A — re-merge dev → main with --no-ff (recommended)**
+
+Creates a real merge commit on main whose parents are `[squash_commit, dev_tip]`. dev's tip is now an ancestor of main HEAD. No history rewriting; safe under any branch protection that allows merge commits.
 
 ```bash
-git checkout dev
-git pull origin dev
-git merge origin/main --no-ff -m "merge main into dev (post-squash align — closes verify-dev-deployed gap)"
-git push origin dev
-# Then re-run the failed prod workflow:
+git checkout main
+git pull origin main
+git merge --no-ff origin/dev -m "merge dev (post-squash repair — restores verify-dev-deployed ancestry)"
+git push origin main
 gh run rerun <runId> --failed --repo <org>/<repo>
 ```
 
-This adds a merge commit to dev whose parents include the new main HEAD, restoring the ancestry relationship.
+The new merge commit on main is content-identical to the squash that preceded it (dev was already in the squash via its tree), so there's no functional change — only an ancestry edge to dev's tip.
+
+**Recovery B — reset dev to match main (force-push dev)**
+
+Effectively makes `origin/dev == origin/main` at the SHA level. Cheaper than Recovery A but requires force-pushing the `dev` branch, which the framework's `dev-protection` ruleset blocks by default. You must temporarily disable that ruleset (or whichever rule sets `non_fast_forward`), push, then re-enable.
+
+```bash
+git checkout dev
+git fetch origin main
+git reset --hard origin/main
+git push --force-with-lease origin dev
+gh run rerun <runId> --failed --repo <org>/<repo>
+```
+
+After this, `origin/dev` and `origin/main` point at the same commit and `is-ancestor(origin/dev, main_HEAD)` is trivially true.
+
+**Why "merge main into dev" doesn't work**
+
+Tempting recipe (and what older docs/error-messages suggested):
+
+```bash
+# DOES NOT WORK
+git checkout dev && git merge origin/main --no-ff && git push origin dev
+```
+
+This creates a new merge commit `M` on `origin/dev` whose parents are `[old_dev_tip, main_HEAD]`. The check re-runs `is-ancestor(origin/dev = M, main_HEAD)`. Walking parents from `main_HEAD`, we reach `old_main_tip`, then earlier history — but never `M`, because `M` was created *after* `main_HEAD`. Ancestry runs backward in time only.
 
 ### Bootstrap caveat — first deploy after adding `verify-dev-deployed`
 
