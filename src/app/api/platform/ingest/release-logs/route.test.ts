@@ -51,8 +51,16 @@ vi.mock('@/db/schema', async () => {
 });
 
 // Mock: @/lib/link-stamper
+// Phase 36 INCL-06: returns StampResult { stamped, dropped, autoFlipped, orphanLinks }.
+// Default is the zero-shape; tests can override per-call via mockResolvedValueOnce.
+const stampLinksFromCommitMock = vi.fn().mockResolvedValue({
+  stamped: 0,
+  dropped: 0,
+  autoFlipped: 0,
+  orphanLinks: 0,
+});
 vi.mock('@/lib/link-stamper', () => ({
-  stampLinksFromCommit: vi.fn().mockResolvedValue(undefined),
+  stampLinksFromCommit: (...args: unknown[]) => stampLinksFromCommitMock(...args),
 }));
 
 const FAKE_PROJECT = { id: 'proj-uuid', key: 'truth-treason', apiKey: 'valid-token' };
@@ -233,5 +241,75 @@ describe('POST /api/platform/ingest/release-logs (CL-6 pre-check)', () => {
       remediation_url: '/admin/modules/ci-cd',
     });
     expect(typeof body.reason).toBe('string');
+  });
+
+  // ── Phase 36 INCL-06: ingest passes commitSha + surfaces orphan warning ──
+
+  it('Phase 36-A: ingest passes commitSha + projectKey + releaseId to stampLinksFromCommit', async () => {
+    process.env.CL6_ENFORCEMENT_MODE = 'off';
+    const { POST } = await import('./route');
+    await POST(buildRequest({
+      ...VALID_PROD_BODY,
+      commitSha: 'sha-abc-123',
+      summary: 'Fix BUG-something so the stamper sees text to parse',
+    }));
+
+    expect(stampLinksFromCommitMock).toHaveBeenCalledTimes(1);
+    const callArg = stampLinksFromCommitMock.mock.calls[0][0];
+    expect(callArg.commitSha).toBe('sha-abc-123');
+    expect(callArg.projectKey).toBe('truth-treason');
+    expect(callArg.releaseId).toBe(FAKE_RELEASE_ROW.id);
+  });
+
+  it('Phase 36-B: orphanLinks > 0 → console.warn with structured payload', async () => {
+    process.env.CL6_ENFORCEMENT_MODE = 'off';
+    stampLinksFromCommitMock.mockResolvedValueOnce({
+      stamped: 3,
+      dropped: 0,
+      autoFlipped: 1,
+      orphanLinks: 2,
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { POST } = await import('./route');
+    const res = await POST(buildRequest({
+      ...VALID_PROD_BODY,
+      commitSha: 'sha-orphan',
+      summary: 'commit with refs',
+    }));
+
+    expect(res.status).toBe(201);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0][0]).toBe('[link-stamper] orphan links detected');
+    expect(warnSpy.mock.calls[0][1]).toMatchObject({
+      releaseId: FAKE_RELEASE_ROW.id,
+      project: 'truth-treason',
+      orphanLinks: 2,
+      autoFlipped: 1,
+      stamped: 3,
+    });
+
+    warnSpy.mockRestore();
+  });
+
+  it('Phase 36-C: orphanLinks === 0 → NO console.warn fires', async () => {
+    process.env.CL6_ENFORCEMENT_MODE = 'off';
+    stampLinksFromCommitMock.mockResolvedValueOnce({
+      stamped: 1,
+      dropped: 0,
+      autoFlipped: 1,
+      orphanLinks: 0,
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { POST } = await import('./route');
+    await POST(buildRequest({
+      ...VALID_PROD_BODY,
+      commitSha: 'sha-clean',
+      summary: 'a clean commit',
+    }));
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 });
