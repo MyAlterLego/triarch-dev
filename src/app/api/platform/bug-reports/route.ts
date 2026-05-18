@@ -4,6 +4,7 @@ import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
 import { bugReports, workflowTransitions } from '@/db/schema';
 import { eq, desc, and, sql, inArray } from 'drizzle-orm';
+import { INCLUSION_STATES, type InclusionState } from '@/lib/inclusion-state';
 
 export async function GET(req: NextRequest) {
   const { error, session } = await requireSignedIn();
@@ -15,13 +16,20 @@ export async function GET(req: NextRequest) {
   const project = searchParams.get('project');
   const status = searchParams.get('status');
   const priority = searchParams.get('priority');
+  const inclusionState = searchParams.get('inclusion_state');
   const limit = parseInt(searchParams.get('limit') ?? '50', 10);
   const offset = parseInt(searchParams.get('offset') ?? '0', 10);
+
+  // ── Phase 36 Pitfall 8: validate inclusion_state filter input ──
+  if (inclusionState !== null && !INCLUSION_STATES.includes(inclusionState as InclusionState)) {
+    return NextResponse.json({ error: 'invalid_inclusion_state' }, { status: 400 });
+  }
 
   const conditions = [];
   if (project && project !== 'all') conditions.push(eq(bugReports.project, project));
   if (status) conditions.push(eq(bugReports.status, status));
   if (priority) conditions.push(eq(bugReports.priority, priority));
+  if (inclusionState) conditions.push(eq(bugReports.inclusionState, inclusionState));
 
   // Membership filter: staff or DB-error fallback see everything; non-staff are scoped.
   if (ctx && !ctx.isStaff) {

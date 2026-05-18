@@ -120,6 +120,20 @@
       "when": 1778213865370,
       "tag": "0016_release_log_links_and_preview_lock",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1779125475980,
+      "tag": "0020_inclusion_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1779134234000,
+      "tag": "0021_build_trigger_and_approval_events",
+      "breakpoints": true
     }
   ]
 }

@@ -28,7 +28,40 @@ Already operational at v1.14.6: foundation, DB-backed staff/membership roles, pr
 - Headline: customer-gated parallel release candidates with auto-rebase-and-merge promotion, unified credential storage, and OttoBot as the canonical Slack control plane.
 - Phases 01, 02, 03, 04, 05, 06, 07, 7.5 (code) complete — Phase 8 (Truth+Treason pilot) gated on Mike completing the 7.5 runbook.
 
-## Current Milestone: v2.2 — Customer Portal Split
+## Current Milestone: v2.4 — Build Cycle Workflow
+
+**Goal:** Pull the existing customer-approval + Slack + OttoBot machinery into a single coherent workflow that closes the bug/feature INCLUSION gap and adds a one-click Claude Code build trigger. Pilot on TMI. Make admin the canonical "what's next" surface so Mike's daily ritual is: triage → approve for build → click "Generate build" → Claude Code (or Managed Agent) runs the build → existing customer approval flow promotes to prod. No rebuild of customer Approve/Reject or OttoBot — strictly wire-up + the inclusion gap.
+
+**Why now:** Audit on 2026-05-18 confirmed that customer Approve/Reject on prod promotions already ships (v2.0-v2.2), auto-linkage of commits to bug/feature IDs already ships (v2.1 Phase 11), and the portal customer surface is live (v2.2 Phases 21-23.1). What's missing is (a) the explicit "decide what goes IN" step before the build, and (b) the seamless Mike→Claude handoff. Today Mike improvises every build by asking Claude Code in unstructured prompts. This milestone formalizes the seam.
+
+**Pilot scope:** TMI only. Soft prescription for 30 days — the new flow is available but doesn't BLOCK old workflows. After 30 days of dogfooding, evaluate making it hard (cl4-style gate: prod deploys refuse to ship unless all included commit refs trace to `approved_for_build` items). Hard gate + portfolio rollout reserved for v3.0.
+
+**Target features:**
+- New `inclusion_state` column on `bug_reports` and `feature_requests` with state machine: `triaged → pending_inclusion → approved_for_build → built → deployed` (plus `deferred` and `rejected` terminal states)
+- New `/admin/modules/next-build-plan/{slug}` page — staff-only — lists all `approved_for_build` items per project with inline add/remove and the "Generate build" button
+- Triage UI extensions on existing bug/feature list pages: an "Include in next build" action that promotes items to `pending_inclusion`
+- Approval action that moves `pending_inclusion → approved_for_build` (staff-only for v2.4 pilot; customer-facing later)
+- Commit-parser extension (`src/lib/commit-parser.ts`): on commit ingest, auto-flip referenced item's `inclusion_state` from `approved_for_build → built` and stamp `next_release_log_id`
+- Prod deploy completion: auto-flip `built → deployed` for items linked to the deployed release_log
+- Customer-facing read-only `/projects/{slug}/upcoming` page on portal (`portal.triarch.dev`) — pulls from admin API, shows "what's coming in the next build" for transparency
+- `build-prompt.ts` generator in admin — produces a GSD-compatible structured prompt from project metadata + approved-for-build items
+- "Generate build" button with two modes per project: copy-to-clipboard OR `claude-code://` URL-scheme deep link
+- New `projects.build_trigger_mode` column (values: `local_claude`, `managed_agent`, `manual`) — per-project preference
+- Audit logging: every Generate-build click writes to `approval_events` with `subject_type='build_trigger'`
+- RFC-only deliverable for Managed Agent variant — Anthropic-hosted agent that watches for approvals and runs the build playbook autonomously. Design doc; implementation lands in v2.5 when the Managed Agent platform fit is clearer.
+
+**Non-goals for v2.4:**
+- Do NOT rebuild existing OttoBot dispatcher or customer Approve/Reject flow — strictly wire into them
+- Do NOT add hard gates on the inclusion state — decision deferred to the 30-day-dogfooding review
+- Pilot is TMI only; do NOT roll out to darksouls / dev-portal / security-portal / security-admin / truthtreason until pilot validates the flow
+- v3.0 reserved for breaking changes (hard inclusion gate + portfolio rollout)
+- Bug/feature TYPEAHEAD picker remains UUID-paste (carry-forward v2.1 limitation)
+- Customer-side editing of `inclusion_state` (customers see read-only "upcoming" page only)
+- Per-engagement billing on builds (separate concern)
+
+---
+
+## Earlier Milestone: v2.2 — Customer Portal Split
 
 **Goal:** Fork the customer-facing surface out of `admin.triarch.dev` into its own Next.js app at `portal.triarch.dev`. Mirror the existing `triarchsecurity-admin` (staff) / `triarchsecurity-portal` (customer) precedent. After v2.2: customers log into a brand-correct portal app for their projects' release pages, branch swap, bug/feature tracking, and notifications; staff log into `admin.triarch.dev` for project management, pipeline orchestration, and platform tooling. v2.1 hostname-aware guards exposed the seam (customers and staff currently share the admin host with role-gated routes); v2.2 closes it.
 
@@ -178,4 +211,4 @@ This document evolves at phase transitions and milestone boundaries.
 **v2.2 Phase 21 (Release Page Port — Read) shipped 2026-05-08:** Largest phase yet — full lift-and-shift of v2.1 customer release page from admin to portal. Server helpers (`release-entry-summary`, `release-history`, `pipeline-summary`, `group-sections`) moved into `@myalterlego/triarch-shared@0.2.0`; admin gets 1-line re-export shims, v2.9.2 → v2.9.3, 338/338 tests stay GREEN. Portal gains 6 leaf UI components (PreviewLink, FilterChips, WhatsComingCard, Timeline, format, types), CustomerHeader, Toast, BranchSection, BranchPreviewClient (Phase 21 stub — UI visible but onClick no-ops with TODO Phase 22 toast), ReleasesClient (read-only fork — 4 mutation handlers stubbed with TODO markers), full /projects/[slug]/releases server component with `notFound()` membership guard (PORTAL-03 404-not-403), /projects pipeline-summary tile UI replacing 18-04 stub (PORTAL-02). Mobile-responsive sweep: `flex-col sm:flex-row` on read paths, `hidden sm:flex` on mutation action rows (desktop-only), `overflow-x-auto` on tables, `sm:hidden` mobile-hint copy. 3-test page.test.tsx covers PORTAL-03 (member 200, non-member 404, unauthenticated redirect). Portal v0.2.1 → v0.3.0 (minor — major customer surface lands). 54 portal vitest tests GREEN, next build clean. **Discovered invariant: vitest.config.ts shimMap must extend for each new shared module** (auto-fixed during 21-01). HUMAN-NEEDED for live deploy verification: Mike's still-pending OPS-04 + portal Actions secrets unblock first portal-prod deploy.
 
 ---
-*Last updated: 2026-05-08 — v2.2 Phase 21 (Release Page Port Read) complete (4/4 PORTAL reqs verified, portal v0.3.0)*
+*Last updated: 2026-05-18 — v2.4 milestone opened (Build Cycle Workflow: inclusion approval state machine + Claude Code build trigger + Managed Agent RFC). Pilot scope = TMI. Soft prescription for 30 days then evaluate hard gate.*

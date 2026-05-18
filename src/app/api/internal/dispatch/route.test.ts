@@ -47,6 +47,7 @@ const FIXED_NOW = 1_700_000_000_000;
 const FIXED_NONCE = 'b'.repeat(32);
 
 const BASE_INPUT = {
+  intent: 'dispatch_promotion' as const,
   branch: 'release/1.0.0',
   version: '1.0.0',
   projectKey: 'darksouls-rpg',
@@ -239,6 +240,28 @@ describe('POST /api/internal/dispatch', () => {
 
     const body = await res.json();
     expect(body.error).toBe('release_not_found');
+    expect(promoteAndAudit).not.toHaveBeenCalled();
+  });
+
+  // Test 8: wrong intent (read_upcoming on dispatch route) → 400 wrong_intent.
+  // Exercises the v2.4 Phase 36 discriminated-union intent guard. Pre-requires
+  // @triarchsecurity/triarch-shared@0.5.0 dist (Pitfall 6 fix) so signRequest
+  // emits a valid read_upcoming body and verifyRequest accepts it; the route's
+  // wrong_intent guard at route.ts then returns 400.
+  it('Test 8 (wrong intent: read_upcoming on dispatch route): 400 + promoteAndAudit NOT called', async () => {
+    const { body, signature } = signRequest(
+      { intent: 'read_upcoming' as const, projectKey: 'darksouls-rpg', actorEmail: 'customer@example.com' },
+      TEST_SECRET,
+      { now: Date.now(), nonce: 'e'.repeat(32) },
+    );
+    const rawBody = JSON.stringify(body, Object.keys(body).sort());
+    const req = buildRequest(rawBody, signature);
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+
+    const data = await res.json();
+    expect(data.error).toBe('wrong_intent');
     expect(promoteAndAudit).not.toHaveBeenCalled();
   });
 

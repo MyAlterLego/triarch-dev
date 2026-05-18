@@ -6,6 +6,7 @@ import {
   Briefcase, Plus, ChevronDown, ChevronRight, Globe, Database,
   GitBranch, Server, ExternalLink, Trash2, X, Loader2, Users,
 } from 'lucide-react';
+import BuildTriggerSection from './BuildTriggerSection';
 
 interface Project {
   id: string;
@@ -25,6 +26,8 @@ interface Project {
   currentVersion: string | null;
   ecosystem: string;
   apiKey: string | null;
+  buildTriggerMode?: string;
+  localPath?: string | null;
   createdAt: string;
 }
 
@@ -229,6 +232,7 @@ export default function ProjectsPage() {
                 {/* Expanded details */}
                 {expanded && (
                   <div className="border-t border-zinc-800 p-4 space-y-3">
+                    <BuildTriggerSection project={project} onSaved={fetchProjects} />
                     {/* Infrastructure grid */}
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div>

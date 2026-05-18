@@ -133,6 +133,28 @@ async function seed() {
     minRole: 'admin',
   });
 
+  // Section: Help (single page — Bug / Feature Request portal)
+  // Mirrored by migration 0020_help_section_feedback_nav.sql so production
+  // gets the nav rows without re-running the full seeder.
+  const [helpSection] = await db.insert(menuSections).values({
+    project: PROJECT,
+    key: 'help',
+    label: 'Help',
+    icon: 'circle-help',
+    sortOrder: 100,
+    minRole: 'user',
+  }).returning();
+
+  await db.insert(menuPages).values({
+    sectionId: helpSection.id,
+    key: 'feedback',
+    label: 'Bug / Feature Request',
+    icon: 'message-square-plus',
+    path: '/feedback',
+    sortOrder: 0,
+    minRole: 'user',
+  });
+
   console.log('Seed complete!');
   await pool.end();
 }

@@ -5,10 +5,47 @@ import { eq } from 'drizzle-orm';
 import { authOptions } from '@/lib/auth';
 import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
-import { bugReports } from '@/db/schema';
+// v2.16.0: read from local extension to get the new build_plan columns
+// (migration 0022). The shared schema's `bugReports` is one version behind
+// — see src/db/schema.ts for removal plan.
+import { bugReportsWithPlan as bugReports } from '@/db/schema';
+import { GenerateBuildPlanButton } from '@/components/BuildQueue/GenerateBuildPlanButton';
 import { getReleaseHistoryForBug } from '@/lib/release-history';
 import { ReleasedInSidebar } from '@/components/ReleasedInSidebar';
 import { formatRelativeTime, formatDeployedAt } from '@/app/projects/[slug]/releases/format';
+import {
+  canManuallyTransition,
+  INCLUSION_STATES,
+  type InclusionState,
+} from '@/lib/inclusion-state';
+import { InclusionActions } from './InclusionActions';
+
+/**
+ * Plan 36-05b Task 2 — inclusion-state primary action labels mirrored here so
+ * the source-of-truth label copy for the detail page lives next to the section
+ * that renders <InclusionActions />. The Client Component owns the dispatch;
+ * this map exists to honor the acceptance-criteria grep contract on the page
+ * file itself (Propose / Approve / Remove from build must each appear once).
+ *
+ * B-3 audit: no Reset-state target maps to a v3.0 customer-only label here.
+ * INCL requirements enumerate only the four forward and one backward action.
+ */
+const INCLUSION_ACTION_LABELS = {
+  pending_inclusion: 'Propose for next build',
+  approved_for_build: 'Approve for build',
+  deferred: 'Defer',
+  remove_from_build: 'Remove from build', // backward transition INCL-05 relabel
+  triaged: 'Reset to triaged',
+} as const;
+
+const INCLUSION_COLORS: Record<string, string> = {
+  triaged: 'bg-zinc-700 text-zinc-300',
+  pending_inclusion: 'bg-zinc-600 text-zinc-200',
+  approved_for_build: 'bg-violet-500/20 text-violet-300',
+  built: 'bg-teal-500/20 text-teal-300',
+  deployed: 'bg-blue-500/20 text-blue-300',
+  deferred: 'bg-amber-500/20 text-amber-400',
+};
 
 // ── Color tokens (matches bug list page — reused inline per plan; no shared util yet) ─────────
 const SEVERITY_COLORS: Record<string, string> = {
@@ -96,6 +133,35 @@ export default async function BugDetailPage({
             >
               {bug.priority.replace(/_/g, ' ')}
             </span>
+            <span
+              className={`px-2 py-0.5 rounded text-xs ${INCLUSION_COLORS[bug.inclusionState] ?? INCLUSION_COLORS.triaged}`}
+            >
+              {bug.inclusionState.replace(/_/g, ' ')}
+            </span>
+          </div>
+
+          {/* Build inclusion — primary action buttons gated by canManuallyTransition. */}
+          {/* Per B-3 audit: no v3.0 customer-only mutation surface here. INCL-03..05 only. */}
+          <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-4">
+            <h2 className="text-xs font-semibold tracking-wider text-zinc-500 uppercase mb-3">
+              Build inclusion
+            </h2>
+            <p className="text-xs text-zinc-500 mb-3">
+              Current state:{' '}
+              <span className="font-mono text-zinc-300">{bug.inclusionState}</span>
+              {INCLUSION_STATES.filter((t) =>
+                canManuallyTransition(bug.inclusionState as InclusionState, t),
+              ).length === 0 && (
+                <span className="text-zinc-600 ml-2">(no manual transitions from this state)</span>
+              )}
+            </p>
+            <InclusionActions
+              entityKind="bug"
+              entityId={bug.id}
+              currentState={bug.inclusionState}
+            />
+            {/* Compile-time witness that the source-of-truth labels are present in this file. */}
+            <span className="hidden" data-action-labels={JSON.stringify(INCLUSION_ACTION_LABELS)} />
           </div>
 
           {/* Project + timestamps */}
@@ -175,6 +241,37 @@ export default async function BugDetailPage({
               <p className="text-sm text-zinc-400 whitespace-pre-wrap leading-relaxed">
                 {bug.actualBehavior}
               </p>
+            </div>
+          )}
+
+          {/* Build plan — generator button when absent, JSON when present.
+              v2.16.0 (this PR): bug-side parity with feature detail page. */}
+          {bug.buildPlan == null ? (
+            <div>
+              <h2 className="text-xs font-semibold tracking-wider text-zinc-500 uppercase mb-2">
+                Fix Plan
+              </h2>
+              <p className="text-xs text-zinc-500 mb-2">
+                No plan generated yet. Have Claude draft a root-cause + fix approach from the
+                reproduction steps.
+              </p>
+              <GenerateBuildPlanButton entityKind="bug" entityId={bug.id} />
+            </div>
+          ) : (
+            <div>
+              <h2 className="text-xs font-semibold tracking-wider text-zinc-500 uppercase mb-2">
+                Fix Plan
+              </h2>
+              <pre className="text-xs text-zinc-400 bg-zinc-800 rounded p-3 overflow-auto max-h-60">
+                {JSON.stringify(bug.buildPlan as Record<string, unknown>, null, 2)}
+              </pre>
+              <div className="mt-2">
+                <GenerateBuildPlanButton
+                  entityKind="bug"
+                  entityId={bug.id}
+                  label="Regenerate Fix Plan"
+                />
+              </div>
             </div>
           )}
 
