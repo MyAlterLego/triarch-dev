@@ -157,17 +157,16 @@ describe('GenerateBuildModal', () => {
   });
 
   it('after 2 seconds following Open click, renders fallback hint', async () => {
-    vi.useFakeTimers();
-    try {
-      render(<GenerateBuildModal slug="tmi" project={project} onClose={() => {}} />);
-      // Drain microtasks so the fetch promise resolves and ready phase renders.
-      await vi.advanceTimersByTimeAsync(0);
-      fireEvent.click(screen.getByRole('button', { name: /Open in Claude Code/i }));
-      await vi.advanceTimersByTimeAsync(2000);
-      expect(screen.getByText(/Did Claude Code open\?/)).toBeInTheDocument();
-    } finally {
-      vi.useRealTimers();
-    }
+    // Real-timer end-to-end: simplest reliable approach for fetch+setTimeout+setState.
+    render(<GenerateBuildModal slug="tmi" project={project} onClose={() => {}} />);
+    await waitFor(() => screen.getByRole('button', { name: /Open in Claude Code/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Open in Claude Code/i }));
+    expect(screen.queryByText(/Did Claude Code open\?/)).toBeNull();
+    // Fallback fires at 2000ms — wait up to 3s before failing to allow setTimeout + state flush.
+    await waitFor(
+      () => expect(screen.getByText(/Did Claude Code open\?/)).toBeInTheDocument(),
+      { timeout: 3000 },
+    );
   });
 
   it('renders error message + Retry on 4xx', async () => {
