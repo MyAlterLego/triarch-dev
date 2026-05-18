@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.3
-milestone_name: Dev/Prod Contract Adoption
-status: completed
-stopped_at: "Completed 36-07-portal-upcoming-page-PLAN.md autonomous portion; Task 4 checkpoint pending in portal#43"
-last_updated: "2026-05-18T19:12:54.083Z"
+milestone: v2.4
+milestone_name: Build Cycle Workflow
+status: active
+stopped_at: "Completed 37-02-build-prompt-generator-PLAN.md (TDD: 18/18 GREEN; buildPrompt pure function contract for 37-03 + 37-05)"
+last_updated: "2026-05-18T20:12:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 13
-  completed_plans: 18
+  completed_plans: 19
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,12 +19,12 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-18 — v2.4 milestone opened)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 36 — inclusion-approval-state-machine
+**Current focus:** Phase 37 — claude-code-build-trigger (Wave 2)
 
 ## Current Position
 
-Phase: 36
-Plan: Not started
+Phase: 37
+Plan: 02 complete (TRIG-01 shipped); 03/04 in parallel sessions; 05/06 pending Wave 3
 
 ## Active Milestone: v2.4 — Build Cycle Workflow
 
