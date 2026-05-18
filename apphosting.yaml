@@ -106,3 +106,12 @@ env:
     value: enforce
     availability:
       - RUNTIME
+
+  # Anthropic API key for Claude-authored build/fix plans (v2.16.0).
+  # Powers POST /api/platform/{feature-requests,bug-reports}/[id]/generate-plan.
+  # Pre-deploy gate: set the secret value with
+  #   firebase apphosting:secrets:set ANTHROPIC_API_KEY --project triarch-dev-website
+  # Without this secret, the generate-plan routes return 500 and stamp
+  # build_plan_status='failed' on the row.
+  - variable: ANTHROPIC_API_KEY
+    secret: ANTHROPIC_API_KEY

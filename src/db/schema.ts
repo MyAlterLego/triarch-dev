@@ -5,7 +5,8 @@
 export * from '@triarchsecurity/triarch-shared/schema';
 
 // Imports needed for the local additions below.
-import { pgTable, uuid, text, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, jsonb, timestamp, index, varchar } from 'drizzle-orm/pg-core';
+import { releaseLogs } from '@triarchsecurity/triarch-shared/schema';
 
 // ─── Agent identities (Sitting H — migration 0018) ─────────────────────────
 // Drizzle definition for the agent_identities table introduced in
@@ -93,3 +94,62 @@ export const deployGateCheck = pgTable('deploy_gate_check', {
 
 export type DeployGateCheck = typeof deployGateCheck.$inferSelect;
 export type NewDeployGateCheck = typeof deployGateCheck.$inferInsert;
+
+// ─── bug_reports with build-plan columns (v2.16.0 — migration 0022) ────────
+// The shared @triarchsecurity/triarch-shared/schema `bugReports` table is
+// behind: it does NOT yet declare the three plan columns that migration
+// 0022_bug_reports_build_plan.sql adds (build_plan, build_plan_status,
+// estimated_effort). featureRequests in the shared schema already has these.
+//
+// Rather than bump @triarchsecurity/triarch-shared (cross-repo publish
+// dance for a single feature), we declare a LOCAL extension that mirrors
+// the shared `bugReports` columns and adds the three new ones. Routes and
+// pages that need to read or write the plan fields should import
+// `bugReportsWithPlan` from this file; routes that only touch the
+// pre-existing columns can continue importing `bugReports` from the
+// re-export above.
+//
+// When the shared package is next bumped to include the plan columns,
+// remove this local extension and switch consumers back to `bugReports`.
+// Grep for `bugReportsWithPlan` to find all callers.
+//
+// Column types match the shared definition character-for-character; any
+// divergence between this local extension and the shared `bugReports`
+// will cause a drizzle type mismatch at the call site, which surfaces
+// during `npx next build`.
+export const bugReportsWithPlan = pgTable('bug_reports', {
+  id:                 uuid('id').primaryKey().defaultRandom(),
+  project:            varchar('project', { length: 64 }).notNull(),
+  reportedByUserId:   varchar('reported_by_user_id', { length: 128 }).notNull(),
+  reportedByName:     varchar('reported_by_name', { length: 256 }),
+  reportedByEmail:    varchar('reported_by_email', { length: 256 }),
+  title:              varchar('title', { length: 256 }).notNull(),
+  description:        text('description').notNull(),
+  stepsToReproduce:   text('steps_to_reproduce'),
+  expectedBehavior:   text('expected_behavior'),
+  actualBehavior:     text('actual_behavior'),
+  severity:           varchar('severity', { length: 16 }).notNull().default('medium'),
+  priority:           varchar('priority', { length: 16 }).notNull().default('fix_later'),
+  status:             varchar('status', { length: 32 }).notNull().default('submitted'),
+  screenshotUrls:     jsonb('screenshot_urls').default([]),
+  pageUrl:            varchar('page_url', { length: 512 }),
+  browserInfo:        jsonb('browser_info').default({}),
+  slackMessageTs:     varchar('slack_message_ts', { length: 64 }),
+  slackChannelId:     varchar('slack_channel_id', { length: 64 }),
+  fixCommitSha:       varchar('fix_commit_sha', { length: 64 }),
+  fixVersion:         varchar('fix_version', { length: 32 }),
+  triarchNotes:       text('triarch_notes'),
+  // Phase 36 INCL-01..02 — shared schema
+  inclusionState:     varchar('inclusion_state', { length: 32 }).notNull().default('triaged'),
+  nextReleaseLogId:   uuid('next_release_log_id').references(() => releaseLogs.id, { onDelete: 'set null' }),
+  // v2.16.0 — migration 0022 additions (the reason this local extension exists)
+  buildPlan:          jsonb('build_plan'),
+  buildPlanStatus:    varchar('build_plan_status', { length: 16 }).default('pending'),
+  estimatedEffort:    varchar('estimated_effort', { length: 16 }),
+  resolvedAt:         timestamp('resolved_at', { withTimezone: true }),
+  createdAt:          timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:          timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type BugReportWithPlan = typeof bugReportsWithPlan.$inferSelect;
+export type NewBugReportWithPlan = typeof bugReportsWithPlan.$inferInsert;
