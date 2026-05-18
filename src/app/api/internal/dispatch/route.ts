@@ -31,6 +31,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: verified.reason }, { status });
   }
 
+  // v2.4 Phase 36 (Pitfall 6): InternalHmacBody is now a discriminated union
+  // on `intent`. This route serves the dispatch_promotion path only.
+  if (verified.body.intent !== 'dispatch_promotion') {
+    console.warn(`[internal-dispatch] rejected non-dispatch intent: ${verified.body.intent}`);
+    return NextResponse.json({ error: 'wrong_intent' }, { status: 400 });
+  }
+  // verified.body is now narrowed to DispatchPromotionBody
   const { branch, version, projectKey, releaseId, actorEmail, slackChannelId, slackMessageTs } = verified.body;
 
   // Defense-in-depth: HMAC alone could be a forged customer signature claiming

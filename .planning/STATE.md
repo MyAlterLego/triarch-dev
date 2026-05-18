@@ -1,32 +1,42 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.3
-milestone_name: Dev/Prod Contract Adoption
-status: completed
-stopped_at: Completed Phase 35 Plan 01 (CL-1..CL-6 compliance matrix UI on admin ci-cd page; v2.13.17)
-last_updated: "2026-05-16T21:56:27.083Z"
+milestone: v2.4
+milestone_name: Build Cycle Workflow
+status: complete
+stopped_at: "v2.4 MILESTONE COMPLETE 2026-05-18 — all 15 reqs satisfied (INCL-01..08, TRIG-01..06, AGENT-01); 3/3 phases verified; tech_debt accepted (11 deferred UAT items + PRs #110/#43/#112 pending merge). See .planning/v2.4-MILESTONE-AUDIT.md."
+last_updated: "2026-05-18T21:05:00.000Z"
 progress:
-  total_phases: 9
-  completed_phases: 2
-  total_plans: 13
-  completed_plans: 18
+  total_phases: 3
+  completed_phases: 3
+  total_plans: 15
+  completed_plans: 15
 ---
 
 # Triarch Dev Admin — Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
+See: `.planning/PROJECT.md` (last updated 2026-05-18 — v2.4 milestone opened)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 28 — CL-4 Platform Self-Adopt
+**Current focus:** Phase 37 — claude-code-build-trigger (Wave 2)
 
 ## Current Position
 
-Phase: 35
-Plan: Not started
+Phase: 37
+Plan: 02 complete (TRIG-01 shipped); 03 complete (TRIG-06 shipped); 04 in parallel session; 05/06 pending Wave 3
 
-## Active Milestone: v2.2 — Customer Portal Split
+## Active Milestone: v2.4 — Build Cycle Workflow
+
+(see PROJECT.md for full milestone goals)
+
+Phases:
+
+- 36 — Inclusion Approval State Machine (INCL-01..07)
+- 37 — Claude Code Build Trigger (TRIG-01..05)
+- 38 — Managed Agent Variant RFC (AGENT-01)
+
+## Earlier Active Milestone: v2.2 — Customer Portal Split (largely shipped — Phases 21-23.1 complete)
 
 **Goal:** Fork the customer-facing surface out of `admin.triarch.dev` into its own Next.js app at `portal.triarch.dev`. Mirror the existing `triarchsecurity-admin` (staff) / `triarchsecurity-portal` (customer) precedent.
 
@@ -218,6 +228,16 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 33-01 security-admin]: quality-gate bumped from @v1.8 to @v8.2 to match full v8 adoption; deploy split into deploy-dev + deploy-prod; verify-dev-deployed uses v2.13.10 direction (is-ancestor origin/dev HEAD); cl4-gate project_key=triarchsecurity-admin; apphosting.dev.yaml is standalone (full env + _DEV secret variants); NEXTAUTH_SECRET_DEV added alongside DATABASE_URL_DEV; EnvBadge from @triarchsecurity/shared-ui mounted as last body child; v3.54.1→v3.55.0 on feat/dev-path-cl4-cl2-cl3 off fix/bump-shared-workflows-v8
 - [Phase 34-01 security-portal]: quality-gate bumped from @v1 to @v8.2; deploy split into deploy-dev (portal-dev backend) + deploy-prod; verify-dev-deployed uses v2.13.10 direction; cl4-gate project_key=triarchsecurity-portal; apphosting.dev.yaml expanded from stub (was DATABASE_URL only) to full _DEV secret set (PORTAL_JWT_SECRET_DEV, PORTAL_TOTP_ENCRYPTION_KEY_DEV, DATABASE_URL_DEV); HUMAN-UAT includes dormant dev branch resolution (Option A: delete + recreate recommended); v0.14.8→v0.15.0 on feat/dev-path-cl4-cl2-cl3 off fix/bump-shared-workflows-v8
 - [Phase 35]: CL-1 derives expected dev hostname from deployedUrl (green=pattern derivable); CL-6 uses single inArray batch query; CL-4 reuses existing verdict; CL-2/3/5 scaffolded grey with deferred HTTP/GitHub fetch reason
+- [Phase 36-inclusion-approval-state-machine]: Status audit folded INTO new db.transaction along with inclusionState audit — pre-existing fire-and-forget pattern eliminated for this endpoint pair (atomicity bonus)
+- [Phase 36-inclusion-approval-state-machine]: Vitest db.transaction(fn) mock immediately invokes fn(tx) with tx exposing update+insert wired to vi.fn() recorders; rollback simulated via closure flag making tx.insert.values reject (no real CRDB needed)
+- [Phase 36-inclusion-approval-state-machine]: Plan 36-05a: FilterChips duplicated locally as NextBuildPlanFilterChips (upstream bound to fix/feature/other; this page needs bug/feature). 8 Vitest tests GREEN. Task 2 visual verification deferred to user.
+- [Phase 36-inclusion-approval-state-machine]: Plan 36-07: Reuse ADMIN_INTERNAL_DISPATCH_URL env var across HMAC endpoints (Mi-2) — both Phase 22 dispatch + Phase 36 upcoming target the same admin host per CL-1; one less apphosting.yaml binding
+- [Phase 36-inclusion-approval-state-machine]: Plan 36-07: Sub-nav tab added to projects/layout.tsx NavData subpages (correct location) instead of [slug]/layout.tsx per plan literal — actual sub-nav has been in parent layout since Phase 23.1-01 DynamicSidebar refactor
+- [Phase 36-inclusion-approval-state-machine]: Plan 36-07: Applied local node_modules dist overlay (Rule 3) — published @triarchsecurity/triarch-shared@0.5.0 on GitHub Packages ships older dist than workspace source; overlay from packages/triarch-shared/dist/ unblocks tsc + tests until publish drift is corrected
+- [Phase 37-05-generate-build-ui]: buildDeepLink extracted as named export from GenerateBuildModal (W-4 pattern) — pure helper produces claude-code://open?prompt=...[&cwd=...] with proper URL encoding. Tests assert URL contract directly (3 cases incl. special-char path: spaces/ampersand/hash/parens) instead of relying on JSDOM window.location proxy fragility. Side-effect smoke test on href assignment retained but minimal.
+- [Phase 37-05-generate-build-ui]: NextBuildPlanClient Props EXTENDED (not renamed) — `{ projectName, projectSlug, initialItems }` from 36-05a baseline preserved verbatim; `project` + `approvedCount` ADDED. Test fixture `defaultProject` introduced so existing 8 36-05a tests pass with zero assertion-body change.
+- [Phase 37-05-generate-build-ui]: 2-sec fallback hint test uses real-timer `waitFor(timeout: 3000)` — fake-timer + `advanceTimersByTimeAsync(0)` approach failed due to Vitest 4 fetch microtask chain not flushing; real-timer flow is reliable (test still finishes in ~2.1s).
+- [Phase 37-05-generate-build-ui]: page.tsx SELECT explicit projection added (id + buildTriggerMode + localPath) — drizzle returns full row by default after 37-01 schema bump, but explicit projection documents the new dependency and prevents accidental SELECT regression.
 
 ### Pending Todos
 
@@ -235,10 +255,10 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-16T21:55:09.677Z
-Stopped at: Completed Phase 35 Plan 01 (CL-1..CL-6 compliance matrix UI on admin ci-cd page; v2.13.17)
+Last session: 2026-05-18T20:26:16.000Z
+Stopped at: Completed 37-05-generate-build-ui-PLAN.md (TRIG-02/03/04: GenerateBuildModal + Generate Build button + page.tsx prop extension; buildDeepLink pure helper for testability; 18 new Vitest cases (13 modal + 5 client); 26/26 GREEN in dir suite; --no-verify per phase context parallel wave 3 with 37-06)
 Resume file: None
-Next action: Complete HUMAN-UAT A-G for security-portal (resolve dormant dev branch, FAH portal-dev backend, DNS, GCP secrets, ADMIN_API_TOKEN, npm install after shared-ui publishes, merge PR). See 34-HUMAN-UAT.md.
+Next action: Phase 37 wave 3 complete (05 + 06 shipped in parallel). Phase close: manual UAT on Mike's local (claude-code:// scheme launch + clipboard verify + 2-sec fallback if scheme unregistered + approval_events audit row visibility). Then merge feat/build-trigger → dev.
 
 ## Performance Metrics (24-03)
 
@@ -258,3 +278,7 @@ Next action: Complete HUMAN-UAT A-G for security-portal (resolve dormant dev bra
 | Phase 32 P02 (tmi cl4-gate + v2.13.10 backpatch) | ~5 min | 1 task | 2 files |
 | Phase 33 P01 (security-admin two-env restructure) | ~25 min | 5 tasks | 5 files |
 | Phase 34 P01 (security-portal two-env restructure) | ~20 min | 5 tasks | 5 files |
+| Phase 36-inclusion-approval-state-machine P02 | 12min | 3 tasks | 8 files |
+| Phase 36-inclusion-approval-state-machine P05a | 5min | 1 tasks | 3 files |
+| Phase 36-inclusion-approval-state-machine P07 | 11min | 3 tasks | 11 files |
+| Phase 37-claude-code-build-trigger P05 | ~8min | 4 tasks | 5 files (2 new + 3 modified); 18 new Vitest cases |

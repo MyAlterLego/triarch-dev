@@ -3,7 +3,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useProjectOptions } from '@/lib/use-projects';
-import { Bug, ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { Bug, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  INCLUSION_STATES,
+  canManuallyTransition,
+  type InclusionState,
+} from '@/lib/inclusion-state';
 
 interface BugReport {
   id: string;
@@ -20,6 +25,7 @@ interface BugReport {
   fixVersion: string | null;
   createdAt: string;
   updatedAt: string;
+  inclusionState: string;
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -40,7 +46,36 @@ const STATUS_COLORS: Record<string, string> = {
   deferred: 'bg-purple-500/20 text-purple-400',
 };
 
+// Plan 36-05b D-UI: inclusion-state pill palette (violet/teal/blue/zinc + amber/red for
+// terminal states). Matches the v2.1 status column treatment.
+const INCLUSION_COLORS: Record<string, string> = {
+  triaged: 'bg-zinc-700 text-zinc-300',
+  pending_inclusion: 'bg-zinc-600 text-zinc-200',
+  approved_for_build: 'bg-violet-500/20 text-violet-300',
+  built: 'bg-teal-500/20 text-teal-300',
+  deployed: 'bg-blue-500/20 text-blue-300',
+  deferred: 'bg-amber-500/20 text-amber-400',
+  rejected: 'bg-red-500/20 text-red-400',
+};
+
+// Labels for the dropdown action options — used in both list-row dropdown and detail-page buttons.
+// Per B-3: no entry for 'rejected' because canManuallyTransition() never returns true for it
+// from any state other than itself (and 'rejected' transitions to 'triaged', not back to itself).
+const ACTION_LABELS: Record<string, string> = {
+  pending_inclusion: 'Propose for next build',
+  approved_for_build: 'Approve for build',
+  deferred: 'Defer',
+  triaged: 'Reset to triaged',
+};
+
+// Special-case relabel for the INCL-05 "Remove from build" backward path.
+function labelFor(from: string, target: string): string {
+  if (from === 'approved_for_build' && target === 'pending_inclusion') return 'Remove from build';
+  return ACTION_LABELS[target] ?? target.replace(/_/g, ' ');
+}
+
 const STATUSES = ['all', 'submitted', 'triaged', 'approved', 'in_progress', 'fixed', 'verified', 'closed', 'deferred'];
+const INCLUSION_STATES_LIST = ['all', ...INCLUSION_STATES] as const;
 
 export default function BugReportsPage() {
   const PROJECTS = useProjectOptions();
@@ -49,6 +84,7 @@ export default function BugReportsPage() {
   const [loading, setLoading] = useState(true);
   const [projectFilter, setProjectFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [inclusionFilter, setInclusionFilter] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -57,13 +93,14 @@ export default function BugReportsPage() {
     const params = new URLSearchParams({ limit: '50' });
     if (projectFilter !== 'all') params.set('project', projectFilter);
     if (statusFilter !== 'all') params.set('status', statusFilter);
+    if (inclusionFilter !== 'all') params.set('inclusion_state', inclusionFilter);
 
     const res = await fetch(`/api/platform/bug-reports?${params}`);
     const data = await res.json();
     setBugs(data.bugs);
     setTotal(data.total);
     setLoading(false);
-  }, [projectFilter, statusFilter]);
+  }, [projectFilter, statusFilter, inclusionFilter]);
 
   useEffect(() => { fetchBugs(); }, [fetchBugs]);
 
@@ -90,13 +127,31 @@ export default function BugReportsPage() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-6">
-        <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}
-          className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-teal-500">
+        <select
+          aria-label="Filter by project"
+          value={projectFilter}
+          onChange={(e) => setProjectFilter(e.target.value)}
+          className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-teal-500"
+        >
           {PROJECTS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-teal-500">
+        <select
+          aria-label="Filter by status"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-teal-500"
+        >
           {STATUSES.map((s) => <option key={s} value={s}>{s === 'all' ? 'All Statuses' : s.replace('_', ' ')}</option>)}
+        </select>
+        <select
+          aria-label="Filter by inclusion state"
+          value={inclusionFilter}
+          onChange={(e) => setInclusionFilter(e.target.value)}
+          className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-teal-500"
+        >
+          {INCLUSION_STATES_LIST.map((s) => (
+            <option key={s} value={s}>{s === 'all' ? 'All Inclusion' : s.replace(/_/g, ' ')}</option>
+          ))}
         </select>
       </div>
 
@@ -114,6 +169,8 @@ export default function BugReportsPage() {
         <div className="space-y-2">
           {bugs.map((bug) => {
             const expanded = expandedId === bug.id;
+            const fromState = bug.inclusionState as InclusionState;
+            const validTargets = INCLUSION_STATES.filter((t) => canManuallyTransition(fromState, t));
             return (
               <div key={bug.id} className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
                 <button
@@ -134,12 +191,41 @@ export default function BugReportsPage() {
                   <span className={`px-1.5 py-0.5 rounded text-[10px] ${STATUS_COLORS[bug.status] ?? 'bg-zinc-700 text-zinc-400'}`}>
                     {bug.status.replace('_', ' ')}
                   </span>
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] ${INCLUSION_COLORS[bug.inclusionState] ?? INCLUSION_COLORS.triaged}`}
+                  >
+                    {bug.inclusionState.replace(/_/g, ' ')}
+                  </span>
                   <span className={`px-1.5 py-0.5 rounded text-[10px] ${bug.priority === 'fix_now' ? 'bg-red-500/20 text-red-400' : 'bg-zinc-700 text-zinc-400'}`}>
                     {bug.priority.replace('_', ' ')}
                   </span>
                   <span className="text-[10px] text-zinc-600">{bug.project}</span>
                   <span className="text-[10px] text-zinc-600">{new Date(bug.createdAt).toLocaleDateString()}</span>
                 </button>
+
+                {/* Per-row inclusion dropdown — gated by canManuallyTransition; no Reject (B-3). */}
+                <div className="px-4 pb-2 -mt-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <span className="text-[10px] text-zinc-500">Set inclusion:</span>
+                  <select
+                    aria-label={`Set inclusion state for bug ${bug.id}`}
+                    value=""
+                    disabled={updatingId === bug.id || validTargets.length === 0}
+                    onChange={(e) => {
+                      const target = e.target.value;
+                      if (target) updateBug(bug.id, { inclusionState: target });
+                    }}
+                    className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] text-zinc-300 focus:outline-none focus:border-violet-500 disabled:opacity-40"
+                  >
+                    <option value="">
+                      {validTargets.length === 0 ? '(no transitions)' : 'Choose action...'}
+                    </option>
+                    {validTargets.map((target) => (
+                      <option key={target} value={target}>
+                        {labelFor(bug.inclusionState, target)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 {expanded && (
                   <div className="border-t border-zinc-800 p-4 space-y-3">

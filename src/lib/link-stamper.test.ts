@@ -6,6 +6,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 const mockDbSelectFrom = vi.fn();
 const mockDbSelectFromWhere = vi.fn();
 const mockDbInsertValues = vi.fn();
+// Phase 36 INCL-06: mocks for the auto-flip UPDATE chain
+//   db.update(table).set(updates).where(cond).returning({id})
+const mockDbUpdateSet = vi.fn();
+const mockDbUpdateWhere = vi.fn();
+const mockDbUpdateReturning = vi.fn();
 
 vi.mock('@/lib/db', () => ({
   db: {
@@ -20,6 +25,24 @@ vi.mock('@/lib/db', () => ({
         // tests can override with mockDbInsertValues.mockReturnValueOnce(Promise.reject(...))
         const returnVal = mockDbInsertValues(rows);
         return returnVal !== undefined ? returnVal : Promise.resolve([]);
+      },
+    })),
+    update: vi.fn((table: unknown) => ({
+      set: (updates: unknown) => {
+        mockDbUpdateSet(table, updates);
+        return {
+          where: (cond: unknown) => {
+            mockDbUpdateWhere(table, cond);
+            return {
+              returning: (cols: unknown) => {
+                // Default: returns the entries the test seeded in mockDbUpdateReturning,
+                // else an empty array (means "WHERE filter matched no rows" — Pitfall 5 path)
+                const returnVal = mockDbUpdateReturning(table, cols);
+                return returnVal !== undefined ? returnVal : Promise.resolve([]);
+              },
+            };
+          },
+        };
       },
     })),
   },
@@ -313,7 +336,9 @@ describe('stampLinksFromCommit', () => {
       projectKey: PROJ_KEY,
     });
 
-    expect(result).toEqual({ stamped: 0, dropped: 0 });
+    // Phase 36 INCL-06: StampResult extended with autoFlipped + orphanLinks;
+    // fast-path returns zero for all four counters.
+    expect(result).toEqual({ stamped: 0, dropped: 0, autoFlipped: 0, orphanLinks: 0 });
     expect(mockDbSelectFromWhere).not.toHaveBeenCalled();
     expect(mockDbInsertValues).not.toHaveBeenCalled();
   });
@@ -325,7 +350,7 @@ describe('stampLinksFromCommit', () => {
       projectKey: PROJ_KEY,
     });
 
-    expect(result).toEqual({ stamped: 0, dropped: 0 });
+    expect(result).toEqual({ stamped: 0, dropped: 0, autoFlipped: 0, orphanLinks: 0 });
     expect(mockDbSelectFromWhere).not.toHaveBeenCalled();
   });
 
@@ -357,5 +382,170 @@ describe('stampLinksFromCommit', () => {
     });
 
     expect(result.stamped).toBe(0);
+  });
+
+  // ── Phase 36 INCL-06: Auto-flip approved_for_build → built + orphan tracking ──
+
+  it('Test A — auto-flip happy path: BUG in approved_for_build → autoFlipped=1, UPDATE issued, audit row written', async () => {
+    // Bug row carries inclusionState=approved_for_build → eligible for flip
+    setupSelectResponses({ 0: [{ id: VALID_BUG_UUID, inclusionState: 'approved_for_build' }], 1: [] });
+    // UPDATE returns the flipped row id — drives autoFlipped count
+    mockDbUpdateReturning.mockReturnValueOnce(Promise.resolve([{ id: VALID_BUG_UUID }]));
+
+    const result = await stampLinksFromCommit({
+      releaseId: RELEASE_UUID,
+      commitMessage: `Fix issue BUG-${VALID_BUG_UUID}`,
+      projectKey: PROJ_KEY,
+      commitSha: 'abc123',
+    });
+
+    expect(result.stamped).toBe(1);
+    expect(result.autoFlipped).toBe(1);
+    expect(result.orphanLinks).toBe(0);
+
+    // UPDATE set() called with built + nextReleaseLogId + updatedAt
+    expect(mockDbUpdateSet).toHaveBeenCalledTimes(1);
+    const setArgs = mockDbUpdateSet.mock.calls[0][1] as Record<string, unknown>;
+    expect(setArgs.inclusionState).toBe('built');
+    expect(setArgs.nextReleaseLogId).toBe(RELEASE_UUID);
+    expect(setArgs.updatedAt).toBeInstanceOf(Date);
+
+    // Audit INSERT — second insert call (first was release_log_links)
+    expect(mockDbInsertValues).toHaveBeenCalledTimes(2);
+    const auditRows = mockDbInsertValues.mock.calls[1][0] as Array<Record<string, unknown>>;
+    expect(auditRows).toHaveLength(1);
+    expect(auditRows[0].entityType).toBe('bug_report');
+    expect(auditRows[0].entityId).toBe(VALID_BUG_UUID);
+    expect(auditRows[0].fromStatus).toBe('approved_for_build');
+    expect(auditRows[0].toStatus).toBe('built');
+    expect(auditRows[0].transitionedBy).toBe('commit-parser:abc123');
+    expect(auditRows[0].reason).toBe('auto-flip from commit');
+    expect(auditRows[0].metadata).toEqual({ releaseLogId: RELEASE_UUID });
+  });
+
+  it('Test B — orphan link: BUG in triaged → link STILL written, NO flip, orphanLinks=1, NO audit row', async () => {
+    // Bug exists but is NOT in approved_for_build → orphan
+    setupSelectResponses({ 0: [{ id: VALID_BUG_UUID, inclusionState: 'triaged' }], 1: [] });
+
+    const result = await stampLinksFromCommit({
+      releaseId: RELEASE_UUID,
+      commitMessage: `Fix issue BUG-${VALID_BUG_UUID}`,
+      projectKey: PROJ_KEY,
+      commitSha: 'abc123',
+    });
+
+    expect(result.stamped).toBe(1);                  // v2.1 behavior preserved
+    expect(result.autoFlipped).toBe(0);
+    expect(result.orphanLinks).toBe(1);
+
+    // No UPDATE issued
+    expect(mockDbUpdateSet).not.toHaveBeenCalled();
+    // Only one INSERT — the release_log_links row; NO audit row
+    expect(mockDbInsertValues).toHaveBeenCalledTimes(1);
+  });
+
+  it('Test C — feature auto-flip: FEAT in approved_for_build → autoFlipped=1 for feature_request', async () => {
+    // No bugs → feature lookup is call index 0
+    setupSelectResponses({ 0: [{ id: VALID_FEAT_UUID, inclusionState: 'approved_for_build' }] });
+    mockDbUpdateReturning.mockReturnValueOnce(Promise.resolve([{ id: VALID_FEAT_UUID }]));
+
+    const result = await stampLinksFromCommit({
+      releaseId: RELEASE_UUID,
+      commitMessage: `closes FEAT-${VALID_FEAT_UUID}`,
+      projectKey: PROJ_KEY,
+      commitSha: 'def456',
+    });
+
+    expect(result.stamped).toBe(1);
+    expect(result.autoFlipped).toBe(1);
+    expect(result.orphanLinks).toBe(0);
+
+    // Audit row entityType === feature_request
+    const auditRows = mockDbInsertValues.mock.calls[1][0] as Array<Record<string, unknown>>;
+    expect(auditRows[0].entityType).toBe('feature_request');
+    expect(auditRows[0].entityId).toBe(VALID_FEAT_UUID);
+    expect(auditRows[0].transitionedBy).toBe('commit-parser:def456');
+  });
+
+  it('Test D — mixed batch: BUG approved + FEAT triaged → stamped=2, autoFlipped=1, orphanLinks=1', async () => {
+    setupSelectResponses({
+      0: [{ id: VALID_BUG_UUID, inclusionState: 'approved_for_build' }],
+      1: [{ id: VALID_FEAT_UUID, inclusionState: 'triaged' }],
+    });
+    // Bug flip succeeds; feature is orphan so no UPDATE is even attempted
+    mockDbUpdateReturning.mockReturnValueOnce(Promise.resolve([{ id: VALID_BUG_UUID }]));
+
+    const result = await stampLinksFromCommit({
+      releaseId: RELEASE_UUID,
+      commitMessage: `Fix BUG-${VALID_BUG_UUID} and closes FEAT-${VALID_FEAT_UUID}`,
+      projectKey: PROJ_KEY,
+      commitSha: 'mixed01',
+    });
+
+    expect(result.stamped).toBe(2);
+    expect(result.autoFlipped).toBe(1);
+    expect(result.orphanLinks).toBe(1);
+
+    // Only one UPDATE issued (for the bug)
+    expect(mockDbUpdateSet).toHaveBeenCalledTimes(1);
+  });
+
+  it('Test E — no commitSha → audit transitionedBy=commit-parser:unknown (back-compat)', async () => {
+    setupSelectResponses({ 0: [{ id: VALID_BUG_UUID, inclusionState: 'approved_for_build' }], 1: [] });
+    mockDbUpdateReturning.mockReturnValueOnce(Promise.resolve([{ id: VALID_BUG_UUID }]));
+
+    const result = await stampLinksFromCommit({
+      releaseId: RELEASE_UUID,
+      commitMessage: `Fix BUG-${VALID_BUG_UUID}`,
+      projectKey: PROJ_KEY,
+      // commitSha intentionally omitted
+    });
+
+    expect(result.autoFlipped).toBe(1);
+    const auditRows = mockDbInsertValues.mock.calls[1][0] as Array<Record<string, unknown>>;
+    expect(auditRows[0].transitionedBy).toBe('commit-parser:unknown');
+  });
+
+  it('Test F — invalid BUG (not in bug_reports) → dropped+1, NO flip, NO orphan (orphan only counts validated refs)', async () => {
+    // Bug lookup returns empty → ID is not validated
+    setupSelectResponses({ 0: [], 1: [] });
+
+    const result = await stampLinksFromCommit({
+      releaseId: RELEASE_UUID,
+      commitMessage: `Fix BUG-${VALID_BUG_UUID}`,
+      projectKey: PROJ_KEY,
+      commitSha: 'invld01',
+    });
+
+    expect(result.stamped).toBe(0);
+    expect(result.dropped).toBe(1);
+    expect(result.autoFlipped).toBe(0);
+    expect(result.orphanLinks).toBe(0);  // critical: invalid IDs are NOT orphans
+
+    expect(mockDbUpdateSet).not.toHaveBeenCalled();
+    expect(mockDbInsertValues).not.toHaveBeenCalled();
+  });
+
+  it('Test G — state guard (Pitfall 5 idempotency): UPDATE returns empty → autoFlipped=0, no audit row', async () => {
+    // SELECT says approved_for_build (stale view), but UPDATE WHERE inclusion_state=approved_for_build
+    // returns 0 rows (someone already flipped it built between read and write — or this is a re-run)
+    setupSelectResponses({ 0: [{ id: VALID_BUG_UUID, inclusionState: 'approved_for_build' }], 1: [] });
+    mockDbUpdateReturning.mockReturnValueOnce(Promise.resolve([]));
+
+    const result = await stampLinksFromCommit({
+      releaseId: RELEASE_UUID,
+      commitMessage: `Fix BUG-${VALID_BUG_UUID}`,
+      projectKey: PROJ_KEY,
+      commitSha: 'reroll1',
+    });
+
+    expect(result.stamped).toBe(1);
+    expect(result.autoFlipped).toBe(0);     // empty UPDATE return → no flip counted
+    expect(result.orphanLinks).toBe(0);     // SELECT said approved → not an orphan either
+
+    // UPDATE was attempted (the state-guard WHERE filtered it to no rows)
+    expect(mockDbUpdateSet).toHaveBeenCalledTimes(1);
+    // Only one INSERT — release_log_links; NO audit row (because flipped.length === 0)
+    expect(mockDbInsertValues).toHaveBeenCalledTimes(1);
   });
 });

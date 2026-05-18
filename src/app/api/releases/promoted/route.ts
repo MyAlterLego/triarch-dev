@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiKey } from '@/lib/api-key-auth';
 import { db } from '@/lib/db';
-import { releaseLogs } from '@/db/schema';
+import { releaseLogs, bugReports, featureRequests, workflowTransitions } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 
 export async function POST(req: NextRequest) {
@@ -99,6 +99,54 @@ export async function POST(req: NextRequest) {
       .update(releaseLogs)
       .set({ status: 'promoted' })
       .where(eq(releaseLogs.id, devRow.id));
+
+    // ── Phase 36 INCL-07: batch-flip built → deployed for items linked to this release ──
+    // Idempotency (Pitfall 5): WHERE clause requires inclusion_state='built' so re-ingest
+    // matches 0 rows. next_release_log_id stays anchored to devRow.id (CONTEXT.md D-13 —
+    // dev row stamping preserves provenance; dev↔prod join via release_logs.version).
+    const flippedBugs = await tx
+      .update(bugReports)
+      .set({ inclusionState: 'deployed', updatedAt: new Date() })
+      .where(and(
+        eq(bugReports.nextReleaseLogId, devRow.id),
+        eq(bugReports.inclusionState, 'built'),
+      ))
+      .returning({ id: bugReports.id });
+
+    const flippedFeats = await tx
+      .update(featureRequests)
+      .set({ inclusionState: 'deployed', updatedAt: new Date() })
+      .where(and(
+        eq(featureRequests.nextReleaseLogId, devRow.id),
+        eq(featureRequests.inclusionState, 'built'),
+      ))
+      .returning({ id: featureRequests.id });
+
+    // Combined audit insert — single INSERT to minimize round-trips, all rows in same tx
+    // (Pitfall 3: audit must commit atomically with the state change).
+    const auditRows = [
+      ...flippedBugs.map((b) => ({
+        entityType: 'bug_report' as const,
+        entityId: b.id,
+        fromStatus: 'built',
+        toStatus: 'deployed',
+        transitionedBy: `prod-ingest:${commit_sha as string}`,
+        reason: 'auto-flip on prod deploy',
+        metadata: { prodReleaseLogId: inserted.id },
+      })),
+      ...flippedFeats.map((f) => ({
+        entityType: 'feature_request' as const,
+        entityId: f.id,
+        fromStatus: 'built',
+        toStatus: 'deployed',
+        transitionedBy: `prod-ingest:${commit_sha as string}`,
+        reason: 'auto-flip on prod deploy',
+        metadata: { prodReleaseLogId: inserted.id },
+      })),
+    ];
+    if (auditRows.length > 0) {
+      await tx.insert(workflowTransitions).values(auditRows);
+    }
 
     return inserted;
   });

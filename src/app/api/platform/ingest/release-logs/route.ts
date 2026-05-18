@@ -176,11 +176,26 @@ export async function POST(req: NextRequest) {
     })();
 
     if (messageText.length > 0) {
-      await stampLinksFromCommit({
+      const stampResult = await stampLinksFromCommit({
         releaseId: release.id,
         commitMessage: messageText,
         projectKey: project!.key,
+        commitSha: release.commitSha ?? undefined,   // Phase 36 INCL-06 audit provenance
       });
+
+      // Phase 36 INCL-06 / Pitfall 4: surface orphan-link signal so staff sees
+      // commits referencing items that weren't in approved_for_build.
+      // v1 of CONTEXT D-03 "stats surface" — structured-metrics dashboard
+      // deferred to follow-up phase per RESEARCH OQ-2.
+      if (stampResult.orphanLinks > 0) {
+        console.warn('[link-stamper] orphan links detected', {
+          releaseId: release.id,
+          project: project!.key,
+          orphanLinks: stampResult.orphanLinks,
+          autoFlipped: stampResult.autoFlipped,
+          stamped: stampResult.stamped,
+        });
+      }
     }
   } catch (err) {
     console.error('[ingest/release-logs] link stamping failed (non-blocking)', err);

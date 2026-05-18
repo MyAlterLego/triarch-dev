@@ -4,6 +4,11 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useProjectOptions } from '@/lib/use-projects';
 import { Lightbulb, ChevronDown, ChevronRight, ThumbsUp } from 'lucide-react';
+import {
+  INCLUSION_STATES,
+  canManuallyTransition,
+  type InclusionState,
+} from '@/lib/inclusion-state';
 
 interface FeatureRequest {
   id: string;
@@ -23,6 +28,7 @@ interface FeatureRequest {
   triarchNotes: string | null;
   upvotes: number;
   createdAt: string;
+  inclusionState: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -44,12 +50,39 @@ const EFFORT_COLORS: Record<string, string> = {
   epic: 'text-red-400',
 };
 
+// Plan 36-05b D-UI: inclusion-state pill palette — same source-of-truth map as bug-reports.
+const INCLUSION_COLORS: Record<string, string> = {
+  triaged: 'bg-zinc-700 text-zinc-300',
+  pending_inclusion: 'bg-zinc-600 text-zinc-200',
+  approved_for_build: 'bg-violet-500/20 text-violet-300',
+  built: 'bg-teal-500/20 text-teal-300',
+  deployed: 'bg-blue-500/20 text-blue-300',
+  deferred: 'bg-amber-500/20 text-amber-400',
+  rejected: 'bg-red-500/20 text-red-400',
+};
+
+// Label map for the dropdown action — B-3: no 'rejected' entry.
+const ACTION_LABELS: Record<string, string> = {
+  pending_inclusion: 'Propose for next build',
+  approved_for_build: 'Approve for build',
+  deferred: 'Defer',
+  triaged: 'Reset to triaged',
+};
+
+function labelFor(from: string, target: string): string {
+  if (from === 'approved_for_build' && target === 'pending_inclusion') return 'Remove from build';
+  return ACTION_LABELS[target] ?? target.replace(/_/g, ' ');
+}
+
+const INCLUSION_STATES_LIST = ['all', ...INCLUSION_STATES] as const;
+
 export default function FeatureRequestsPage() {
   const PROJECTS = useProjectOptions();
   const [features, setFeatures] = useState<FeatureRequest[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [projectFilter, setProjectFilter] = useState('all');
+  const [inclusionFilter, setInclusionFilter] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -57,13 +90,14 @@ export default function FeatureRequestsPage() {
     setLoading(true);
     const params = new URLSearchParams({ limit: '50' });
     if (projectFilter !== 'all') params.set('project', projectFilter);
+    if (inclusionFilter !== 'all') params.set('inclusion_state', inclusionFilter);
 
     const res = await fetch(`/api/platform/feature-requests?${params}`);
     const data = await res.json();
     setFeatures(data.features);
     setTotal(data.total);
     setLoading(false);
-  }, [projectFilter]);
+  }, [projectFilter, inclusionFilter]);
 
   useEffect(() => { fetchFeatures(); }, [fetchFeatures]);
 
@@ -89,9 +123,23 @@ export default function FeatureRequestsPage() {
       </div>
 
       <div className="flex items-center gap-3 mb-6">
-        <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}
-          className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-teal-500">
+        <select
+          aria-label="Filter by project"
+          value={projectFilter}
+          onChange={(e) => setProjectFilter(e.target.value)}
+          className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-teal-500"
+        >
           {PROJECTS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </select>
+        <select
+          aria-label="Filter by inclusion state"
+          value={inclusionFilter}
+          onChange={(e) => setInclusionFilter(e.target.value)}
+          className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-teal-500"
+        >
+          {INCLUSION_STATES_LIST.map((s) => (
+            <option key={s} value={s}>{s === 'all' ? 'All Inclusion' : s.replace(/_/g, ' ')}</option>
+          ))}
         </select>
       </div>
 
@@ -108,6 +156,8 @@ export default function FeatureRequestsPage() {
         <div className="space-y-2">
           {features.map((feat) => {
             const expanded = expandedId === feat.id;
+            const fromState = feat.inclusionState as InclusionState;
+            const validTargets = INCLUSION_STATES.filter((t) => canManuallyTransition(fromState, t));
             return (
               <div key={feat.id} className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
                 <button
@@ -125,6 +175,11 @@ export default function FeatureRequestsPage() {
                   <span className={`px-1.5 py-0.5 rounded text-[10px] ${STATUS_COLORS[feat.status] ?? 'bg-zinc-700 text-zinc-400'}`}>
                     {feat.status.replace('_', ' ')}
                   </span>
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] ${INCLUSION_COLORS[feat.inclusionState] ?? INCLUSION_COLORS.triaged}`}
+                  >
+                    {feat.inclusionState.replace(/_/g, ' ')}
+                  </span>
                   {feat.estimatedEffort && (
                     <span className={`text-[10px] font-medium ${EFFORT_COLORS[feat.estimatedEffort] ?? 'text-zinc-400'}`}>
                       {feat.estimatedEffort}
@@ -136,6 +191,30 @@ export default function FeatureRequestsPage() {
                   <span className="text-[10px] text-zinc-600">{feat.project}</span>
                   <span className="text-[10px] text-zinc-600">{new Date(feat.createdAt).toLocaleDateString()}</span>
                 </button>
+
+                {/* Per-row inclusion dropdown — gated by canManuallyTransition; no Reject (B-3). */}
+                <div className="px-4 pb-2 -mt-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <span className="text-[10px] text-zinc-500">Set inclusion:</span>
+                  <select
+                    aria-label={`Set inclusion state for feature ${feat.id}`}
+                    value=""
+                    disabled={updatingId === feat.id || validTargets.length === 0}
+                    onChange={(e) => {
+                      const target = e.target.value;
+                      if (target) updateFeature(feat.id, { inclusionState: target });
+                    }}
+                    className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] text-zinc-300 focus:outline-none focus:border-violet-500 disabled:opacity-40"
+                  >
+                    <option value="">
+                      {validTargets.length === 0 ? '(no transitions)' : 'Choose action...'}
+                    </option>
+                    {validTargets.map((target) => (
+                      <option key={target} value={target}>
+                        {labelFor(feat.inclusionState, target)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 {expanded && (
                   <div className="border-t border-zinc-800 p-4 space-y-3">
