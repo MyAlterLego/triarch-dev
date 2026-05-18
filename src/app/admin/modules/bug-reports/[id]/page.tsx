@@ -5,7 +5,11 @@ import { eq } from 'drizzle-orm';
 import { authOptions } from '@/lib/auth';
 import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
-import { bugReports } from '@/db/schema';
+// v2.16.0: read from local extension to get the new build_plan columns
+// (migration 0022). The shared schema's `bugReports` is one version behind
+// — see src/db/schema.ts for removal plan.
+import { bugReportsWithPlan as bugReports } from '@/db/schema';
+import { GenerateBuildPlanButton } from '@/components/BuildQueue/GenerateBuildPlanButton';
 import { getReleaseHistoryForBug } from '@/lib/release-history';
 import { ReleasedInSidebar } from '@/components/ReleasedInSidebar';
 import { formatRelativeTime, formatDeployedAt } from '@/app/projects/[slug]/releases/format';
@@ -237,6 +241,37 @@ export default async function BugDetailPage({
               <p className="text-sm text-zinc-400 whitespace-pre-wrap leading-relaxed">
                 {bug.actualBehavior}
               </p>
+            </div>
+          )}
+
+          {/* Build plan — generator button when absent, JSON when present.
+              v2.16.0 (this PR): bug-side parity with feature detail page. */}
+          {bug.buildPlan == null ? (
+            <div>
+              <h2 className="text-xs font-semibold tracking-wider text-zinc-500 uppercase mb-2">
+                Fix Plan
+              </h2>
+              <p className="text-xs text-zinc-500 mb-2">
+                No plan generated yet. Have Claude draft a root-cause + fix approach from the
+                reproduction steps.
+              </p>
+              <GenerateBuildPlanButton entityKind="bug" entityId={bug.id} />
+            </div>
+          ) : (
+            <div>
+              <h2 className="text-xs font-semibold tracking-wider text-zinc-500 uppercase mb-2">
+                Fix Plan
+              </h2>
+              <pre className="text-xs text-zinc-400 bg-zinc-800 rounded p-3 overflow-auto max-h-60">
+                {JSON.stringify(bug.buildPlan as Record<string, unknown>, null, 2)}
+              </pre>
+              <div className="mt-2">
+                <GenerateBuildPlanButton
+                  entityKind="bug"
+                  entityId={bug.id}
+                  label="Regenerate Fix Plan"
+                />
+              </div>
             </div>
           )}
 

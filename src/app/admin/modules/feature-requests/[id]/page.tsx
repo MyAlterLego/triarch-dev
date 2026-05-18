@@ -15,6 +15,7 @@ import {
   type InclusionState,
 } from '@/lib/inclusion-state';
 import { InclusionActions } from './InclusionActions';
+import { GenerateBuildPlanButton } from '@/components/BuildQueue/GenerateBuildPlanButton';
 
 /**
  * Plan 36-05b Task 2 — inclusion-state primary action labels mirrored here so
@@ -222,8 +223,20 @@ export default async function FeatureDetailPage({
             </div>
           )}
 
-          {/* Build plan (optional) */}
-          {feat.buildPlan != null && (
+          {/* Build plan — show generator button when absent, render JSON when present.
+              v2.16.0 (this PR): wires GenerateBuildPlanButton → POST /generate-plan,
+              which Claude-fills the buildPlan jsonb and flips status submitted→plan_generated. */}
+          {feat.buildPlan == null ? (
+            <div>
+              <h2 className="text-xs font-semibold tracking-wider text-zinc-500 uppercase mb-2">
+                Build Plan
+              </h2>
+              <p className="text-xs text-zinc-500 mb-2">
+                No plan generated yet. Have Claude draft one from the description + use case.
+              </p>
+              <GenerateBuildPlanButton entityKind="feature" entityId={feat.id} />
+            </div>
+          ) : (
             <div>
               <h2 className="text-xs font-semibold tracking-wider text-zinc-500 uppercase mb-2">
                 Build Plan
@@ -231,6 +244,13 @@ export default async function FeatureDetailPage({
               <pre className="text-xs text-zinc-400 bg-zinc-800 rounded p-3 overflow-auto max-h-60">
                 {JSON.stringify(feat.buildPlan as Record<string, unknown>, null, 2)}
               </pre>
+              <div className="mt-2">
+                <GenerateBuildPlanButton
+                  entityKind="feature"
+                  entityId={feat.id}
+                  label="Regenerate Build Plan"
+                />
+              </div>
             </div>
           )}
 
