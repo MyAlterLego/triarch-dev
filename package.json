@@ -1,6 +1,6 @@
 {
   "name": "triarch-dev",
-  "version": "2.13.28",
+  "version": "2.14.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -16,7 +16,7 @@
   "dependencies": {
     "@triarchsecurity/secrets": "^0.1.0",
     "@triarchsecurity/shared-ui": "^1.5.0",
-    "@triarchsecurity/triarch-shared": "^0.3.0",
+    "@triarchsecurity/triarch-shared": "^0.4.0",
     "drizzle-orm": "^0.45.2",
     "jose": "^5",
     "lucide-react": "^1.7.0",
