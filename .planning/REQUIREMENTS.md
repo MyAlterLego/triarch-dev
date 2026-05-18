@@ -355,13 +355,13 @@ Live per-project, per-clause status on `/admin/modules/ci-cd`.
 
 State machine that lets Mike (and eventually customers) explicitly approve which bug fixes and feature items go into the next build, before commits land.
 
-- [ ] **INCL-01**: `bug_reports` and `feature_requests` each gain an `inclusion_state` column with enum values: `triaged`, `pending_inclusion`, `approved_for_build`, `built`, `deployed`, `deferred`, `rejected`. Default `triaged` on row creation.
-- [ ] **INCL-02**: Each table also gains a nullable `next_release_log_id` FK to `release_logs.id` for tracking which release shipped the item (set during commit-parser auto-flip).
+- [x] **INCL-01**: `bug_reports` and `feature_requests` each gain an `inclusion_state` column with enum values: `triaged`, `pending_inclusion`, `approved_for_build`, `built`, `deployed`, `deferred`, `rejected`. Default `triaged` on row creation.
+- [x] **INCL-02**: Each table also gains a nullable `next_release_log_id` FK to `release_logs.id` for tracking which release shipped the item (set during commit-parser auto-flip).
 - [x] **INCL-03**: Staff can move an item from `triaged` → `pending_inclusion` via admin UI action ("Propose for next build") on the existing bug/feature list and detail pages.
 - [x] **INCL-04**: Staff can move `pending_inclusion` → `approved_for_build` OR → `deferred` via admin UI approval action. (Customer-facing approval deferred to v3.0.)
 - [x] **INCL-05**: New staff-only page `/admin/modules/next-build-plan/{slug}` lists all `approved_for_build` items for the project, with inline "Remove from build" action that reverts to `pending_inclusion`.
-- [ ] **INCL-06**: Commit-parser extension (extends existing `src/lib/commit-parser.ts` from v2.1 Phase 11): when a commit references a bug/feature ID via existing `#BUG-{uuid}` / `closes FEAT-{uuid}` patterns AND that item is in `approved_for_build` state, flip its `inclusion_state` to `built` and stamp `next_release_log_id` with the current release_logs row.
-- [ ] **INCL-07**: When a release_logs row transitions to `status='promoted'` (existing prod-deploy completion path), batch-flip all items where `next_release_log_id = <that release> AND inclusion_state='built'` to `inclusion_state='deployed'`.
+- [x] **INCL-06**: Commit-parser extension (extends existing `src/lib/commit-parser.ts` from v2.1 Phase 11): when a commit references a bug/feature ID via existing `#BUG-{uuid}` / `closes FEAT-{uuid}` patterns AND that item is in `approved_for_build` state, flip its `inclusion_state` to `built` and stamp `next_release_log_id` with the current release_logs row.
+- [x] **INCL-07**: When a release_logs row transitions to `status='promoted'` (existing prod-deploy completion path), batch-flip all items where `next_release_log_id = <that release> AND inclusion_state='built'` to `inclusion_state='deployed'`.
 - [x] **INCL-08**: Read-only customer-facing page `/projects/{slug}/upcoming` on portal — lists `approved_for_build` + `built` items as "what's coming in the next build" for transparency. Pulls from a new admin API endpoint `GET /api/portal/projects/{slug}/upcoming`. No customer mutation capability in v2.4.
 
 ### Build Trigger (TRIG)
@@ -397,13 +397,13 @@ Design-only deliverable for v2.4. Implementation lands in v2.5.
 
 | Req | Phase | Status |
 |-----|-------|--------|
-| INCL-01 | Phase 36 | Pending |
-| INCL-02 | Phase 36 | Pending |
+| INCL-01 | Phase 36 | Complete |
+| INCL-02 | Phase 36 | Complete |
 | INCL-03 | Phase 36 | Complete |
 | INCL-04 | Phase 36 | Complete |
 | INCL-05 | Phase 36 | Complete |
-| INCL-06 | Phase 36 | Pending |
-| INCL-07 | Phase 36 | Pending |
+| INCL-06 | Phase 36 | Complete |
+| INCL-07 | Phase 36 | Complete |
 | INCL-08 | Phase 36 | Complete |
 | TRIG-01 | Phase 37 | Complete |
 | TRIG-02 | Phase 37 | Complete |
