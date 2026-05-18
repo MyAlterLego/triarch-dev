@@ -57,7 +57,7 @@ export async function stampLinksFromCommit(input: {
     const validBugIds = new Set<string>();
     if (bugIds.length > 0) {
       const rows = await db
-        .select({ id: bugReports.id })
+        .select({ id: bugReports.id, inclusionState: bugReports.inclusionState })
         .from(bugReports)
         .where(inArray(bugReports.id, bugIds));
       for (const row of rows) {
@@ -69,7 +69,7 @@ export async function stampLinksFromCommit(input: {
     const validFeatureIds = new Set<string>();
     if (featureIds.length > 0) {
       const rows = await db
-        .select({ id: featureRequests.id })
+        .select({ id: featureRequests.id, inclusionState: featureRequests.inclusionState })
         .from(featureRequests)
         .where(inArray(featureRequests.id, featureIds));
       for (const row of rows) {
