@@ -539,15 +539,15 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
 - Prod deploy completion auto-flips `built → deployed` (verified end-to-end against TMI pilot)
 - Portal `/projects/{slug}/upcoming` page renders the "what's coming" view, fetching from `/api/portal/projects/{slug}/upcoming` with cookie-based membership auth
 
-**Plans:** 6/8 plans executed
+**Plans:** 8/8 plans complete
 - [x] 36-01-shared-schema-bump-PLAN.md — Add inclusion_state + next_release_log_id schema, bump @triarchsecurity/triarch-shared to 0.4.0, generate migration 0020, ship state-machine helper
 - [x] 36-02-admin-patch-transitions-PLAN.md — Extend bug-reports + feature-requests PATCH endpoints with inclusionState allowlist + canManuallyTransition validation + workflow_transitions audit; extend LIST endpoints with ?inclusion_state= filter
 - [x] 36-03-link-stamper-autoflip-PLAN.md — Extend link-stamper.ts with approved_for_build→built auto-flip after release_log_links insert; orphan-link soft-warning; ingest route passes commitSha
 - [x] 36-04-prod-ingest-autoflip-PLAN.md — Extend releases/promoted route transaction with built→deployed flip + atomic audit; idempotent re-ingest via WHERE clause state guard
 - [x] 36-05a-admin-next-build-plan-page-PLAN.md — New /admin/modules/next-build-plan/[slug] page with Remove-from-Build action + full Vitest coverage (split from original 36-05 per M-2 fix in plan revision pass)
-- [ ] 36-05b-admin-list-detail-extensions-PLAN.md — Extend bug-reports + feature-requests list pages with Inclusion column + dropdown; extend detail pages with primary action buttons (NO Reject per B-3 fix); 4 new Vitest test files (split from original 36-05 per M-2 fix)
+- [x] 36-05b-admin-list-detail-extensions-PLAN.md — Extend bug-reports + feature-requests list pages with Inclusion column + dropdown; extend detail pages with primary action buttons (NO Reject per B-3 fix); 4 new Vitest test files (split from original 36-05 per M-2 fix)
 - [x] 36-06-admin-upcoming-api-PLAN.md — Refactor InternalHmacBody to discriminated union (intent: dispatch_promotion | read_upcoming); bump shared to 0.5.0; ship admin POST /api/portal/projects/[slug]/upcoming (method GET→POST per B-2 fix — see CONTEXT amendments) with customer-safe field projection
-- [ ] 36-07-portal-upcoming-page-PLAN.md — Portal pin to 0.5.0; new /projects/[slug]/upcoming page with membership-gated read-only customer view (reuses ADMIN_INTERNAL_DISPATCH_URL per Mi-2 fix); sub-nav extended; portal v0.8.0
+- [x] 36-07-portal-upcoming-page-PLAN.md — Portal pin to 0.5.0; new /projects/[slug]/upcoming page with membership-gated read-only customer view (reuses ADMIN_INTERNAL_DISPATCH_URL per Mi-2 fix); sub-nav extended; portal v0.8.0
 
 ### Phase 37: Claude Code Build Trigger
 
@@ -583,7 +583,7 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
 
 | Phase | Name | Reqs | Status |
 |-------|------|------|--------|
-| 36 | 6/8 | In Progress|  |
+| 36 | 8/8 | Complete   | 2026-05-18 |
 | 37 | Claude Code Build Trigger | TRIG-01..06 | Not started |
 | 38 | Managed Agent Variant RFC | AGENT-01 | Not started |
 

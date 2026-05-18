@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Dev/Prod Contract Adoption
 status: executing
-stopped_at: Completed Task 1 of 36-05a-PLAN.md; Task 2 visual checkpoint deferred to user
-last_updated: "2026-05-18T18:44:14.323Z"
+stopped_at: "Completed 36-07-portal-upcoming-page-PLAN.md autonomous portion; Task 4 checkpoint pending in portal#43"
+last_updated: "2026-05-18T19:03:27.838Z"
 progress:
   total_phases: 9
   completed_phases: 2
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-18 — v2.4 milestone opened)
 ## Current Position
 
 Phase: 36 (inclusion-approval-state-machine) — EXECUTING
-Plan: 1 of 8
+Plan: 2 of 8
 
 ## Active Milestone: v2.4 — Build Cycle Workflow
 
@@ -59,7 +59,7 @@ Phases:
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Executing Phase 36
+**Status:** Ready to execute
 
 ## Performance Metrics
 
@@ -231,6 +231,9 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 36-inclusion-approval-state-machine]: Status audit folded INTO new db.transaction along with inclusionState audit — pre-existing fire-and-forget pattern eliminated for this endpoint pair (atomicity bonus)
 - [Phase 36-inclusion-approval-state-machine]: Vitest db.transaction(fn) mock immediately invokes fn(tx) with tx exposing update+insert wired to vi.fn() recorders; rollback simulated via closure flag making tx.insert.values reject (no real CRDB needed)
 - [Phase 36-inclusion-approval-state-machine]: Plan 36-05a: FilterChips duplicated locally as NextBuildPlanFilterChips (upstream bound to fix/feature/other; this page needs bug/feature). 8 Vitest tests GREEN. Task 2 visual verification deferred to user.
+- [Phase 36-inclusion-approval-state-machine]: Plan 36-07: Reuse ADMIN_INTERNAL_DISPATCH_URL env var across HMAC endpoints (Mi-2) — both Phase 22 dispatch + Phase 36 upcoming target the same admin host per CL-1; one less apphosting.yaml binding
+- [Phase 36-inclusion-approval-state-machine]: Plan 36-07: Sub-nav tab added to projects/layout.tsx NavData subpages (correct location) instead of [slug]/layout.tsx per plan literal — actual sub-nav has been in parent layout since Phase 23.1-01 DynamicSidebar refactor
+- [Phase 36-inclusion-approval-state-machine]: Plan 36-07: Applied local node_modules dist overlay (Rule 3) — published @triarchsecurity/triarch-shared@0.5.0 on GitHub Packages ships older dist than workspace source; overlay from packages/triarch-shared/dist/ unblocks tsc + tests until publish drift is corrected
 
 ### Pending Todos
 
@@ -248,8 +251,8 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-18T18:44:14.320Z
-Stopped at: Completed Task 1 of 36-05a-PLAN.md; Task 2 visual checkpoint deferred to user
+Last session: 2026-05-18T19:03:11.901Z
+Stopped at: Completed 36-07-portal-upcoming-page-PLAN.md autonomous portion; Task 4 checkpoint pending in portal#43
 Resume file: None
 Next action: Complete HUMAN-UAT A-G for security-portal (resolve dormant dev branch, FAH portal-dev backend, DNS, GCP secrets, ADMIN_API_TOKEN, npm install after shared-ui publishes, merge PR). See 34-HUMAN-UAT.md.
 
@@ -273,3 +276,4 @@ Next action: Complete HUMAN-UAT A-G for security-portal (resolve dormant dev bra
 | Phase 34 P01 (security-portal two-env restructure) | ~20 min | 5 tasks | 5 files |
 | Phase 36-inclusion-approval-state-machine P02 | 12min | 3 tasks | 8 files |
 | Phase 36-inclusion-approval-state-machine P05a | 5min | 1 tasks | 3 files |
+| Phase 36-inclusion-approval-state-machine P07 | 11min | 3 tasks | 11 files |
