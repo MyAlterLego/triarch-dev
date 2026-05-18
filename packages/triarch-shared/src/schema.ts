@@ -48,6 +48,10 @@ export const projects = pgTable('projects', {
   previewBranchLocked: text('preview_branch_locked'),                                       // branch name currently being deployed to dev backend; null = no lock
   previewBranchLockedAt: timestamp('preview_branch_locked_at', { withTimezone: true }),     // when the lock was set; route-side 8-min timeout reads this
 
+  // ── v2.4 Phase 37 TRIG-05: build trigger mode preference + local cwd ──
+  buildTriggerMode: varchar('build_trigger_mode', { length: 32 }).notNull().default('local_claude'),
+  localPath: varchar('local_path', { length: 512 }),
+
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -402,6 +406,26 @@ export const slackActionAudit = pgTable('slack_action_audit', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index('slack_action_audit_created_at_idx').on(table.createdAt.desc()),         // Phase 7 OTTOBOT-06 viewer paginates DESC
+]);
+
+// ── v2.4 Phase 37 TRIG-06: entity-agnostic approval/decision audit ─
+// Created in 37-01 (was assumed pre-existing per TRIG-06 spec but discovered missing during smart discuss).
+// Entity-agnostic shape so v3.0 customer-approval surfaces + other future event sources can reuse.
+
+export const approvalEvents = pgTable('approval_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  subjectType: varchar('subject_type', { length: 32 }).notNull(),       // e.g. 'build_trigger', 'release_approval' (future)
+  subjectId: varchar('subject_id', { length: 128 }).notNull(),          // for build_trigger: project.id
+  decision: varchar('decision', { length: 32 }).notNull(),              // e.g. 'triggered', 'approved', 'rejected'
+  surface: varchar('surface', { length: 16 }).notNull(),                // e.g. 'web', 'slack', 'api'
+  actorEmail: varchar('actor_email', { length: 256 }).notNull(),
+  comment: text('comment'),                                              // for build_trigger: first 200 chars of generated prompt (TRIG-06)
+  metadata: jsonb('metadata').notNull().default({}),                     // for build_trigger: informal shape `{ mode: string, item_count: number }` — expected but NOT enforced at DB or type layer (intentionally entity-agnostic; consumers self-document via approval_events.subjectType)
+  project: varchar('project', { length: 64 }).notNull(),                 // project.key for filtering
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index('approval_events_subject_idx').on(table.subjectType, table.subjectId, table.createdAt.desc()),  // entity history
+  index('approval_events_project_idx').on(table.project, table.createdAt.desc()),                       // project timeline
 ]);
 
 // ── v2.0 Phase 4: Promote Attempts (WORKFLOW-04 / WORKFLOW-05) ────

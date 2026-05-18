@@ -19,6 +19,7 @@ import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
 import { bugReports, featureRequests, projects } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
+import type { BuildTriggerMode } from '@/lib/build-trigger-mode';
 import NextBuildPlanClient, { type BuildPlanItem } from './NextBuildPlanClient';
 
 export default async function NextBuildPlanPage({
@@ -35,8 +36,16 @@ export default async function NextBuildPlanPage({
   const { slug } = await params;
 
   // ── Project existence check ─────────────────────────────
+  // Phase 37-05: select id + buildTriggerMode + localPath so the Generate Build
+  // modal can wire its deep-link cwd and mode-based button visibility.
   const [project] = await db
-    .select({ key: projects.key, name: projects.name })
+    .select({
+      id: projects.id,
+      key: projects.key,
+      name: projects.name,
+      buildTriggerMode: projects.buildTriggerMode,
+      localPath: projects.localPath,
+    })
     .from(projects)
     .where(eq(projects.key, slug));
   if (!project) notFound();
@@ -101,6 +110,14 @@ export default async function NextBuildPlanPage({
       projectName={project.name}
       projectSlug={slug}
       initialItems={items}
+      project={{
+        id: project.id,
+        key: project.key,
+        name: project.name,
+        buildTriggerMode: project.buildTriggerMode as BuildTriggerMode,
+        localPath: project.localPath ?? null,
+      }}
+      approvedCount={items.length}
     />
   );
 }

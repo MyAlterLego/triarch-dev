@@ -561,8 +561,13 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
 - `projects.build_trigger_mode` column with check constraint; per-project preference editable from project admin UI
 - Every trigger writes a row to `approval_events` with the prompt excerpt for audit; visible in existing Slack audit page
 
-**Plans:** 0 plans (to be planned)
-- [ ] TBD (run /gsd:plan-phase 37 to break down)
+**Plans:** 6 plans
+- [ ] 37-01-shared-schema-additions-PLAN.md — Shared schema: projects.build_trigger_mode + projects.local_path + new approval_events table; bump shared 0.5.0 -> 0.6.0; publish + db:push dance (Wave 1; gates everything)
+- [x] 37-02-build-prompt-generator-PLAN.md — src/lib/build-prompt.ts pure-function TDD generator (Wave 2; TRIG-01)
+- [x] 37-03-generate-build-api-PLAN.md — POST /api/admin/projects/[slug]/generate-build (server-side + audit insert; Wave 2; TRIG-06)
+- [x] 37-04-project-admin-trigger-mode-PLAN.md — Project admin UI: BuildTriggerSection + PUT endpoint extension (Wave 2; TRIG-05)
+- [x] 37-05-generate-build-ui-PLAN.md — Extend NextBuildPlanClient with Generate Build button + modal + Copy/Open + deep-link fallback (Wave 3; TRIG-02 TRIG-03 TRIG-04)
+- [x] 37-06-approval-events-audit-page-PLAN.md — New /admin/platform/approval-audit page + GET /api/platform/approval-events route (Wave 3; TRIG-06 surface)
 
 ### Phase 38: Managed Agent Variant RFC
 
@@ -574,8 +579,8 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
 - RFC explicitly states: agent only dispatches pre-existing workflows; cannot push code directly; cannot mutate admin schema; failure modes route to existing human-checkpoint admin paths
 - No code changes ship in this phase
 
-**Plans:** 0 plans (to be planned)
-- [ ] TBD (run /gsd:plan-phase 38 to break down)
+**Plans:** 1 deliverable (design-only; no decomposed plans)
+- [x] 38-managed-agent-variant-rfc — RFC at `.planning/research/MANAGED-AGENT-RFC.md` (941 lines; commit `e1326ab`); all 6 AGENT-01 sections present; v2.5 implementation phases TBD
 
 ---
 
@@ -583,9 +588,9 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
 
 | Phase | Name | Reqs | Status |
 |-------|------|------|--------|
-| 36 | 8/8 | Complete    | 2026-05-18 |
-| 37 | Claude Code Build Trigger | TRIG-01..06 | Not started |
-| 38 | Managed Agent Variant RFC | AGENT-01 | Not started |
+| 36 | Inclusion Approval State Machine | INCL-01..08 | Complete 2026-05-18 |
+| 37 | Claude Code Build Trigger | TRIG-01..06 | Complete 2026-05-18 |
+| 38 | Managed Agent Variant RFC | AGENT-01 | Complete 2026-05-18 |
 
 **v2.4 coverage:** 15/15 requirements mapped to phases.
 **Pilot:** TMI only. Soft prescription for 30 days post Phase 37 ship → evaluate hard gate as v3.0 candidate.

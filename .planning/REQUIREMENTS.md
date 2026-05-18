@@ -355,31 +355,31 @@ Live per-project, per-clause status on `/admin/modules/ci-cd`.
 
 State machine that lets Mike (and eventually customers) explicitly approve which bug fixes and feature items go into the next build, before commits land.
 
-- [ ] **INCL-01**: `bug_reports` and `feature_requests` each gain an `inclusion_state` column with enum values: `triaged`, `pending_inclusion`, `approved_for_build`, `built`, `deployed`, `deferred`, `rejected`. Default `triaged` on row creation.
-- [ ] **INCL-02**: Each table also gains a nullable `next_release_log_id` FK to `release_logs.id` for tracking which release shipped the item (set during commit-parser auto-flip).
+- [x] **INCL-01**: `bug_reports` and `feature_requests` each gain an `inclusion_state` column with enum values: `triaged`, `pending_inclusion`, `approved_for_build`, `built`, `deployed`, `deferred`, `rejected`. Default `triaged` on row creation.
+- [x] **INCL-02**: Each table also gains a nullable `next_release_log_id` FK to `release_logs.id` for tracking which release shipped the item (set during commit-parser auto-flip).
 - [x] **INCL-03**: Staff can move an item from `triaged` → `pending_inclusion` via admin UI action ("Propose for next build") on the existing bug/feature list and detail pages.
 - [x] **INCL-04**: Staff can move `pending_inclusion` → `approved_for_build` OR → `deferred` via admin UI approval action. (Customer-facing approval deferred to v3.0.)
 - [x] **INCL-05**: New staff-only page `/admin/modules/next-build-plan/{slug}` lists all `approved_for_build` items for the project, with inline "Remove from build" action that reverts to `pending_inclusion`.
-- [ ] **INCL-06**: Commit-parser extension (extends existing `src/lib/commit-parser.ts` from v2.1 Phase 11): when a commit references a bug/feature ID via existing `#BUG-{uuid}` / `closes FEAT-{uuid}` patterns AND that item is in `approved_for_build` state, flip its `inclusion_state` to `built` and stamp `next_release_log_id` with the current release_logs row.
-- [ ] **INCL-07**: When a release_logs row transitions to `status='promoted'` (existing prod-deploy completion path), batch-flip all items where `next_release_log_id = <that release> AND inclusion_state='built'` to `inclusion_state='deployed'`.
+- [x] **INCL-06**: Commit-parser extension (extends existing `src/lib/commit-parser.ts` from v2.1 Phase 11): when a commit references a bug/feature ID via existing `#BUG-{uuid}` / `closes FEAT-{uuid}` patterns AND that item is in `approved_for_build` state, flip its `inclusion_state` to `built` and stamp `next_release_log_id` with the current release_logs row.
+- [x] **INCL-07**: When a release_logs row transitions to `status='promoted'` (existing prod-deploy completion path), batch-flip all items where `next_release_log_id = <that release> AND inclusion_state='built'` to `inclusion_state='deployed'`.
 - [x] **INCL-08**: Read-only customer-facing page `/projects/{slug}/upcoming` on portal — lists `approved_for_build` + `built` items as "what's coming in the next build" for transparency. Pulls from a new admin API endpoint `GET /api/portal/projects/{slug}/upcoming`. No customer mutation capability in v2.4.
 
 ### Build Trigger (TRIG)
 
 One-click handoff from "build plan approved" to "Claude Code (or future Managed Agent) executing the build."
 
-- [ ] **TRIG-01**: New `src/lib/build-prompt.ts` generator — given a project slug and current `approved_for_build` items, produces a structured GSD-compatible Claude Code prompt: project metadata (current version, FAH backends, key conventions from CLAUDE.md), included items with REQ IDs + acceptance criteria, suggested approach (`/gsd:plan-phase` then `/gsd:execute-phase`), and a "do not exceed scope" guardrail block.
-- [ ] **TRIG-02**: "Generate build" button on `/admin/modules/next-build-plan/{slug}` page — only enabled when `approved_for_build` count ≥ 1. Click opens a modal showing the generated prompt with two action buttons.
-- [ ] **TRIG-03**: Mode A — "Copy to clipboard" button — writes the prompt to clipboard for paste into an existing Claude Code session. Confirmation toast on success.
-- [ ] **TRIG-04**: Mode B — "Open in Claude Code" button — renders a `claude-code://open?prompt={url-encoded}&cwd={project-path}` deep-link URL that launches Claude Code locally with the prompt pre-loaded. Includes fallback hint if the URL scheme isn't registered.
-- [ ] **TRIG-05**: New `projects.build_trigger_mode` column (varchar(32), default `'local_claude'`, check constraint values `local_claude | managed_agent | manual`). Per-project preference selector on project admin page. UI behavior of the Generate-build modal switches based on this value.
-- [ ] **TRIG-06**: Every Generate-build click writes a row to `approval_events` (existing table from v2.x) with `subject_type='build_trigger'`, `subject_id={project.id}`, `decision='triggered'`, `surface='web'`, `comment={generated-prompt-first-200-chars}`. Provides audit trail.
+- [x] **TRIG-01**: New `src/lib/build-prompt.ts` generator — given a project slug and current `approved_for_build` items, produces a structured GSD-compatible Claude Code prompt: project metadata (current version, FAH backends, key conventions from CLAUDE.md), included items with REQ IDs + acceptance criteria, suggested approach (`/gsd:plan-phase` then `/gsd:execute-phase`), and a "do not exceed scope" guardrail block.
+- [x] **TRIG-02**: "Generate build" button on `/admin/modules/next-build-plan/{slug}` page — only enabled when `approved_for_build` count ≥ 1. Click opens a modal showing the generated prompt with two action buttons.
+- [x] **TRIG-03**: Mode A — "Copy to clipboard" button — writes the prompt to clipboard for paste into an existing Claude Code session. Confirmation toast on success.
+- [x] **TRIG-04**: Mode B — "Open in Claude Code" button — renders a `claude-code://open?prompt={url-encoded}&cwd={project-path}` deep-link URL that launches Claude Code locally with the prompt pre-loaded. Includes fallback hint if the URL scheme isn't registered.
+- [x] **TRIG-05**: New `projects.build_trigger_mode` column (varchar(32), default `'local_claude'`, check constraint values `local_claude | managed_agent | manual`). Per-project preference selector on project admin page. UI behavior of the Generate-build modal switches based on this value.
+- [x] **TRIG-06**: Every Generate-build click writes a row to `approval_events` (existing table from v2.x) with `subject_type='build_trigger'`, `subject_id={project.id}`, `decision='triggered'`, `surface='web'`, `comment={generated-prompt-first-200-chars}`. Provides audit trail.
 
 ### Managed Agent RFC (AGENT)
 
 Design-only deliverable for v2.4. Implementation lands in v2.5.
 
-- [ ] **AGENT-01**: Write `.planning/research/MANAGED-AGENT-RFC.md` — design doc covering: (a) Anthropic Managed Agent platform fit assessment, (b) webhook contract from admin → agent, (c) agent playbook structure (what files it reads, what tools it calls, what guardrails it has), (d) failure modes + recovery, (e) per-project opt-in mechanic via `build_trigger_mode='managed_agent'`, (f) trust boundary (agent has GitHub write + admin API write, but only via dispatching pre-existing workflows — cannot push code directly).
+- [x] **AGENT-01**: Write `.planning/research/MANAGED-AGENT-RFC.md` — design doc covering: (a) Anthropic Managed Agent platform fit assessment, (b) webhook contract from admin → agent, (c) agent playbook structure (what files it reads, what tools it calls, what guardrails it has), (d) failure modes + recovery, (e) per-project opt-in mechanic via `build_trigger_mode='managed_agent'`, (f) trust boundary (agent has GitHub write + admin API write, but only via dispatching pre-existing workflows — cannot push code directly).
 
 ## v2.4 Out of Scope
 
@@ -397,21 +397,21 @@ Design-only deliverable for v2.4. Implementation lands in v2.5.
 
 | Req | Phase | Status |
 |-----|-------|--------|
-| INCL-01 | Phase 36 | Pending |
-| INCL-02 | Phase 36 | Pending |
+| INCL-01 | Phase 36 | Complete |
+| INCL-02 | Phase 36 | Complete |
 | INCL-03 | Phase 36 | Complete |
 | INCL-04 | Phase 36 | Complete |
 | INCL-05 | Phase 36 | Complete |
-| INCL-06 | Phase 36 | Pending |
-| INCL-07 | Phase 36 | Pending |
+| INCL-06 | Phase 36 | Complete |
+| INCL-07 | Phase 36 | Complete |
 | INCL-08 | Phase 36 | Complete |
-| TRIG-01 | Phase 37 | Pending |
-| TRIG-02 | Phase 37 | Pending |
-| TRIG-03 | Phase 37 | Pending |
-| TRIG-04 | Phase 37 | Pending |
-| TRIG-05 | Phase 37 | Pending |
-| TRIG-06 | Phase 37 | Pending |
-| AGENT-01 | Phase 38 | Pending |
+| TRIG-01 | Phase 37 | Complete |
+| TRIG-02 | Phase 37 | Complete |
+| TRIG-03 | Phase 37 | Complete |
+| TRIG-04 | Phase 37 | Complete |
+| TRIG-05 | Phase 37 | Complete |
+| TRIG-06 | Phase 37 | Complete |
+| AGENT-01 | Phase 38 | Complete |
 
 **v2.4 Coverage:**
 - v2.4 requirements: 15 total (INCL: 8 · TRIG: 6 · AGENT: 1)

@@ -3,6 +3,7 @@ import { requireStaff } from '@/lib/api-auth';
 import { db } from '@/lib/db';
 import { projects } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { isValidBuildTriggerMode } from '@/lib/build-trigger-mode';
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error } = await requireStaff();
@@ -10,7 +11,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const body = await req.json();
-  const { name, description, status, firebaseProjectId, crdbCluster, crdbDatabase, crdbUser, subdomain, customDomain, deployedUrl, githubRepo, techStack, currentVersion, ecosystem } = body;
+  const { name, description, status, firebaseProjectId, crdbCluster, crdbDatabase, crdbUser, subdomain, customDomain, deployedUrl, githubRepo, techStack, currentVersion, ecosystem, buildTriggerMode, localPath } = body;
+
+  // Phase 37 TRIG-05: validate buildTriggerMode at the boundary (DB has CHECK too; defense in depth).
+  if (buildTriggerMode !== undefined && !isValidBuildTriggerMode(buildTriggerMode)) {
+    return NextResponse.json({ error: 'invalid_build_trigger_mode' }, { status: 400 });
+  }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (name !== undefined) updates.name = name;
@@ -27,6 +33,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (techStack !== undefined) updates.techStack = techStack;
   if (currentVersion !== undefined) updates.currentVersion = currentVersion;
   if (ecosystem !== undefined) updates.ecosystem = ecosystem;
+  if (buildTriggerMode !== undefined) updates.buildTriggerMode = buildTriggerMode;
+  if (localPath !== undefined) updates.localPath = localPath;  // allows explicit null to clear
 
   const [updated] = await db.update(projects).set(updates).where(eq(projects.id, id)).returning();
   if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });

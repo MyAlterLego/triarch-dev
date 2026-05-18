@@ -43,6 +43,17 @@ const feature1: BuildPlanItem = {
 
 const ALL_ITEMS = [bug1, feature1, bug2]; // mixed order
 
+// ── Phase 37-05: shared project fixture for the new required props ────────
+// (Existing Phase 36-05a tests still pass the original 3 props; the new
+// `project` + `approvedCount` are accepted but unused by the 36-05a paths.)
+const defaultProject = {
+  id: 'project-uuid-tmi',
+  key: 'tmi',
+  name: 'TMI',
+  buildTriggerMode: 'local_claude' as const,
+  localPath: null as string | null,
+};
+
 // ── Test setup ────────────────────────────────────────────────────────────
 beforeEach(() => {
   mockReplace.mockClear();
@@ -66,6 +77,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -94,6 +107,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -119,6 +134,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -136,6 +153,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -156,6 +175,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -200,6 +221,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -224,6 +247,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={[]}
+        project={defaultProject}
+        approvedCount={0}
       />,
     );
 
@@ -243,6 +268,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -257,5 +284,91 @@ describe('NextBuildPlanClient', () => {
         body: JSON.stringify({ inclusionState: 'pending_inclusion' }),
       }),
     );
+  });
+});
+
+// ── Phase 37-05: Generate Build button + modal integration ────────────────
+// The button is rendered in the page header; clicking opens GenerateBuildModal.
+// Disabled states cover (a) zero approved items and (b) managed_agent mode (v2.5
+// placeholder). Locked tooltip strings per CONTEXT.md.
+describe('Phase 37 — Generate Build button + modal', () => {
+  it('renders Generate Build button enabled when approvedCount > 0 and mode === local_claude', () => {
+    render(
+      <NextBuildPlanClient
+        projectName="TMI"
+        projectSlug="tmi"
+        initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={3}
+      />,
+    );
+    const btn = screen.getByRole('button', { name: /^Generate Build$/ });
+    expect(btn).toBeInTheDocument();
+    expect((btn as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('disables Generate Build button when approvedCount === 0 with the locked tooltip', () => {
+    render(
+      <NextBuildPlanClient
+        projectName="TMI"
+        projectSlug="tmi"
+        initialItems={[]}
+        project={defaultProject}
+        approvedCount={0}
+      />,
+    );
+    const btn = screen.getByRole('button', { name: /^Generate Build$/ });
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+    expect(btn).toHaveAttribute('title', 'Approve at least one item to generate a build');
+  });
+
+  it('disables Generate Build button when buildTriggerMode === managed_agent with the v2.5 tooltip', () => {
+    render(
+      <NextBuildPlanClient
+        projectName="TMI"
+        projectSlug="tmi"
+        initialItems={ALL_ITEMS}
+        project={{ ...defaultProject, buildTriggerMode: 'managed_agent' }}
+        approvedCount={2}
+      />,
+    );
+    const btn = screen.getByRole('button', { name: /^Generate Build$/ });
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+    expect(btn).toHaveAttribute('title', 'Managed Agent variant ships in v2.5');
+  });
+
+  it('clicking Generate Build opens the modal (role=dialog appears)', () => {
+    render(
+      <NextBuildPlanClient
+        projectName="TMI"
+        projectSlug="tmi"
+        initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={2}
+      />,
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /^Generate Build$/ }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('closing the modal via the X button removes it from the DOM', async () => {
+    // Modal mounts and fires fetch; the global beforeEach fetch mock returns
+    // ok:true with a json body that has no `prompt` field, but the modal will
+    // surface an error message in that case — that's fine for this assertion
+    // which only checks the dialog mounts and then unmounts on close click.
+    render(
+      <NextBuildPlanClient
+        projectName="TMI"
+        projectSlug="tmi"
+        initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={2}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^Generate Build$/ }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(/^Close$/));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
