@@ -369,9 +369,9 @@ State machine that lets Mike (and eventually customers) explicitly approve which
 One-click handoff from "build plan approved" to "Claude Code (or future Managed Agent) executing the build."
 
 - [x] **TRIG-01**: New `src/lib/build-prompt.ts` generator — given a project slug and current `approved_for_build` items, produces a structured GSD-compatible Claude Code prompt: project metadata (current version, FAH backends, key conventions from CLAUDE.md), included items with REQ IDs + acceptance criteria, suggested approach (`/gsd:plan-phase` then `/gsd:execute-phase`), and a "do not exceed scope" guardrail block.
-- [ ] **TRIG-02**: "Generate build" button on `/admin/modules/next-build-plan/{slug}` page — only enabled when `approved_for_build` count ≥ 1. Click opens a modal showing the generated prompt with two action buttons.
-- [ ] **TRIG-03**: Mode A — "Copy to clipboard" button — writes the prompt to clipboard for paste into an existing Claude Code session. Confirmation toast on success.
-- [ ] **TRIG-04**: Mode B — "Open in Claude Code" button — renders a `claude-code://open?prompt={url-encoded}&cwd={project-path}` deep-link URL that launches Claude Code locally with the prompt pre-loaded. Includes fallback hint if the URL scheme isn't registered.
+- [x] **TRIG-02**: "Generate build" button on `/admin/modules/next-build-plan/{slug}` page — only enabled when `approved_for_build` count ≥ 1. Click opens a modal showing the generated prompt with two action buttons.
+- [x] **TRIG-03**: Mode A — "Copy to clipboard" button — writes the prompt to clipboard for paste into an existing Claude Code session. Confirmation toast on success.
+- [x] **TRIG-04**: Mode B — "Open in Claude Code" button — renders a `claude-code://open?prompt={url-encoded}&cwd={project-path}` deep-link URL that launches Claude Code locally with the prompt pre-loaded. Includes fallback hint if the URL scheme isn't registered.
 - [x] **TRIG-05**: New `projects.build_trigger_mode` column (varchar(32), default `'local_claude'`, check constraint values `local_claude | managed_agent | manual`). Per-project preference selector on project admin page. UI behavior of the Generate-build modal switches based on this value.
 - [x] **TRIG-06**: Every Generate-build click writes a row to `approval_events` (existing table from v2.x) with `subject_type='build_trigger'`, `subject_id={project.id}`, `decision='triggered'`, `surface='web'`, `comment={generated-prompt-first-200-chars}`. Provides audit trail.
 
@@ -406,9 +406,9 @@ Design-only deliverable for v2.4. Implementation lands in v2.5.
 | INCL-07 | Phase 36 | Pending |
 | INCL-08 | Phase 36 | Complete |
 | TRIG-01 | Phase 37 | Complete |
-| TRIG-02 | Phase 37 | Pending |
-| TRIG-03 | Phase 37 | Pending |
-| TRIG-04 | Phase 37 | Pending |
+| TRIG-02 | Phase 37 | Complete |
+| TRIG-03 | Phase 37 | Complete |
+| TRIG-04 | Phase 37 | Complete |
 | TRIG-05 | Phase 37 | Complete |
 | TRIG-06 | Phase 37 | Complete |
 | AGENT-01 | Phase 38 | Pending |

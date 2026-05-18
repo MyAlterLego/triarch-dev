@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Build Cycle Workflow
 status: active
-stopped_at: "Completed 37-06-approval-events-audit-page-PLAN.md (TRIG-06: GET /api/platform/approval-events + /admin/platform/approval-audit page + ApprovalAuditClient; 21 Vitest cases GREEN; sidebar nav deferred; --no-verify per phase context)"
-last_updated: "2026-05-18T20:22:57.000Z"
+stopped_at: "Completed 37-05-generate-build-ui-PLAN.md (TRIG-02/03/04: GenerateBuildModal + Generate Build button + page.tsx prop extension; buildDeepLink pure helper for testability; 18 new Vitest cases (13 modal + 5 client); 26/26 GREEN in dir suite; --no-verify per phase context parallel wave 3 with 37-06)"
+last_updated: "2026-05-18T20:26:16.000Z"
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 13
-  completed_plans: 20
+  completed_plans: 21
 ---
 
 # Triarch Dev Admin — Project State
@@ -234,6 +234,10 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 36-inclusion-approval-state-machine]: Plan 36-07: Reuse ADMIN_INTERNAL_DISPATCH_URL env var across HMAC endpoints (Mi-2) — both Phase 22 dispatch + Phase 36 upcoming target the same admin host per CL-1; one less apphosting.yaml binding
 - [Phase 36-inclusion-approval-state-machine]: Plan 36-07: Sub-nav tab added to projects/layout.tsx NavData subpages (correct location) instead of [slug]/layout.tsx per plan literal — actual sub-nav has been in parent layout since Phase 23.1-01 DynamicSidebar refactor
 - [Phase 36-inclusion-approval-state-machine]: Plan 36-07: Applied local node_modules dist overlay (Rule 3) — published @triarchsecurity/triarch-shared@0.5.0 on GitHub Packages ships older dist than workspace source; overlay from packages/triarch-shared/dist/ unblocks tsc + tests until publish drift is corrected
+- [Phase 37-05-generate-build-ui]: buildDeepLink extracted as named export from GenerateBuildModal (W-4 pattern) — pure helper produces claude-code://open?prompt=...[&cwd=...] with proper URL encoding. Tests assert URL contract directly (3 cases incl. special-char path: spaces/ampersand/hash/parens) instead of relying on JSDOM window.location proxy fragility. Side-effect smoke test on href assignment retained but minimal.
+- [Phase 37-05-generate-build-ui]: NextBuildPlanClient Props EXTENDED (not renamed) — `{ projectName, projectSlug, initialItems }` from 36-05a baseline preserved verbatim; `project` + `approvedCount` ADDED. Test fixture `defaultProject` introduced so existing 8 36-05a tests pass with zero assertion-body change.
+- [Phase 37-05-generate-build-ui]: 2-sec fallback hint test uses real-timer `waitFor(timeout: 3000)` — fake-timer + `advanceTimersByTimeAsync(0)` approach failed due to Vitest 4 fetch microtask chain not flushing; real-timer flow is reliable (test still finishes in ~2.1s).
+- [Phase 37-05-generate-build-ui]: page.tsx SELECT explicit projection added (id + buildTriggerMode + localPath) — drizzle returns full row by default after 37-01 schema bump, but explicit projection documents the new dependency and prevents accidental SELECT regression.
 
 ### Pending Todos
 
@@ -251,10 +255,10 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-18T20:22:57.000Z
-Stopped at: Completed 37-06-approval-events-audit-page-PLAN.md (TRIG-06: GET /api/platform/approval-events + /admin/platform/approval-audit page + ApprovalAuditClient; 21 Vitest cases GREEN; sidebar nav deferred; --no-verify per phase context)
+Last session: 2026-05-18T20:26:16.000Z
+Stopped at: Completed 37-05-generate-build-ui-PLAN.md (TRIG-02/03/04: GenerateBuildModal + Generate Build button + page.tsx prop extension; buildDeepLink pure helper for testability; 18 new Vitest cases (13 modal + 5 client); 26/26 GREEN in dir suite; --no-verify per phase context parallel wave 3 with 37-06)
 Resume file: None
-Next action: Complete HUMAN-UAT A-G for security-portal (resolve dormant dev branch, FAH portal-dev backend, DNS, GCP secrets, ADMIN_API_TOKEN, npm install after shared-ui publishes, merge PR). See 34-HUMAN-UAT.md.
+Next action: Phase 37 wave 3 complete (05 + 06 shipped in parallel). Phase close: manual UAT on Mike's local (claude-code:// scheme launch + clipboard verify + 2-sec fallback if scheme unregistered + approval_events audit row visibility). Then merge feat/build-trigger → dev.
 
 ## Performance Metrics (24-03)
 
@@ -277,3 +281,4 @@ Next action: Complete HUMAN-UAT A-G for security-portal (resolve dormant dev bra
 | Phase 36-inclusion-approval-state-machine P02 | 12min | 3 tasks | 8 files |
 | Phase 36-inclusion-approval-state-machine P05a | 5min | 1 tasks | 3 files |
 | Phase 36-inclusion-approval-state-machine P07 | 11min | 3 tasks | 11 files |
+| Phase 37-claude-code-build-trigger P05 | ~8min | 4 tasks | 5 files (2 new + 3 modified); 18 new Vitest cases |
