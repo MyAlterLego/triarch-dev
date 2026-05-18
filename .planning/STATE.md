@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Dev/Prod Contract Adoption
-status: executing
+status: completed
 stopped_at: "Completed 36-07-portal-upcoming-page-PLAN.md autonomous portion; Task 4 checkpoint pending in portal#43"
-last_updated: "2026-05-18T19:03:27.838Z"
+last_updated: "2026-05-18T19:12:54.083Z"
 progress:
   total_phases: 9
   completed_phases: 2
@@ -23,8 +23,8 @@ See: `.planning/PROJECT.md` (last updated 2026-05-18 — v2.4 milestone opened)
 
 ## Current Position
 
-Phase: 36 (inclusion-approval-state-machine) — EXECUTING
-Plan: 2 of 8
+Phase: 36
+Plan: Not started
 
 ## Active Milestone: v2.4 — Build Cycle Workflow
 
@@ -59,7 +59,7 @@ Phases:
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Ready to execute
+**Status:** Milestone complete
 
 ## Performance Metrics
 

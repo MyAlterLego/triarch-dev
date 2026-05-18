@@ -583,7 +583,7 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
 
 | Phase | Name | Reqs | Status |
 |-------|------|------|--------|
-| 36 | 8/8 | Complete   | 2026-05-18 |
+| 36 | 8/8 | Complete    | 2026-05-18 |
 | 37 | Claude Code Build Trigger | TRIG-01..06 | Not started |
 | 38 | Managed Agent Variant RFC | AGENT-01 | Not started |
 
