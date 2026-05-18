@@ -30,6 +30,10 @@ import {
   buildStatusBlocks,
   listProjectKeys,
 } from '@/lib/slack-status';
+import {
+  fetchProjectStatusByAnyIdentifier,
+  listAllProjects,
+} from '@/lib/slack-project-resolver';
 
 /**
  * Parses + validates a Slack-issued response_url. Returns a URL object only
@@ -60,7 +64,9 @@ const HELP_TEXT = [
   '• `/triarch promote <project> [<head>] [<base>]` — Merge the open dev→main PR for `<project>` as a *merge commit* (preserves verify-dev-deployed ancestry). Defaults: head=dev, base=main. Staff only.',
   '• `/triarch deploy <project> <version>` — *Legacy* — dispatches `promote-branch.yml` (only works for projects with that workflow file). Use `promote` for PR-based dev→main projects. Staff only.',
   '• `/triarch status <project>` — Show current dev/prod release status for `<project>`.',
+  '• `/triarch projects` — List every known project with its identifiers.',
   '',
+  'Tip: `<project>` accepts any of: canonical key (`triarch-dev`), custom domain (`admin.triarch.dev`), subdomain (`admin`), or repo name (`platform`).',
   'Tip: also try `@OttoBot status <project>` in any channel.',
 ].join('\n');
 
@@ -134,7 +140,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const status = await fetchProjectStatus(projectArg);
+    const status = await fetchProjectStatusByAnyIdentifier(projectArg);
     if (!status) {
       // Unknown project — list up to 5 known keys (CONTEXT D-16)
       const knownKeys = await listProjectKeys(5);
@@ -175,6 +181,36 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // STEP 7b: projects — open discovery command. Lists every active project
+  // with its canonical key + alternate identifiers (custom domain, repo) so
+  // staff don't need to memorize project keys before running promote/status.
+  if (subcommand === 'projects') {
+    const rows = await listAllProjects();
+    void recordSlackAudit({
+      actionId: 'slash_projects',
+      actorEmail,
+      actorSlackId: userId || 'unknown',
+      rawBody,
+      responseStatus: 200,
+      latencyMs: Date.now() - requestReceivedAt,
+    });
+    if (rows.length === 0) {
+      return NextResponse.json({
+        response_type: 'ephemeral',
+        text: ':warning: No active projects found.',
+      });
+    }
+    const lines = rows.map((p) => {
+      const repo = p.githubRepo ? `\`${p.githubRepo}\`` : '_no repo_';
+      const domain = p.customDomain ? ` · <https://${p.customDomain}|${p.customDomain}>` : '';
+      return `• \`${p.key}\` — ${p.name} · ${repo}${domain}`;
+    });
+    return NextResponse.json({
+      response_type: 'ephemeral',
+      text: ['*Known projects* (any identifier below works in `/triarch promote|status|deploy <project>`)', '', ...lines].join('\n'),
+    });
+  }
+
   // STEP 8: deploy — staff-only (CONTEXT D-05)
   if (subcommand === 'deploy') {
     const isStaff = actorEmail?.endsWith('@triarchsecurity.com') ?? false;
@@ -210,7 +246,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Look up project to determine GitHub repo
-    const projectStatus = await fetchProjectStatus(projectArg);
+    const projectStatus = await fetchProjectStatusByAnyIdentifier(projectArg);
     if (!projectStatus) {
       void recordSlackAudit({
         actionId: 'slash_deploy',
@@ -346,7 +382,7 @@ export async function POST(req: NextRequest) {
     const headBranch = headBranchArg || 'dev';
     const baseBranch = baseBranchArg || 'main';
 
-    const projectStatus = await fetchProjectStatus(projectArg);
+    const projectStatus = await fetchProjectStatusByAnyIdentifier(projectArg);
     if (!projectStatus) {
       void recordSlackAudit({
         actionId: 'slash_promote',
