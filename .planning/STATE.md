@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.4
-milestone_name: Build Cycle Workflow
-status: defining_requirements
-stopped_at: "v2.4 milestone opened 2026-05-18 — REQUIREMENTS.md drafted, ROADMAP.md being defined (phases 36-38)"
-last_updated: "2026-05-18T15:30:00.000Z"
+milestone: v2.3
+milestone_name: Dev/Prod Contract Adoption
+status: executing
+stopped_at: Completed Phase 35 Plan 01 (CL-1..CL-6 compliance matrix UI on admin ci-cd page; v2.13.17)
+last_updated: "2026-05-18T18:19:26.899Z"
 progress:
-  total_phases: 3
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 9
+  completed_phases: 2
+  total_plans: 13
+  completed_plans: 18
 ---
 
 # Triarch Dev Admin — Project State
@@ -19,20 +19,19 @@ progress:
 See: `.planning/PROJECT.md` (last updated 2026-05-18 — v2.4 milestone opened)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** v2.4 Phase 36 — Inclusion Approval State Machine (TMI pilot)
+**Current focus:** Phase 36 — inclusion-approval-state-machine
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-05-18 — Milestone v2.4 (Build Cycle Workflow) opened
+Phase: 36 (inclusion-approval-state-machine) — EXECUTING
+Plan: 1 of 8
 
 ## Active Milestone: v2.4 — Build Cycle Workflow
 
 (see PROJECT.md for full milestone goals)
 
 Phases:
+
 - 36 — Inclusion Approval State Machine (INCL-01..07)
 - 37 — Claude Code Build Trigger (TRIG-01..05)
 - 38 — Managed Agent Variant RFC (AGENT-01)
@@ -60,7 +59,7 @@ Phases:
 | 26 — Sunset (T+90) | Delete admin `/projects/[slug]/*` + dead hostname guards; admin v3.0.0 bump (deferred) | SUN-01..03 | Not started |
 
 **Requirements:** 47 total, all mapped (100% coverage, no orphans)
-**Status:** Milestone complete
+**Status:** Executing Phase 36
 
 ## Performance Metrics
 
@@ -229,6 +228,8 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 33-01 security-admin]: quality-gate bumped from @v1.8 to @v8.2 to match full v8 adoption; deploy split into deploy-dev + deploy-prod; verify-dev-deployed uses v2.13.10 direction (is-ancestor origin/dev HEAD); cl4-gate project_key=triarchsecurity-admin; apphosting.dev.yaml is standalone (full env + _DEV secret variants); NEXTAUTH_SECRET_DEV added alongside DATABASE_URL_DEV; EnvBadge from @triarchsecurity/shared-ui mounted as last body child; v3.54.1→v3.55.0 on feat/dev-path-cl4-cl2-cl3 off fix/bump-shared-workflows-v8
 - [Phase 34-01 security-portal]: quality-gate bumped from @v1 to @v8.2; deploy split into deploy-dev (portal-dev backend) + deploy-prod; verify-dev-deployed uses v2.13.10 direction; cl4-gate project_key=triarchsecurity-portal; apphosting.dev.yaml expanded from stub (was DATABASE_URL only) to full _DEV secret set (PORTAL_JWT_SECRET_DEV, PORTAL_TOTP_ENCRYPTION_KEY_DEV, DATABASE_URL_DEV); HUMAN-UAT includes dormant dev branch resolution (Option A: delete + recreate recommended); v0.14.8→v0.15.0 on feat/dev-path-cl4-cl2-cl3 off fix/bump-shared-workflows-v8
 - [Phase 35]: CL-1 derives expected dev hostname from deployedUrl (green=pattern derivable); CL-6 uses single inArray batch query; CL-4 reuses existing verdict; CL-2/3/5 scaffolded grey with deferred HTTP/GitHub fetch reason
+- [Phase 36-inclusion-approval-state-machine]: Status audit folded INTO new db.transaction along with inclusionState audit — pre-existing fire-and-forget pattern eliminated for this endpoint pair (atomicity bonus)
+- [Phase 36-inclusion-approval-state-machine]: Vitest db.transaction(fn) mock immediately invokes fn(tx) with tx exposing update+insert wired to vi.fn() recorders; rollback simulated via closure flag making tx.insert.values reject (no real CRDB needed)
 
 ### Pending Todos
 
@@ -269,3 +270,4 @@ Next action: Complete HUMAN-UAT A-G for security-portal (resolve dormant dev bra
 | Phase 32 P02 (tmi cl4-gate + v2.13.10 backpatch) | ~5 min | 1 task | 2 files |
 | Phase 33 P01 (security-admin two-env restructure) | ~25 min | 5 tasks | 5 files |
 | Phase 34 P01 (security-portal two-env restructure) | ~20 min | 5 tasks | 5 files |
+| Phase 36-inclusion-approval-state-machine P02 | 12min | 3 tasks | 8 files |
