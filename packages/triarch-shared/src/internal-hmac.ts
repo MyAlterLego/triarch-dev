@@ -1,20 +1,43 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 /**
- * The fixed payload shape for portal→admin HMAC-signed dispatch requests.
- * All fields are required. Keys are signed in alphabetical order for stability.
+ * The fixed payload shape for portal→admin HMAC-signed requests.
+ *
+ * As of v2.4 Phase 36 Plan 36-06 (INCL-08), this is a DISCRIMINATED UNION on
+ * the `intent` field:
+ *  - 'dispatch_promotion' — Phase 22 WRITE-04 path (portal triggers admin to
+ *     dispatch a GitHub Actions promotion workflow). Requires branch/version/
+ *     releaseId + optional slack refs.
+ *  - 'read_upcoming' — Phase 36 INCL-08 path (portal asks admin to read its
+ *     authoritative inclusion-state data for the project's "what's coming
+ *     next" customer page). Requires only the base auth fields.
+ *
+ * Keys are signed in alphabetical order (see canonicalize) for byte-stable
+ * signatures regardless of object property insertion order. The `intent`
+ * field sorts in alphabetically along with every other key.
  */
-export type InternalHmacBody = {
+
+type BaseHmacFields = {
   actorEmail: string;              // portal's signed-in customer admin email
-  branch: string;
   nonce: string;                   // 16-byte hex random (32 chars)
   projectKey: string;
+  timestamp: number;               // ms since epoch
+};
+
+export type DispatchPromotionBody = BaseHmacFields & {
+  intent: 'dispatch_promotion';
+  branch: string;
   releaseId: string;
   slackChannelId: string | null;
   slackMessageTs: string | null;
-  timestamp: number;               // ms since epoch
   version: string;
 };
+
+export type ReadUpcomingBody = BaseHmacFields & {
+  intent: 'read_upcoming';
+};
+
+export type InternalHmacBody = DispatchPromotionBody | ReadUpcomingBody;
 
 export type SignRequestResult = {
   body: InternalHmacBody;
@@ -51,38 +74,45 @@ function safeEqHex(a: string, b: string): boolean {
 /**
  * Canonicalizes an InternalHmacBody into a stable JSON string.
  * Keys are sorted alphabetically to produce a deterministic byte sequence
- * regardless of object property insertion order.
+ * regardless of object property insertion order. Works identically for
+ * dispatch_promotion (9 fields including intent) and read_upcoming (5 fields
+ * including intent) variants — the intent field sorts in alphabetically.
  */
 function canonicalize(body: InternalHmacBody): string {
   return JSON.stringify(body, Object.keys(body).sort());
 }
 
 /**
- * Signs an internal dispatch request with HMAC-SHA256.
+ * Signs an internal HMAC request with HMAC-SHA256.
  *
  * The returned body includes timestamp and nonce generated at call time
  * (or injected via opts for testing). The signature covers the canonicalized body.
+ *
+ * Input is a union of the two intent shapes (dispatch_promotion | read_upcoming)
+ * with timestamp+nonce omitted (signRequest provides them). TypeScript narrows
+ * based on the `intent` discriminator field, so callers get precise shape
+ * checking — e.g. read_upcoming callers can't accidentally pass branch/version.
  */
 export function signRequest(
-  input: Omit<InternalHmacBody, 'timestamp' | 'nonce'>,
+  input: Omit<DispatchPromotionBody, 'timestamp' | 'nonce'> | Omit<ReadUpcomingBody, 'timestamp' | 'nonce'>,
   secret: string,
   opts?: { now?: number; nonce?: string },
 ): SignRequestResult {
   const now = opts?.now ?? Date.now();
   const nonce = opts?.nonce ?? randomBytes(16).toString('hex');
-  const body: InternalHmacBody = { ...input, timestamp: now, nonce };
+  const body: InternalHmacBody = { ...input, timestamp: now, nonce } as InternalHmacBody;
   const signature = createHmac('sha256', secret).update(canonicalize(body)).digest('hex');
   return { body, signature };
 }
 
 /**
- * Verifies a HMAC-signed internal dispatch request.
+ * Verifies a HMAC-signed internal request.
  *
  * Validation order:
  * 1. Secret present
  * 2. Signature header present
  * 3. rawBody parses as JSON
- * 4. All InternalHmacBody fields present + correct types
+ * 4. All InternalHmacBody fields present + correct types (narrows on intent)
  * 5. Timestamp within 5-min skew window
  * 6. Signature matches recomputed HMAC over canonicalized parsed body
  * 7. Nonce not replayed (if nonceStore provided)
@@ -112,7 +142,8 @@ export function verifyRequest(input: {
     return { ok: false, reason: 'malformed' };
   }
 
-  // Strict field validation — all fields required, correct types
+  // Strict field validation — narrows on intent discriminator, all fields
+  // required for the matched intent shape.
   if (
     typeof parsed !== 'object' ||
     parsed === null ||
@@ -148,21 +179,47 @@ export function verifyRequest(input: {
 }
 
 /**
- * Type guard for InternalHmacBody — validates all required fields and types.
+ * Type guard for InternalHmacBody — validates the base fields then narrows
+ * on the `intent` discriminator and validates intent-specific fields.
+ *
+ * Bodies lacking an `intent` field (legacy Phase 22 shape) are rejected as
+ * malformed — callers must update to the discriminated-union shape after
+ * @triarchsecurity/triarch-shared@0.5.0.
  */
 function isValidBody(obj: Record<string, unknown>): obj is InternalHmacBody {
-  return (
-    typeof obj['branch'] === 'string' &&
-    typeof obj['version'] === 'string' &&
-    typeof obj['projectKey'] === 'string' &&
-    typeof obj['releaseId'] === 'string' &&
-    typeof obj['actorEmail'] === 'string' &&
-    (typeof obj['slackChannelId'] === 'string' || obj['slackChannelId'] === null) &&
-    (typeof obj['slackMessageTs'] === 'string' || obj['slackMessageTs'] === null) &&
-    typeof obj['timestamp'] === 'number' &&
-    typeof obj['nonce'] === 'string' &&
-    (obj['nonce'] as string).length === 32
-  );
+  // Common base-field validation for all intents.
+  if (
+    typeof obj['actorEmail'] !== 'string' ||
+    typeof obj['nonce'] !== 'string' ||
+    typeof obj['projectKey'] !== 'string' ||
+    typeof obj['timestamp'] !== 'number' ||
+    (obj['nonce'] as string).length !== 32
+  ) {
+    return false;
+  }
+
+  const intent = obj['intent'];
+
+  if (intent === 'dispatch_promotion') {
+    return (
+      typeof obj['branch'] === 'string' &&
+      typeof obj['version'] === 'string' &&
+      typeof obj['releaseId'] === 'string' &&
+      (typeof obj['slackChannelId'] === 'string' || obj['slackChannelId'] === null) &&
+      (typeof obj['slackMessageTs'] === 'string' || obj['slackMessageTs'] === null)
+    );
+  }
+
+  if (intent === 'read_upcoming') {
+    // No additional fields required beyond the base. Defense-in-depth: ensure
+    // legacy dispatch-only fields are NOT present on a read_upcoming body
+    // (caller error — they shouldn't be sent). We accept their presence as
+    // tolerable (canonicalize sorts them in regardless), but the strict
+    // type-narrow on `result.body.intent === 'read_upcoming'` won't expose them.
+    return true;
+  }
+
+  return false;
 }
 
 /**
