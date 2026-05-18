@@ -152,19 +152,20 @@ API contract (locked):
     const requireStaffMock = vi.fn();
     vi.mock('@/lib/api-auth', () => ({ requireStaff: () => requireStaffMock() }));
 
+    // W-3: Single SELECT mock — total derived from rows length client-side; no count(*) needed.
     const selectMock = vi.fn();
-    const countMock = vi.fn();
-    // Mock db with a builder that records the final shape — use the same pattern as
-    // src/app/api/platform/bug-reports/route.test.ts. Implementation per executor's
-    // judgement; the assertions below pin behaviour, not query syntax.
+    let lastWhere: unknown = null;
     vi.mock('@/lib/db', () => ({
       db: {
-        select: (...args: unknown[]) => ({
+        select: () => ({
           from: () => ({
-            where: () => ({
-              orderBy: () => ({ limit: (n: number) => selectMock(n) }),
-              // For count(*) path: add a parallel mock when needed.
-            }),
+            where: (clause: unknown) => {
+              lastWhere = clause;
+              return {
+                orderBy: () => ({ limit: (n: number) => selectMock(n) }),
+              };
+            },
+            // No-filter path (no .where() called): mirrors drizzle behaviour.
             orderBy: () => ({ limit: (n: number) => selectMock(n) }),
           }),
         }),
@@ -219,10 +220,10 @@ API contract (locked):
 
     3. Run `npx vitest run src/app/api/platform/approval-events/route.test.ts` — MUST FAIL with "Cannot find module './route'" (RED).
 
-    4. WRITE IMPLEMENTATION. Create `src/app/api/platform/approval-events/route.ts`:
+    4. WRITE IMPLEMENTATION. Create `src/app/api/platform/approval-events/route.ts`. **W-3 simplification:** single SELECT only (no parallel count(*)); `total` is derived client-side from `rows.length`. v2.4 TMI pilot row counts will be low (<100 events for months); pagination + true totals can be added later if needed without breaking this contract (consumers see `total` field either way).
     ```typescript
     import { NextRequest, NextResponse } from 'next/server';
-    import { and, desc, eq, sql } from 'drizzle-orm';
+    import { and, desc, eq } from 'drizzle-orm';
     import { requireStaff } from '@/lib/api-auth';
     import { db } from '@/lib/db';
     import { approvalEvents } from '@/db/schema';
@@ -250,12 +251,14 @@ API contract (locked):
 
       const whereClause = conditions.length ? and(...conditions) : undefined;
 
-      const [rows, totalRows] = await Promise.all([
-        db.select().from(approvalEvents).where(whereClause).orderBy(desc(approvalEvents.createdAt)).limit(limit),
-        db.select({ count: sql<number>`count(*)::int` }).from(approvalEvents).where(whereClause),
-      ]);
-
-      const total = totalRows[0]?.count ?? 0;
+      // W-3: Single query. Total derived from rows length. v2.4 pilot has low row counts —
+      // pagination can be added later without breaking the response contract.
+      const rows = await db
+        .select()
+        .from(approvalEvents)
+        .where(whereClause)
+        .orderBy(desc(approvalEvents.createdAt))
+        .limit(limit);
 
       const events = rows.map((r) => ({
         id: r.id,
@@ -270,7 +273,7 @@ API contract (locked):
         createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
       }));
 
-      return NextResponse.json({ events, total });
+      return NextResponse.json({ events, total: events.length });
     }
     ```
 
@@ -288,6 +291,8 @@ API contract (locked):
     - `grep -c "requireStaff" src/app/api/platform/approval-events/route.ts` returns 1 (staff-gated)
     - `grep -c "desc(approvalEvents.createdAt)" src/app/api/platform/approval-events/route.ts` returns 1 (DESC ordering anchored)
     - `grep -c "MAX_LIMIT" src/app/api/platform/approval-events/route.ts` returns >= 1 (limit cap defined)
+    - `grep -c "count(\*)" src/app/api/platform/approval-events/route.ts` returns 0 (W-3: no parallel count query in v2.4)
+    - `grep -c "total: events.length" src/app/api/platform/approval-events/route.ts` returns 1 (W-3: total derived from rows)
     - `npx next build` exits 0
   </acceptance_criteria>
   <done>GET endpoint shipped + tests green; client can fetch with subject_type + project + limit filters.</done>
@@ -376,13 +381,16 @@ API contract (locked):
       it('comment truncates to ~60 chars in the row; Show more toggles to full text', async () => {
         render(<ApprovalAuditClient />);
         await waitFor(() => screen.getByText(/mike@triarch.dev/));
-        // truncated display should NOT contain all 200 As initially.
-        // (assert by counting A's in the rendered comment cell or by absence of full-string match)
-        // Then click Show more and assert full string is present.
+        // I-3 fix: use anchored regex via getByText to avoid false-positive whole-DOM matches.
+        // Truncated state: 60-char prefix + ellipsis; full 200 NOT present.
+        const truncatedPrefix = 'A'.repeat(60);
+        // The truncated cell renders as "AAAA...AAA..." (60 A's then ellipsis). Assert the
+        // ellipsis form is present via anchored regex on the comment cell.
+        expect(screen.getByText(new RegExp(`^${truncatedPrefix}\\.\\.\\.$`))).toBeInTheDocument();
+        // Now expand:
         fireEvent.click(screen.getByRole('button', { name: /Show more/i }));
-        // After expand, the full 200-char comment is visible somewhere in DOM.
-        const allText = document.body.textContent ?? '';
-        expect(allText.includes('A'.repeat(200))).toBe(true);
+        // After expand: the full 200-char comment is present as an exact-match text node.
+        expect(screen.getByText(new RegExp(`^A{200}$`))).toBeInTheDocument();
       });
     });
     ```
@@ -643,6 +651,8 @@ API contract (locked):
 </success_criteria>
 
 <output>
+**Executor context-monitoring guidance (W-7):** This plan modifies 5 files (2 routes + page + client + tests). If context usage exceeds 70% partway, commit the current task atomically and `/clear` BEFORE starting the next task. Do NOT split structurally — the wave dependency is already correct.
+
 After completion, create `.planning/phases/37-claude-code-build-trigger/37-06-approval-events-audit-page-SUMMARY.md` documenting:
 - Final endpoint URL + response shape
 - Page URL + filter parameters supported

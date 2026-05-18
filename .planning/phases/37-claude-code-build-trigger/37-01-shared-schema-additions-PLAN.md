@@ -175,7 +175,7 @@ The 9 approval_events columns (locked by CONTEXT.md Decisions block + TRIG-06):
       surface: varchar('surface', { length: 16 }).notNull(),                // e.g. 'web', 'slack', 'api'
       actorEmail: varchar('actor_email', { length: 256 }).notNull(),
       comment: text('comment'),                                              // for build_trigger: first 200 chars of generated prompt (TRIG-06)
-      metadata: jsonb('metadata').notNull().default({}),                     // for build_trigger: { mode, item_count }
+      metadata: jsonb('metadata').notNull().default({}),                     // for build_trigger: informal shape `{ mode: string, item_count: number }` — expected but NOT enforced at DB or type layer (intentionally entity-agnostic; consumers self-document via approval_events.subjectType)
       project: varchar('project', { length: 64 }).notNull(),                 // project.key for filtering
       createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     }, (table) => [
@@ -221,6 +221,8 @@ The 9 approval_events columns (locked by CONTEXT.md Decisions block + TRIG-06):
     - `_journal.json` updated by drizzle-kit to reference migration 0021
   </behavior>
   <action>
+    **I-2 up-front note:** If `npx drizzle-kit generate` produces SQL that differs from the hand-coded example below (e.g., column order, type aliases like `text` vs `varchar`, default expression formatting like `'{}'::jsonb` vs `'{}'`), ACCEPT the drizzle-generated version verbatim and proceed — drizzle-kit is the source of truth for column DDL ordering. The hand-appended CHECK constraint (step 2) and the rename-to-canonical-slug (step 1 paragraph 2) are the only manual edits that override drizzle's output. The CHECK + indexes acceptance grep below pins behaviour, not exact column ordering.
+
     1. Run `npx drizzle-kit generate` to auto-generate the ALTER + CREATE TABLE statements. Drizzle will emit something like:
     ```sql
     ALTER TABLE "projects" ADD COLUMN "build_trigger_mode" varchar(32) DEFAULT 'local_claude' NOT NULL;--> statement-breakpoint
@@ -387,6 +389,23 @@ The 9 approval_events columns (locked by CONTEXT.md Decisions block + TRIG-06):
   <name>Task 4: Human runs the publish + install dance (npm version → git tag → push → npm install → db:push)</name>
   <what-built>Schema additions + migration 0021 + build-trigger-mode helper are all ready in working tree on the feat/build-trigger branch. The publish dance requires human-only steps: tag push triggers the publish-shared.yml GitHub workflow which authenticates to GitHub Packages; admin npm install pulls from the private registry; db:push needs human confirmation against prod cluster.</what-built>
   <how-to-verify>
+    ## Reversibility Map (W-6 — know when crossing a one-way door)
+
+    | Step | Reversible? | How to roll back |
+    |------|-------------|------------------|
+    | 1. Commit schema + migration + helper | YES — git revert + delete commit | `git reset --hard HEAD~1` (before push); after push: `git revert <sha> && git push` |
+    | 2. Tag + push shared/v0.6.0 | YES — local tag delete + remote tag delete | `git tag -d shared/v0.6.0 && git push origin :refs/tags/shared/v0.6.0` (ONLY if step 3 has not yet published) |
+    | 3. npm publish via publish-shared.yml | **IRREVERSIBLE** — version 0.6.0 is burned forever on the registry | Cannot unpublish from GitHub Packages without escalation; must bump to 0.6.1 and re-publish if 0.6.0 is wrong. **This is the one-way door — verify steps 1-2 are correct BEFORE pushing the tag.** |
+    | 4. Pin admin to ^0.6.0 + npm install | YES — revert package.json + package-lock.json | `git checkout HEAD -- package.json package-lock.json && npm install` (resolves back to 0.5.0) |
+    | 5. db:push (apply migration to prod CRDB) | YES (manual) — write a reverse migration | Apply via psql: `ALTER TABLE projects DROP COLUMN build_trigger_mode; ALTER TABLE projects DROP COLUMN local_path; DROP TABLE approval_events;` (data loss for any approval_events rows — none expected pre-37-03) |
+    | 6. information_schema verification | YES (read-only query) | n/a |
+    | 7. Commit pin + lockfile + admin version bump | YES — revert + force-push (DO NOT if PR already in review) | `git revert <sha>` is the safe path post-push |
+    | 8. Open PR against dev | YES — close PR + delete branch | `gh pr close <num> && git push origin --delete feat/build-trigger` |
+
+    **One-way door:** Step 3 (npm publish). Once published, version 0.6.0 cannot be re-used for a different code state. If you discover after step 3 that step 1's schema is wrong, you must roll forward to 0.6.1 with a new commit + tag, NOT re-publish 0.6.0.
+
+    ---
+
     Run these commands in sequence (each requires your human shell). Each sub-step includes per-step recovery guidance for the most common failure modes per the M-1 fix pattern from Phase 36-01 — the workflow IS atomic (publish → install → db:push must happen together), so splitting introduces inter-plan dependency risk worse than the single-checkpoint risk.
 
     1. **Commit the schema + migration + helper on the feat/build-trigger branch** (you're already on it — verify with `git branch --show-current`; should output `feat/build-trigger`):

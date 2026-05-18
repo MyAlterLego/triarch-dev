@@ -175,6 +175,8 @@ Radio group label text (locked per CONTEXT.md — staff sees the v2.5 roadmap):
 
     e. DO NOT touch the DELETE handler.
 
+    f. **Pitfall 9 defensive verification BEFORE editing:** Before making any change, run `grep -c "await params" src/app/api/platform/projects/[id]/route.ts`. Expected: >= 1 (existing route already migrated to Next.js 16 async params per the 2026-05 audit). If the count is 0, STOP and migrate the existing handler signature to `{ params: Promise<{ id: string }> }` + `const { id } = await params;` FIRST as a defensive step (no behaviour change), commit that as a separate prep commit, then proceed with the field-validation additions in steps a-e above.
+
     2. Create or extend `src/app/api/platform/projects/[id]/route.test.ts` (if the test file does not yet exist, create it; if it does, ADD the 4 new test cases to the existing describe block). Use the Vitest mock pattern in `src/app/api/platform/bug-reports/[id]/route.test.ts` as the model. Add tests for the 4 new behaviours:
     ```typescript
     describe('PUT — buildTriggerMode + localPath (Phase 37 TRIG-05)', () => {
@@ -198,6 +200,7 @@ Radio group label text (locked per CONTEXT.md — staff sees the v2.5 roadmap):
     - `grep -c "invalid_build_trigger_mode" src/app/api/platform/projects/[id]/route.ts` returns 1
     - `npx vitest run src/app/api/platform/projects/[id]/route.test.ts` reports 0 failures with >= 4 new cases passing
     - No existing test in the file regresses (count delta is +4 minimum)
+    - **Pitfall 9 anchor (does NOT regress):** `grep -c "await params" src/app/api/platform/projects/[id]/route.ts` returns >= 1 (existing PUT route already uses async params per Next.js 16; this plan must not regress that)
     - `npx next build` exits 0
   </acceptance_criteria>
   <done>PUT endpoint validates + persists both new columns; 4 new Vitest cases green; UI plan 37-04 Task 2 can call this endpoint.</done>
@@ -437,6 +440,8 @@ Radio group label text (locked per CONTEXT.md — staff sees the v2.5 roadmap):
     ```
 
     4. Run `npx vitest run src/app/admin/platform/projects/BuildTriggerSection.test.tsx` — all 6 cases MUST PASS (GREEN).
+
+    5. (I-4 sanity) The existing `Toast` component is reused as-is. Verify it tolerates rapid-succession setToast calls (e.g., user clicks Save → 400 → changes radio → Save again before first toast dismissed) — open `src/components/Toast.tsx`, confirm setToast→setToast simply replaces state (no animation queue that loses messages). One-line confirmation in SUMMARY.
   </action>
   <verify>
     <automated>npx vitest run src/app/admin/platform/projects/BuildTriggerSection.test.tsx</automated>

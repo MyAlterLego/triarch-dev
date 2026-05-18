@@ -14,7 +14,7 @@ autonomous: true
 requirements: [TRIG-02, TRIG-03, TRIG-04]
 must_haves:
   truths:
-    - "NextBuildPlanClient renders a 'Generate build' button in the page header area; button is DISABLED when approved_for_build item count is 0 (rendered with tooltip 'Approve at least one item to generate a build')"
+    - "NextBuildPlanClient renders a 'Generate Build' button in the page header area; button is DISABLED when approved_for_build item count is 0 (rendered with tooltip 'Approve at least one item to generate a build')"
     - "Button is DISABLED when project.buildTriggerMode === 'managed_agent' (rendered with tooltip 'Managed Agent variant ships in v2.5')"
     - "Clicking the button opens GenerateBuildModal (role='dialog' aria-modal='true') which calls POST /api/admin/projects/{slug}/generate-build and shows a loading state, then renders the prompt preview in a textarea + action buttons"
     - "Action buttons depend on project.buildTriggerMode: 'local_claude' shows Copy + Open in Claude Code; 'manual' shows Copy only; 'managed_agent' would never reach this modal (button disabled at parent)"
@@ -54,7 +54,7 @@ must_haves:
 ---
 
 <objective>
-Ship the TRIG-02 + TRIG-03 + TRIG-04 UX: a "Generate build" button in the NextBuildPlanClient page header that opens a modal showing the generated prompt with mode-appropriate action buttons (Copy / Open in Claude Code). The deep-link uses the claude-code:// URL scheme with cwd from project.localPath when set. Disabled states handled inline (0 items tooltip + managed_agent v2.5 tooltip). Fallback behaviour for unregistered URL scheme: after 2 seconds show a hint with the prompt visible in a textarea so the user is never silently stranded.
+Ship the TRIG-02 + TRIG-03 + TRIG-04 UX: a "Generate Build" button in the NextBuildPlanClient page header that opens a modal showing the generated prompt with mode-appropriate action buttons (Copy / Open in Claude Code). The deep-link uses the claude-code:// URL scheme with cwd from project.localPath when set. Disabled states handled inline (0 items tooltip + managed_agent v2.5 tooltip). Fallback behaviour for unregistered URL scheme: after 2 seconds show a hint with the prompt visible in a textarea so the user is never silently stranded.
 
 Purpose: Bridge the approved items into a live Claude Code session with one click. This is the end-to-end UX that delivers Phase 37's user-visible value.
 Output: New GenerateBuildModal component (TDD), extended NextBuildPlanClient (TDD), extended page.tsx server component (loads project + count). 16+ new Vitest cases.
@@ -124,6 +124,58 @@ Locked tooltip + fallback strings (CONTEXT.md):
 <tasks>
 
 <task type="auto">
+  <name>Task 0: Reconcile NextBuildPlanClient prop shape against shipped Phase 36-05a baseline</name>
+  <files>src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx (read-only verification)</files>
+  <read_first>
+    - src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx (the SHIPPED file from rebased Phase 36-05a — verify actual exported Props shape)
+    - src/app/admin/modules/next-build-plan/[slug]/page.tsx (the SHIPPED server component — verify what it currently passes)
+  </read_first>
+  <behavior>
+    - Confirm the shipped NextBuildPlanClient `interface Props` is `{ projectName: string; projectSlug: string; initialItems: BuildPlanItem[] }` (NOT the originally planned `{ items, slug }` shape).
+    - Confirm `BuildPlanItem` is exported with shape `{ id, type, title, severity, inclusionState, updatedAt }`.
+    - Document the prop-name reconciliation that Tasks 1 + 3 must apply: the NEW props this plan adds (`project`, `approvedCount`) must be added to the EXISTING `Props` interface — they ADD to `{ projectName, projectSlug, initialItems }`, they do NOT replace it.
+  </behavior>
+  <action>
+    1. Open `src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx` (lines 25-45) and confirm the shipped `Props` interface is:
+    ```typescript
+    interface Props {
+      projectName: string;
+      projectSlug: string;
+      initialItems: BuildPlanItem[];
+    }
+    ```
+    (NOT `{ items, slug }` as earlier draft of this plan assumed — that was based on the un-shipped 36-05a draft.)
+
+    2. The EXTENDED `Props` interface after this plan ships MUST be (downstream Tasks 1 + 3 follow this):
+    ```typescript
+    interface Props {
+      projectName: string;       // EXISTING — Phase 36-05a
+      projectSlug: string;       // EXISTING — Phase 36-05a (this is the slug; do NOT rename to `slug`)
+      initialItems: BuildPlanItem[];  // EXISTING — Phase 36-05a (do NOT rename to `items`)
+      project: { id: string; key: string; name: string; buildTriggerMode: BuildTriggerMode; localPath: string | null };  // NEW
+      approvedCount: number;     // NEW
+    }
+    ```
+
+    3. The shipped `page.tsx` currently passes `projectName`, `projectSlug`, `initialItems`. Tasks 1 + 3 of this plan EXTEND those calls; do NOT remove or rename the existing props.
+
+    4. The shipped `NextBuildPlanClient.test.tsx` (from 36-05a) constructs the component with `{ projectName, projectSlug, initialItems }`. Task 3's NEW test cases MUST also pass `project` and `approvedCount` — do NOT use shorthand `items=[]` or `slug=` since those props do not exist on the shipped component.
+
+    5. **No code changes in this task** — it is verification + alignment. The reconciliation is consumed by Tasks 1 + 3 below.
+  </action>
+  <verify>
+    <automated>grep -c "interface Props" src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx &amp;&amp; grep -c "projectName: string" src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx &amp;&amp; grep -c "projectSlug: string" src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx &amp;&amp; grep -c "initialItems:" src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx</automated>
+  </verify>
+  <acceptance_criteria>
+    - `grep -c "projectName: string" src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx` returns >= 1
+    - `grep -c "projectSlug: string" src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx` returns >= 1
+    - `grep -c "initialItems: BuildPlanItem" src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx` returns >= 1
+    - Executor has read the shipped file and confirmed the actual prop names BEFORE writing Tasks 1 + 3 edits.
+  </acceptance_criteria>
+  <done>Prop shape reconciliation complete; Tasks 1 + 3 will EXTEND `{ projectName, projectSlug, initialItems }` with `project` + `approvedCount` (not replace them).</done>
+</task>
+
+<task type="auto">
   <name>Task 1: Extend page.tsx server component to load project row and pass project + approvedCount to NextBuildPlanClient</name>
   <files>src/app/admin/modules/next-build-plan/[slug]/page.tsx</files>
   <read_first>
@@ -146,21 +198,23 @@ Locked tooltip + fallback strings (CONTEXT.md):
     ```
     Drizzle returns the new buildTriggerMode + localPath columns automatically since they are in the shared schema after 37-01.
 
-    2. Update the NextBuildPlanClient render in the JSX to pass two new props alongside any existing ones:
+    2. Update the NextBuildPlanClient render in the JSX. The shipped Phase 36-05a page passes `projectName`, `projectSlug`, `initialItems` (per Task 0 reconciliation). EXTEND that call by adding `project` + `approvedCount` props (do NOT rename the existing props):
     ```tsx
     <NextBuildPlanClient
-      items={items}
-      slug={slug}
-      project={{
+      projectName={project.name}            // EXISTING — Phase 36-05a (keep)
+      projectSlug={slug}                    // EXISTING — Phase 36-05a (keep)
+      initialItems={items}                  // EXISTING — Phase 36-05a (keep)
+      project={{                            // NEW — Phase 37-05
         id: project.id,
         key: project.key,
         name: project.name,
         buildTriggerMode: project.buildTriggerMode as BuildTriggerMode,
         localPath: project.localPath ?? null,
       }}
-      approvedCount={items.length}
+      approvedCount={items.length}          // NEW — Phase 37-05
     />
     ```
+    If the shipped page.tsx does not currently destructure `project.id`, `project.key`, `project.buildTriggerMode`, `project.localPath` from the projects SELECT, add them to the select — drizzle's `db.select().from(projects)` already returns the full row after 37-01's schema bump, so they should be available without changes to the query.
 
     3. ADD imports at the top of the file as needed (only if not already present):
     - `import { projects } from '@/db/schema';`
@@ -207,11 +261,11 @@ Locked tooltip + fallback strings (CONTEXT.md):
     - Modal mount triggers fetch exactly ONCE (never refetches on re-render)
   </behavior>
   <action>
-    1. WRITE TEST FIRST (RED). Create `src/app/admin/modules/next-build-plan/[slug]/GenerateBuildModal.test.tsx`. Follow the Vitest + React Testing Library pattern from `src/app/admin/modules/pipeline/[slug]/PromoteButton.test.tsx`. Mock navigator.clipboard, mock fetch globally, control timers with vi.useFakeTimers for the 2-second fallback assertion:
+    1. WRITE TEST FIRST (RED). Create `src/app/admin/modules/next-build-plan/[slug]/GenerateBuildModal.test.tsx`. Follow the Vitest + React Testing Library pattern from `src/app/admin/modules/pipeline/[slug]/PromoteButton.test.tsx`. Mock navigator.clipboard, mock fetch globally, control timers with vi.useFakeTimers for the 2-second fallback assertion. **W-2 import-reuse:** if RTL helpers (render/screen/fireEvent/cleanup/waitFor) are already imported by an existing test file in this directory, the executor should follow the same `import { ... } from '@testing-library/react'` pattern; this is a NEW test file so we add the imports fresh — no shared import file to coordinate with.
     ```typescript
     import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
     import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
-    import GenerateBuildModal from './GenerateBuildModal';
+    import GenerateBuildModal, { buildDeepLink } from './GenerateBuildModal';
 
     afterEach(cleanup);
 
@@ -276,21 +330,35 @@ Locked tooltip + fallback strings (CONTEXT.md):
         fireEvent.click(screen.getByRole('button', { name: /Copy to clipboard/i }));
         await waitFor(() => expect(writeTextMock).toHaveBeenCalledWith('FAKE PROMPT BODY'));
       });
-      it('Open click sets window.location.href to claude-code:// URL with encoded prompt and cwd', async () => {
+      // ── W-4 fix: assert the pure helper directly (not the side effect) ──
+      it('buildDeepLink: with localPath produces claude-code://open?prompt=...&cwd=...', () => {
+        const url = buildDeepLink('hello world', '/Users/m/tmi');
+        expect(url.startsWith('claude-code://open?prompt=')).toBe(true);
+        expect(url).toContain(`prompt=${encodeURIComponent('hello world')}`);
+        expect(url).toContain(`cwd=${encodeURIComponent('/Users/m/tmi')}`);
+      });
+      it('buildDeepLink: without localPath omits cwd param', () => {
+        const url = buildDeepLink('hello world', null);
+        expect(url.startsWith('claude-code://open?prompt=')).toBe(true);
+        expect(url).not.toContain('cwd=');
+      });
+      // ── I-1: special-char path encoding ──
+      it('buildDeepLink: special-character path is URL-encoded correctly', () => {
+        const url = buildDeepLink('p', '/Users/mike/my projects/triarch & co/dev (work)/path with #hash');
+        expect(url).toContain('cwd=');
+        expect(url).toContain(encodeURIComponent('/Users/mike/my projects/triarch & co/dev (work)/path with #hash'));
+        // sanity: spaces become %20, ampersand becomes %26, # becomes %23, parens stay
+        expect(url).toContain('%20');
+        expect(url).toContain('%26');
+        expect(url).toContain('%23');
+      });
+      // ── Side-effect smoke test (kept lightweight; helper above does the heavy lifting) ──
+      it('Open click invokes buildDeepLink and assigns window.location.href once', async () => {
         render(<GenerateBuildModal slug="tmi" project={project} onClose={() => {}} />);
         await waitFor(() => screen.getByRole('button', { name: /Open in Claude Code/i }));
         fireEvent.click(screen.getByRole('button', { name: /Open in Claude Code/i }));
-        expect(hrefAssignments.at(-1)).toMatch(/^claude-code:\/\/open\?prompt=/);
-        expect(hrefAssignments.at(-1)).toContain('cwd=');
-        expect(hrefAssignments.at(-1)).toContain(encodeURIComponent('/Users/m/tmi'));
-      });
-      it('Open click without localPath omits cwd param', async () => {
-        const noPathProject = { ...project, localPath: null };
-        render(<GenerateBuildModal slug="tmi" project={noPathProject} onClose={() => {}} />);
-        await waitFor(() => screen.getByRole('button', { name: /Open in Claude Code/i }));
-        fireEvent.click(screen.getByRole('button', { name: /Open in Claude Code/i }));
-        expect(hrefAssignments.at(-1)).toMatch(/^claude-code:\/\/open\?prompt=/);
-        expect(hrefAssignments.at(-1)).not.toContain('cwd=');
+        expect(hrefAssignments.length).toBe(1);
+        expect(hrefAssignments[0]).toBe(buildDeepLink('FAKE PROMPT BODY', '/Users/m/tmi'));
       });
       it('after 2 seconds following Open click, renders fallback hint', async () => {
         vi.useFakeTimers();
@@ -343,6 +411,17 @@ Locked tooltip + fallback strings (CONTEXT.md):
       slug: string;
       project: ProjectLite;
       onClose: () => void;
+    }
+
+    // ── W-4 fix: pure helper extracted so tests can assert the URL contract directly,
+    //          decoupling from JSDOM's window.location assignment fragility.
+    export function buildDeepLink(prompt: string, localPath: string | null): string {
+      const encoded = encodeURIComponent(prompt);
+      let url = `claude-code://open?prompt=${encoded}`;
+      if (localPath) {
+        url += `&cwd=${encodeURIComponent(localPath)}`;
+      }
+      return url;
     }
 
     type Phase =
@@ -417,12 +496,9 @@ Locked tooltip + fallback strings (CONTEXT.md):
 
       function handleOpen() {
         if (phase.kind !== 'ready') return;
-        const encoded = encodeURIComponent(phase.prompt);
-        let url = `claude-code://open?prompt=${encoded}`;
-        if (project.localPath) {
-          url += `&cwd=${encodeURIComponent(project.localPath)}`;
-        }
-        window.location.href = url;
+        // W-4 fix: deep-link construction extracted to pure helper for testability;
+        // window.location.href assignment is the only side-effect line here.
+        window.location.href = buildDeepLink(phase.prompt, project.localPath);
         if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
         fallbackTimer.current = setTimeout(() => setShowFallback(true), 2000);
       }
@@ -443,7 +519,7 @@ Locked tooltip + fallback strings (CONTEXT.md):
           <div className="bg-zinc-900 border border-zinc-800 rounded-lg w-full max-w-3xl mx-4 max-h-[85vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
               <h2 id="generate-build-title" className="text-sm font-semibold text-zinc-200">
-                Generate build for {project.name}
+                Generate Build for {project.name}
               </h2>
               <button onClick={onClose} aria-label="Close" className="text-zinc-500 hover:text-zinc-200">
                 <X size={16} />
@@ -531,6 +607,7 @@ Locked tooltip + fallback strings (CONTEXT.md):
     - `grep -c "aria-modal=\"true\"" src/app/admin/modules/next-build-plan/[slug]/GenerateBuildModal.tsx` returns 1
     - `grep -c "Did Claude Code open" src/app/admin/modules/next-build-plan/[slug]/GenerateBuildModal.tsx` returns 1 (locked fallback string)
     - `grep -c "Managed Agent" src/app/admin/modules/next-build-plan/[slug]/GenerateBuildModal.tsx` returns 0 (managed_agent never reaches this modal — disabled at parent in Task 3)
+    - `grep -c "export function buildDeepLink" src/app/admin/modules/next-build-plan/[slug]/GenerateBuildModal.tsx` returns 1 (W-4: pure helper extracted for direct test)
   </acceptance_criteria>
   <done>GenerateBuildModal renders loading -> preview -> Copy/Open with deep-link + 2-sec fallback + Escape close; 10 RTL tests green.</done>
 </task>
@@ -545,7 +622,7 @@ Locked tooltip + fallback strings (CONTEXT.md):
     - .planning/phases/37-claude-code-build-trigger/37-CONTEXT.md (UX: button placement top-right of header, primary violet styling, disabled tooltips)
   </read_first>
   <behavior>
-    - Header now contains an additional button labelled "Generate build" placed at the right of the header row
+    - Header now contains an additional button labelled "Generate Build" placed at the right of the header row
     - When approvedCount === 0 the button is disabled and has title="Approve at least one item to generate a build"
     - When project.buildTriggerMode === 'managed_agent' the button is disabled and has title="Managed Agent variant ships in v2.5"
     - When enabled, clicking the button mounts GenerateBuildModal with props { slug, project, onClose: closes modal }
@@ -555,40 +632,40 @@ Locked tooltip + fallback strings (CONTEXT.md):
   <action>
     1. WRITE TESTS FIRST (RED): EXTEND `src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.test.tsx` with a new describe block (do NOT remove existing tests):
     ```typescript
-    describe('Phase 37 — Generate build button + modal', () => {
+    describe('Phase 37 — Generate Build button + modal', () => {
       const project = { id: 'p1', key: 'tmi', name: 'TMI', buildTriggerMode: 'local_claude' as const, localPath: null };
 
-      it('renders Generate build button enabled when approvedCount > 0', () => {
+      it('renders Generate Build button enabled when approvedCount > 0', () => {
         render(<NextBuildPlanClient items={[/* some items */]} slug="tmi" project={project} approvedCount={3} />);
-        const btn = screen.getByRole('button', { name: /Generate build/ });
+        const btn = screen.getByRole('button', { name: /Generate Build/ });
         expect(btn).toBeInTheDocument();
         expect((btn as HTMLButtonElement).disabled).toBe(false);
       });
 
-      it('disables Generate build button when approvedCount === 0 with tooltip', () => {
+      it('disables Generate Build button when approvedCount === 0 with tooltip', () => {
         render(<NextBuildPlanClient items={[]} slug="tmi" project={project} approvedCount={0} />);
-        const btn = screen.getByRole('button', { name: /Generate build/ });
+        const btn = screen.getByRole('button', { name: /Generate Build/ });
         expect((btn as HTMLButtonElement).disabled).toBe(true);
         expect(btn).toHaveAttribute('title', 'Approve at least one item to generate a build');
       });
 
-      it('disables Generate build button when buildTriggerMode === managed_agent with v2.5 tooltip', () => {
+      it('disables Generate Build button when buildTriggerMode === managed_agent with v2.5 tooltip', () => {
         render(<NextBuildPlanClient items={[/* some items */]} slug="tmi" project={{ ...project, buildTriggerMode: 'managed_agent' }} approvedCount={2} />);
-        const btn = screen.getByRole('button', { name: /Generate build/ });
+        const btn = screen.getByRole('button', { name: /Generate Build/ });
         expect((btn as HTMLButtonElement).disabled).toBe(true);
         expect(btn).toHaveAttribute('title', 'Managed Agent variant ships in v2.5');
       });
 
-      it('clicking Generate build opens the modal (role=dialog appears)', () => {
+      it('clicking Generate Build opens the modal (role=dialog appears)', () => {
         render(<NextBuildPlanClient items={[/* some items */]} slug="tmi" project={project} approvedCount={2} />);
         expect(screen.queryByRole('dialog')).toBeNull();
-        fireEvent.click(screen.getByRole('button', { name: /Generate build/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Generate Build/ }));
         expect(screen.getByRole('dialog')).toBeInTheDocument();
       });
 
       it('closing the modal removes it from the DOM', () => {
         render(<NextBuildPlanClient items={[/* some items */]} slug="tmi" project={project} approvedCount={2} />);
-        fireEvent.click(screen.getByRole('button', { name: /Generate build/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Generate Build/ }));
         // Mock fetch so the modal doesn't error during its mount fetch
         // (existing mock pattern in 36-05a tests already stubs fetch globally; just rely on it).
         fireEvent.click(screen.getByLabelText(/Close/));
@@ -639,7 +716,7 @@ Locked tooltip + fallback strings (CONTEXT.md):
       title={disabledTitle}
       className="px-3 py-1.5 text-xs rounded bg-violet-600 hover:bg-violet-500 text-white disabled:bg-zinc-700 disabled:text-zinc-500 disabled:cursor-not-allowed"
     >
-      Generate build
+      Generate Build
     </button>
     ```
 
@@ -660,7 +737,7 @@ Locked tooltip + fallback strings (CONTEXT.md):
     <automated>npx vitest run "src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.test.tsx"</automated>
   </verify>
   <acceptance_criteria>
-    - `grep -c "Generate build" src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx` returns >= 1
+    - `grep -c "Generate Build" src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx` returns >= 1
     - `grep -c "GenerateBuildModal" src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx` returns >= 2 (import + render)
     - `grep -c "Approve at least one item to generate a build" src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx` returns 1 (locked tooltip)
     - `grep -c "Managed Agent variant ships in v2.5" src/app/admin/modules/next-build-plan/[slug]/NextBuildPlanClient.tsx` returns 1 (locked tooltip)
@@ -668,13 +745,13 @@ Locked tooltip + fallback strings (CONTEXT.md):
     - `npx next build` exits 0
     - No regression in any prior 36-05a test
   </acceptance_criteria>
-  <done>Generate build button wired into header with disabled states for 0-items and managed_agent; modal opens on click; closing removes it; all tests green.</done>
+  <done>Generate Build button wired into header with disabled states for 0-items and managed_agent; modal opens on click; closing removes it; all tests green.</done>
 </task>
 
 </tasks>
 
 <verification>
-- Generate build button visible in /admin/modules/next-build-plan/{slug} page header (covered by Task 3 Test 1)
+- Generate Build button visible in /admin/modules/next-build-plan/{slug} page header (covered by Task 3 Test 1)
 - Disabled tooltips render the locked strings (Tasks 3 Test 2 + 3)
 - Clicking opens dialog (role='dialog'+aria-modal); fetch called once on mount (Task 2 Test 1 + Task 3 Test 4)
 - Copy writes to clipboard with the full prompt (Task 2 Test 5)
@@ -686,15 +763,17 @@ Locked tooltip + fallback strings (CONTEXT.md):
 </verification>
 
 <success_criteria>
-- Mike navigates to /admin/modules/next-build-plan/tmi after approving 1+ items: the Generate build button is enabled
+- Mike navigates to /admin/modules/next-build-plan/tmi after approving 1+ items: the Generate Build button is enabled
 - Clicking shows modal with prompt preview within ~1s (server-side generation + audit insert)
 - Copy puts the prompt on the clipboard verifiable in any text editor
 - Open launches Claude Code locally (or shows fallback hint after 2s on systems without the URL scheme registered)
-- Every click of Generate build leaves an approval_events row visible on the Plan 37-06 audit page
+- Every click of Generate Build leaves an approval_events row visible on the Plan 37-06 audit page
 - ROADMAP success criterion satisfied: "Both modes work: clipboard mode confirms via toast; deep-link mode opens Claude Code locally (manual UAT)"
 </success_criteria>
 
 <output>
+**Executor context-monitoring guidance (W-7):** This plan modifies 5 files including 2 new client components + 2 test files. If context usage exceeds 70% partway through Task 3, finish the current task atomically (commit) then `/clear` BEFORE starting Task 3 so the executor begins Task 3 with fresh context. Do NOT split the plan structurally — the wave dependencies are correct; only the in-session compaction guidance is added here.
+
 After completion, create `.planning/phases/37-claude-code-build-trigger/37-05-generate-build-ui-SUMMARY.md` documenting:
 - Final NextBuildPlanClient prop signature (additions vs Phase 36-05a baseline)
 - Test count: new cases in NextBuildPlanClient.test.tsx (>= 5) + GenerateBuildModal.test.tsx (>= 8)
