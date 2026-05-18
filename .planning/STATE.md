@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Build Cycle Workflow
 status: active
-stopped_at: "Completed 37-02-build-prompt-generator-PLAN.md (TDD: 18/18 GREEN; buildPrompt pure function contract for 37-03 + 37-05)"
-last_updated: "2026-05-18T20:12:00.000Z"
+stopped_at: "Completed 37-03-generate-build-api-PLAN.md (TDD: 10/10 GREEN; POST /api/admin/projects/[slug]/generate-build staff-gated; writes approval_events audit row; TRIG-06 complete)"
+last_updated: "2026-05-18T20:13:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 2
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (last updated 2026-05-18 — v2.4 milestone opened)
 ## Current Position
 
 Phase: 37
-Plan: 02 complete (TRIG-01 shipped); 03/04 in parallel sessions; 05/06 pending Wave 3
+Plan: 02 complete (TRIG-01 shipped); 03 complete (TRIG-06 shipped); 04 in parallel session; 05/06 pending Wave 3
 
 ## Active Milestone: v2.4 — Build Cycle Workflow
 

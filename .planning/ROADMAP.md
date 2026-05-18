@@ -565,7 +565,7 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
 - [ ] 37-01-shared-schema-additions-PLAN.md — Shared schema: projects.build_trigger_mode + projects.local_path + new approval_events table; bump shared 0.5.0 -> 0.6.0; publish + db:push dance (Wave 1; gates everything)
 - [x] 37-02-build-prompt-generator-PLAN.md — src/lib/build-prompt.ts pure-function TDD generator (Wave 2; TRIG-01)
 - [x] 37-03-generate-build-api-PLAN.md — POST /api/admin/projects/[slug]/generate-build (server-side + audit insert; Wave 2; TRIG-06)
-- [ ] 37-04-project-admin-trigger-mode-PLAN.md — Project admin UI: BuildTriggerSection + PUT endpoint extension (Wave 2; TRIG-05)
+- [x] 37-04-project-admin-trigger-mode-PLAN.md — Project admin UI: BuildTriggerSection + PUT endpoint extension (Wave 2; TRIG-05)
 - [ ] 37-05-generate-build-ui-PLAN.md — Extend NextBuildPlanClient with Generate Build button + modal + Copy/Open + deep-link fallback (Wave 3; TRIG-02 TRIG-03 TRIG-04)
 - [ ] 37-06-approval-events-audit-page-PLAN.md — New /admin/platform/approval-audit page + GET /api/platform/approval-events route (Wave 3; TRIG-06 surface)
 
