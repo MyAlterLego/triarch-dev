@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Dev/Prod Contract Adoption
 status: executing
-stopped_at: Completed Phase 35 Plan 01 (CL-1..CL-6 compliance matrix UI on admin ci-cd page; v2.13.17)
-last_updated: "2026-05-18T18:19:26.899Z"
+stopped_at: Completed Task 1 of 36-05a-PLAN.md; Task 2 visual checkpoint deferred to user
+last_updated: "2026-05-18T18:44:14.323Z"
 progress:
   total_phases: 9
   completed_phases: 2
@@ -230,6 +230,7 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 - [Phase 35]: CL-1 derives expected dev hostname from deployedUrl (green=pattern derivable); CL-6 uses single inArray batch query; CL-4 reuses existing verdict; CL-2/3/5 scaffolded grey with deferred HTTP/GitHub fetch reason
 - [Phase 36-inclusion-approval-state-machine]: Status audit folded INTO new db.transaction along with inclusionState audit — pre-existing fire-and-forget pattern eliminated for this endpoint pair (atomicity bonus)
 - [Phase 36-inclusion-approval-state-machine]: Vitest db.transaction(fn) mock immediately invokes fn(tx) with tx exposing update+insert wired to vi.fn() recorders; rollback simulated via closure flag making tx.insert.values reject (no real CRDB needed)
+- [Phase 36-inclusion-approval-state-machine]: Plan 36-05a: FilterChips duplicated locally as NextBuildPlanFilterChips (upstream bound to fix/feature/other; this page needs bug/feature). 8 Vitest tests GREEN. Task 2 visual verification deferred to user.
 
 ### Pending Todos
 
@@ -247,8 +248,8 @@ v2.2 decisions captured at roadmap creation (2026-05-08):
 
 ## Session Continuity
 
-Last session: 2026-05-16T21:55:09.677Z
-Stopped at: Completed Phase 35 Plan 01 (CL-1..CL-6 compliance matrix UI on admin ci-cd page; v2.13.17)
+Last session: 2026-05-18T18:44:14.320Z
+Stopped at: Completed Task 1 of 36-05a-PLAN.md; Task 2 visual checkpoint deferred to user
 Resume file: None
 Next action: Complete HUMAN-UAT A-G for security-portal (resolve dormant dev branch, FAH portal-dev backend, DNS, GCP secrets, ADMIN_API_TOKEN, npm install after shared-ui publishes, merge PR). See 34-HUMAN-UAT.md.
 
@@ -271,3 +272,4 @@ Next action: Complete HUMAN-UAT A-G for security-portal (resolve dormant dev bra
 | Phase 33 P01 (security-admin two-env restructure) | ~25 min | 5 tasks | 5 files |
 | Phase 34 P01 (security-portal two-env restructure) | ~20 min | 5 tasks | 5 files |
 | Phase 36-inclusion-approval-state-machine P02 | 12min | 3 tasks | 8 files |
+| Phase 36-inclusion-approval-state-machine P05a | 5min | 1 tasks | 3 files |
