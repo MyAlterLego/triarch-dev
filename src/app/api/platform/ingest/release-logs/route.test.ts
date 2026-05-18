@@ -110,11 +110,21 @@ describe('POST /api/platform/ingest/release-logs (CL-6 pre-check)', () => {
     vi.clearAllMocks();
     selectResult = [];
     selectMock.mockImplementation(() => selectResult);
-    insertValuesMock.mockReturnValue({
-      returning: vi.fn().mockResolvedValue([FAKE_RELEASE_ROW]),
-    });
+    // Echo any fields the caller INSERTed onto the returned row (matches real
+    // PG/Drizzle .returning() behavior). Phase 36 INCL-06 reads release.commitSha
+    // off the returned row to pass through to stampLinksFromCommit.
+    insertValuesMock.mockImplementation((row: Record<string, unknown>) => ({
+      returning: vi.fn().mockResolvedValue([{ ...FAKE_RELEASE_ROW, ...row }]),
+    }));
     insertMock.mockReturnValue({ values: insertValuesMock });
     requireApiKeyMock.mockResolvedValue({ error: null, project: FAKE_PROJECT });
+    // Reset stamper mock to default zero-shape between tests
+    stampLinksFromCommitMock.mockResolvedValue({
+      stamped: 0,
+      dropped: 0,
+      autoFlipped: 0,
+      orphanLinks: 0,
+    });
   });
 
   afterEach(() => {
