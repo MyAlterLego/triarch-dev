@@ -379,7 +379,7 @@ One-click handoff from "build plan approved" to "Claude Code (or future Managed 
 
 Design-only deliverable for v2.4. Implementation lands in v2.5.
 
-- [ ] **AGENT-01**: Write `.planning/research/MANAGED-AGENT-RFC.md` — design doc covering: (a) Anthropic Managed Agent platform fit assessment, (b) webhook contract from admin → agent, (c) agent playbook structure (what files it reads, what tools it calls, what guardrails it has), (d) failure modes + recovery, (e) per-project opt-in mechanic via `build_trigger_mode='managed_agent'`, (f) trust boundary (agent has GitHub write + admin API write, but only via dispatching pre-existing workflows — cannot push code directly).
+- [x] **AGENT-01**: Write `.planning/research/MANAGED-AGENT-RFC.md` — design doc covering: (a) Anthropic Managed Agent platform fit assessment, (b) webhook contract from admin → agent, (c) agent playbook structure (what files it reads, what tools it calls, what guardrails it has), (d) failure modes + recovery, (e) per-project opt-in mechanic via `build_trigger_mode='managed_agent'`, (f) trust boundary (agent has GitHub write + admin API write, but only via dispatching pre-existing workflows — cannot push code directly).
 
 ## v2.4 Out of Scope
 
@@ -411,7 +411,7 @@ Design-only deliverable for v2.4. Implementation lands in v2.5.
 | TRIG-04 | Phase 37 | Complete |
 | TRIG-05 | Phase 37 | Complete |
 | TRIG-06 | Phase 37 | Complete |
-| AGENT-01 | Phase 38 | Pending |
+| AGENT-01 | Phase 38 | Complete |
 
 **v2.4 Coverage:**
 - v2.4 requirements: 15 total (INCL: 8 · TRIG: 6 · AGENT: 1)

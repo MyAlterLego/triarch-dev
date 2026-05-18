@@ -579,8 +579,8 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
 - RFC explicitly states: agent only dispatches pre-existing workflows; cannot push code directly; cannot mutate admin schema; failure modes route to existing human-checkpoint admin paths
 - No code changes ship in this phase
 
-**Plans:** 0 plans (to be planned)
-- [ ] TBD (run /gsd:plan-phase 38 to break down)
+**Plans:** 1 deliverable (design-only; no decomposed plans)
+- [x] 38-managed-agent-variant-rfc — RFC at `.planning/research/MANAGED-AGENT-RFC.md` (941 lines; commit `e1326ab`); all 6 AGENT-01 sections present; v2.5 implementation phases TBD
 
 ---
 
@@ -590,7 +590,7 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
 |-------|------|------|--------|
 | 36 | Inclusion Approval State Machine | INCL-01..08 | Complete 2026-05-18 |
 | 37 | Claude Code Build Trigger | TRIG-01..06 | Complete 2026-05-18 |
-| 38 | Managed Agent Variant RFC | AGENT-01 | Not started |
+| 38 | Managed Agent Variant RFC | AGENT-01 | Complete 2026-05-18 |
 
 **v2.4 coverage:** 15/15 requirements mapped to phases.
 **Pilot:** TMI only. Soft prescription for 30 days post Phase 37 ship → evaluate hard gate as v3.0 candidate.
