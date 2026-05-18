@@ -43,6 +43,17 @@ const feature1: BuildPlanItem = {
 
 const ALL_ITEMS = [bug1, feature1, bug2]; // mixed order
 
+// ── Phase 37-05: shared project fixture for the new required props ────────
+// (Existing Phase 36-05a tests still pass the original 3 props; the new
+// `project` + `approvedCount` are accepted but unused by the 36-05a paths.)
+const defaultProject = {
+  id: 'project-uuid-tmi',
+  key: 'tmi',
+  name: 'TMI',
+  buildTriggerMode: 'local_claude' as const,
+  localPath: null as string | null,
+};
+
 // ── Test setup ────────────────────────────────────────────────────────────
 beforeEach(() => {
   mockReplace.mockClear();
@@ -66,6 +77,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -94,6 +107,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -119,6 +134,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -136,6 +153,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -156,6 +175,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -200,6 +221,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 
@@ -224,6 +247,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={[]}
+        project={defaultProject}
+        approvedCount={0}
       />,
     );
 
@@ -243,6 +268,8 @@ describe('NextBuildPlanClient', () => {
         projectName="TMI"
         projectSlug="tmi"
         initialItems={ALL_ITEMS}
+        project={defaultProject}
+        approvedCount={ALL_ITEMS.length}
       />,
     );
 

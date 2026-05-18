@@ -21,6 +21,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import type { BuildTriggerMode } from '@/lib/build-trigger-mode';
 
 // ── Public types ─────────────────────────────────────────────────────────
 export type BuildPlanItemType = 'bug' | 'feature';
@@ -36,9 +37,18 @@ export interface BuildPlanItem {
 }
 
 interface Props {
-  projectName: string;
-  projectSlug: string;
-  initialItems: BuildPlanItem[];
+  projectName: string;       // EXISTING — Phase 36-05a
+  projectSlug: string;       // EXISTING — Phase 36-05a
+  initialItems: BuildPlanItem[]; // EXISTING — Phase 36-05a
+  // ── Phase 37-05 additions: project row + approval count for Generate Build button/modal ──
+  project: {
+    id: string;
+    key: string;
+    name: string;
+    buildTriggerMode: BuildTriggerMode;
+    localPath: string | null;
+  };
+  approvedCount: number;
 }
 
 // ── Pill colors (CONTEXT D-Admin-UI: violet/teal/blue/zinc; type-pill differentiates rows) ──
