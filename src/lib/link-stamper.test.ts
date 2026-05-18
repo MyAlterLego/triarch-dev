@@ -336,7 +336,9 @@ describe('stampLinksFromCommit', () => {
       projectKey: PROJ_KEY,
     });
 
-    expect(result).toEqual({ stamped: 0, dropped: 0 });
+    // Phase 36 INCL-06: StampResult extended with autoFlipped + orphanLinks;
+    // fast-path returns zero for all four counters.
+    expect(result).toEqual({ stamped: 0, dropped: 0, autoFlipped: 0, orphanLinks: 0 });
     expect(mockDbSelectFromWhere).not.toHaveBeenCalled();
     expect(mockDbInsertValues).not.toHaveBeenCalled();
   });
@@ -348,7 +350,7 @@ describe('stampLinksFromCommit', () => {
       projectKey: PROJ_KEY,
     });
 
-    expect(result).toEqual({ stamped: 0, dropped: 0 });
+    expect(result).toEqual({ stamped: 0, dropped: 0, autoFlipped: 0, orphanLinks: 0 });
     expect(mockDbSelectFromWhere).not.toHaveBeenCalled();
   });
 
