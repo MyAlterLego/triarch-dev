@@ -1,1 +1,1 @@
-export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? 'v2.16.1';
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? 'v2.17.0';
