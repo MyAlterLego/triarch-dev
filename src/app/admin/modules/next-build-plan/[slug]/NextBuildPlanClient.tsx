@@ -22,6 +22,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import type { BuildTriggerMode } from '@/lib/build-trigger-mode';
+import GenerateBuildModal from './GenerateBuildModal';
 
 // ── Public types ─────────────────────────────────────────────────────────
 export type BuildPlanItemType = 'bug' | 'feature';
@@ -139,10 +140,23 @@ export default function NextBuildPlanClient({
   projectName,
   projectSlug,
   initialItems,
+  project,
+  approvedCount,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // ── Phase 37-05: Generate Build button + modal state ──
+  const [modalOpen, setModalOpen] = useState(false);
+  const noItems = approvedCount === 0;
+  const isManagedAgent = project.buildTriggerMode === 'managed_agent';
+  const generateDisabled = noItems || isManagedAgent;
+  const generateDisabledTitle = noItems
+    ? 'Approve at least one item to generate a build'
+    : isManagedAgent
+      ? 'Managed Agent variant ships in v2.5'
+      : undefined;
 
   const initialTypeFromUrl = (searchParams?.get('type') ?? 'all') as TypeFilter;
   const validInitialType: TypeFilter = ['all', 'bug', 'feature'].includes(initialTypeFromUrl)
@@ -229,11 +243,23 @@ export default function NextBuildPlanClient({
   // ── Render ───────────────────────────────────────────────
   return (
     <div className="p-8 max-w-5xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-zinc-100 mb-1">Next build plan</h1>
-        <p className="text-sm text-zinc-500">
-          {projectName} · items approved for the next build
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-zinc-100 mb-1">Next build plan</h1>
+          <p className="text-sm text-zinc-500">
+            {projectName} · items approved for the next build
+          </p>
+        </div>
+        {/* Phase 37-05 TRIG-02 — Generate Build button (top-right of header) */}
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          disabled={generateDisabled}
+          title={generateDisabledTitle}
+          className="shrink-0 px-3 py-1.5 text-xs rounded bg-violet-600 hover:bg-violet-500 text-white disabled:bg-zinc-700 disabled:text-zinc-500 disabled:cursor-not-allowed"
+        >
+          Generate Build
+        </button>
       </div>
 
       {/* Filter chips */}
@@ -333,6 +359,15 @@ export default function NextBuildPlanClient({
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Phase 37-05 TRIG-02/03 — Modal mounts on demand; unmounts on close */}
+      {modalOpen && (
+        <GenerateBuildModal
+          slug={projectSlug}
+          project={project}
+          onClose={() => setModalOpen(false)}
+        />
       )}
     </div>
   );
