@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Build Cycle Workflow
 status: active
-stopped_at: "Completed 37-03-generate-build-api-PLAN.md (TDD: 10/10 GREEN; POST /api/admin/projects/[slug]/generate-build staff-gated; writes approval_events audit row; TRIG-06 complete)"
-last_updated: "2026-05-18T20:13:00.000Z"
+stopped_at: "Completed 37-04-project-admin-trigger-mode-PLAN.md (TRIG-05: PUT route + BuildTriggerSection client + page embed; 13 Vitest cases GREEN; B-2 Pitfall 9 anchor preserved)"
+last_updated: "2026-05-18T20:13:25.000Z"
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 13
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Triarch Dev Admin — Project State
