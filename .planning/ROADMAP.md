@@ -567,7 +567,7 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
 - [x] 37-03-generate-build-api-PLAN.md — POST /api/admin/projects/[slug]/generate-build (server-side + audit insert; Wave 2; TRIG-06)
 - [x] 37-04-project-admin-trigger-mode-PLAN.md — Project admin UI: BuildTriggerSection + PUT endpoint extension (Wave 2; TRIG-05)
 - [ ] 37-05-generate-build-ui-PLAN.md — Extend NextBuildPlanClient with Generate Build button + modal + Copy/Open + deep-link fallback (Wave 3; TRIG-02 TRIG-03 TRIG-04)
-- [ ] 37-06-approval-events-audit-page-PLAN.md — New /admin/platform/approval-audit page + GET /api/platform/approval-events route (Wave 3; TRIG-06 surface)
+- [x] 37-06-approval-events-audit-page-PLAN.md — New /admin/platform/approval-audit page + GET /api/platform/approval-events route (Wave 3; TRIG-06 surface)
 
 ### Phase 38: Managed Agent Variant RFC
 
