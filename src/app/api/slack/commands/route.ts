@@ -23,7 +23,7 @@ import { db } from '@/lib/db';
 import { releaseLogs } from '@/db/schema';
 import { verifySlackSignature } from '@/lib/slack-crypto';
 import { resolveSlackUserEmail } from '@/lib/slack-identity';
-import { dispatchWorkflow, mergeBranchToMain } from '@/lib/github-app';
+import { dispatchWorkflow, ensurePullRequest, mergeBranchToMain } from '@/lib/github-app';
 import { recordSlackAudit } from '@/lib/slack-audit';
 import {
   fetchProjectStatus,
@@ -422,17 +422,54 @@ export async function POST(req: NextRequest) {
     const safeUrl = responseUrl ? parseSlackResponseUrl(responseUrl) : null;
     void (async () => {
       try {
+        // 1. Ensure a PR exists. ensurePullRequest is idempotent — it reuses
+        //    an open PR if one is already there, otherwise opens a new one
+        //    (auto-create per Mike's spec: a targeted `<project>` arg is the
+        //    safety boundary, so /triarch promote does the full create+merge).
+        const ensured = await ensurePullRequest({
+          owner,
+          repo,
+          headBranch,
+          baseBranch,
+          title: `Promote ${headBranch} → ${baseBranch}`,
+          body: `Auto-opened by OttoBot in response to \`/triarch promote ${projectArg}\` from <@${userId}>.\n\nMerge will use \`merge_method: merge\` (NOT squash) so dev's commit hashes survive in ${baseBranch}'s ancestry — needed for the \`verify-dev-deployed\` gate on consumer repos.`,
+        });
+
+        if ('ok' in ensured && ensured.ok === false) {
+          if (!safeUrl) return;
+          const text =
+            ensured.reason === 'no_commits_ahead'
+              ? `:information_source: Nothing to promote for \`${projectArg}\` — \`${headBranch}\` has no commits ahead of \`${baseBranch}\`.`
+              : `:x: Couldn't open promotion PR for \`${projectArg}\` (HTTP ${ensured.statusCode}): ${ensured.message}`;
+          // lgtm[js/request-forgery]
+          await fetch(safeUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ response_type: 'ephemeral', replace_original: false, text }),
+          });
+          return;
+        }
+
+        const prNumber = 'prNumber' in ensured ? ensured.prNumber : null;
+        const prUrl = 'htmlUrl' in ensured ? ensured.htmlUrl : null;
+        const wasCreated = 'created' in ensured && ensured.created === true;
+
+        // 2. Merge it.
         const result = await mergeBranchToMain({ owner, repo, headBranch, baseBranch });
         if (!safeUrl) return;
         let message: string;
         if (result.merged) {
+          const prefix = wasCreated
+            ? `:rocket: Opened <${prUrl}|PR #${prNumber}> and merged`
+            : `:white_check_mark: Merged`;
           message =
-            `:white_check_mark: Merged \`${projectArg}\` ${headBranch} → ${baseBranch} as merge commit. ` +
+            `${prefix} \`${projectArg}\` ${headBranch} → ${baseBranch} as merge commit. ` +
             `<https://github.com/${owner}/${repo}/pull/${result.prNumber}|PR #${result.prNumber}> · sha \`${result.sha.slice(0, 7)}\``;
         } else if (result.reason === 'no_open_pr') {
+          // Should not happen — we just ensured one. Surface clearly if it does.
           message =
-            `:warning: No open PR from \`${result.headBranch}\` → \`${result.baseBranch}\` for \`${projectArg}\`. ` +
-            `Open one first (\`gh pr create --base ${result.baseBranch} --head ${result.headBranch}\` on the repo).`;
+            `:warning: Lost the PR between create and merge for \`${projectArg}\`. ` +
+            `Inspect <https://github.com/${owner}/${repo}/pulls?q=is%3Apr+head%3A${encodeURIComponent(headBranch)}+base%3A${encodeURIComponent(baseBranch)}|open PRs> directly.`;
         } else {
           message =
             `:x: Merge failed for PR #${result.prNumber} (HTTP ${result.statusCode}): ` +
