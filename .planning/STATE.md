@@ -1,32 +1,43 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.3
-milestone_name: Dev/Prod Contract Adoption
-status: completed
-stopped_at: Completed Phase 35 Plan 01 (CL-1..CL-6 compliance matrix UI on admin ci-cd page; v2.13.17)
-last_updated: "2026-05-16T21:56:27.083Z"
+milestone: v2.4
+milestone_name: Build Cycle Workflow
+status: defining_requirements
+stopped_at: "v2.4 milestone opened 2026-05-18 — REQUIREMENTS.md drafted, ROADMAP.md being defined (phases 36-38)"
+last_updated: "2026-05-18T15:30:00.000Z"
 progress:
-  total_phases: 9
-  completed_phases: 2
-  total_plans: 13
-  completed_plans: 18
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Triarch Dev Admin — Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (last updated 2026-05-08 — v2.2 milestone started)
+See: `.planning/PROJECT.md` (last updated 2026-05-18 — v2.4 milestone opened)
 
 **Core value:** One control plane to create, manage, and ship Triarch projects — including a dev-to-prod gating workflow that lets customers approve releases before they go live.
-**Current focus:** Phase 28 — CL-4 Platform Self-Adopt
+**Current focus:** v2.4 Phase 36 — Inclusion Approval State Machine (TMI pilot)
 
 ## Current Position
 
-Phase: 35
-Plan: Not started
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-18 — Milestone v2.4 (Build Cycle Workflow) opened
 
-## Active Milestone: v2.2 — Customer Portal Split
+## Active Milestone: v2.4 — Build Cycle Workflow
+
+(see PROJECT.md for full milestone goals)
+
+Phases:
+- 36 — Inclusion Approval State Machine (INCL-01..07)
+- 37 — Claude Code Build Trigger (TRIG-01..05)
+- 38 — Managed Agent Variant RFC (AGENT-01)
+
+## Earlier Active Milestone: v2.2 — Customer Portal Split (largely shipped — Phases 21-23.1 complete)
 
 **Goal:** Fork the customer-facing surface out of `admin.triarch.dev` into its own Next.js app at `portal.triarch.dev`. Mirror the existing `triarchsecurity-admin` (staff) / `triarchsecurity-portal` (customer) precedent.
 

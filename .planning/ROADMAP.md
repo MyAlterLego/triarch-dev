@@ -526,3 +526,64 @@ Adopt the [Dev/Prod Distinction Contract](../public/ci-cd/dev-prod-customer-cont
 | 25. Cutover | v2.2 | 0/0 | Not started | - |
 | 26. Sunset (T+90) | v2.2 | 0/0 | Not started | - |
 
+
+### Phase 36: Inclusion Approval State Machine
+
+**Goal:** Add an explicit "decide what goes IN the next build" gate. Schema + admin UI + commit-parser extension + read-only customer portal page. Closes the gap that today lets every committed bug/feature reference auto-flow to the next prod deploy without a deliberate decision step. Pilot scope: TMI; rollout to other projects deferred to post-30-day-dogfooding review.
+**Requirements:** INCL-01..08 (8 reqs)
+**Depends on:** Phase 35
+**Success criteria:**
+- Schema migration adds `inclusion_state` + `next_release_log_id` to `bug_reports` and `feature_requests`; `npx drizzle-kit check` clean
+- Admin `/admin/modules/next-build-plan/{slug}` page lists `approved_for_build` items with inline remove-from-build action
+- Commit-parser auto-flips `approved_for_build → built` on commit ingest with proper `next_release_log_id` stamping; 100% of v2.1 Phase 11 tests still GREEN
+- Prod deploy completion auto-flips `built → deployed` (verified end-to-end against TMI pilot)
+- Portal `/projects/{slug}/upcoming` page renders the "what's coming" view, fetching from `/api/portal/projects/{slug}/upcoming` with cookie-based membership auth
+
+**Plans:** 0 plans (to be planned)
+- [ ] TBD (run /gsd:plan-phase 36 to break down)
+
+### Phase 37: Claude Code Build Trigger
+
+**Goal:** Bridge "build plan approved" → "Claude Code executing the build" with one click. Generates a structured GSD-compatible prompt from the approved items, presents two trigger modes (copy-to-clipboard for paste into existing session, deep-link for fresh-session launch), and stores a per-project preference for which mode the button defaults to. Audit-logs every trigger event.
+**Requirements:** TRIG-01..06 (6 reqs)
+**Depends on:** Phase 36
+**Success criteria:**
+- `src/lib/build-prompt.ts` generator produces a prompt that successfully drives a Claude Code session through `/gsd:plan-phase` for a pilot TMI item (manual UAT)
+- "Generate build" button on Next Build Plan page is disabled when 0 items approved, enabled otherwise
+- Both modes work: clipboard mode confirms via toast; deep-link mode opens Claude Code locally (manual UAT)
+- `projects.build_trigger_mode` column with check constraint; per-project preference editable from project admin UI
+- Every trigger writes a row to `approval_events` with the prompt excerpt for audit; visible in existing Slack audit page
+
+**Plans:** 0 plans (to be planned)
+- [ ] TBD (run /gsd:plan-phase 37 to break down)
+
+### Phase 38: Managed Agent Variant RFC
+
+**Goal:** Design (not implement) the Anthropic Managed Agent variant of the build trigger. Produce a written RFC covering platform fit, webhook contract, agent playbook, failure modes, opt-in mechanic, and trust boundary. Sets up v2.5 to make a quick implementation decision.
+**Requirements:** AGENT-01 (1 req)
+**Depends on:** Phase 37
+**Success criteria:**
+- `.planning/research/MANAGED-AGENT-RFC.md` exists with all six required sections (platform fit / webhook contract / playbook / failure modes / opt-in / trust boundary)
+- RFC explicitly states: agent only dispatches pre-existing workflows; cannot push code directly; cannot mutate admin schema; failure modes route to existing human-checkpoint admin paths
+- No code changes ship in this phase
+
+**Plans:** 0 plans (to be planned)
+- [ ] TBD (run /gsd:plan-phase 38 to break down)
+
+---
+
+## v2.4 — Build Cycle Workflow (active)
+
+| Phase | Name | Reqs | Status |
+|-------|------|------|--------|
+| 36 | Inclusion Approval State Machine | INCL-01..08 | Not started |
+| 37 | Claude Code Build Trigger | TRIG-01..06 | Not started |
+| 38 | Managed Agent Variant RFC | AGENT-01 | Not started |
+
+**v2.4 coverage:** 15/15 requirements mapped to phases.
+**Pilot:** TMI only. Soft prescription for 30 days post Phase 37 ship → evaluate hard gate as v3.0 candidate.
+
+---
+
+(end of roadmap entries below)
+- [ ] TBD (run /gsd:plan-phase 38 to break down)
