@@ -1,6 +1,6 @@
 {
   "name": "@triarchsecurity/triarch-shared",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Shared Drizzle schema + helpers consumed by triarch-dev admin and triarch-portal apps",
   "private": false,
   "main": "./dist/index.js",
