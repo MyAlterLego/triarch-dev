@@ -21,14 +21,16 @@ must_haves:
     - "Portal pins @triarchsecurity/triarch-shared@^0.5.0 (the discriminated-union version from Plan 36-06)"
     - "Portal's internal-dispatch.ts dispatchPromotion call adds intent: 'dispatch_promotion' to satisfy the new discriminated-union type"
     - "New portal helper src/lib/admin-fetch-upcoming.ts signs read_upcoming HMAC body, POSTs to admin /api/portal/projects/{slug}/upcoming, returns parsed items[]"
+    - "Helper reuses the EXISTING ADMIN_INTERNAL_DISPATCH_URL env var (NOT a new ADMIN_PORTAL_API_URL — per Mi-2 fix in revision pass, both endpoints target the same admin host per CL-1 hostname target state)"
     - "Portal page /projects/[slug]/upcoming is membership-gated (404 for non-members per PORTAL-03)"
     - "Customer view shows: title + type-pill + severity (bugs only) + state-pill (approved_for_build = violet 'Approved'; built = teal 'Built') + relative timestamp"
     - "Customer view does NOT render any staff-only field (verified via renderToStaticMarkup grep assertion)"
     - "Portal sub-nav layout.tsx adds Upcoming link active when pathname matches /projects/[slug]/upcoming"
     - "Existing portal Phase 22 dispatchPromotion path still works (existing tests pass)"
+    - "Shared package projects table is exported (Mi-1 fix verified read_first) — page imports from @triarchsecurity/triarch-shared/schema"
   artifacts:
     - path: "../portal/src/lib/admin-fetch-upcoming.ts"
-      provides: "Server-side helper: signs read_upcoming HMAC body, POSTs to admin, returns typed UpcomingItem[]"
+      provides: "Server-side helper: signs read_upcoming HMAC body, POSTs to admin via ADMIN_INTERNAL_DISPATCH_URL base, returns typed UpcomingItem[]"
       exports: ["fetchUpcomingFromAdmin", "UpcomingItem"]
     - path: "../portal/src/app/projects/[slug]/upcoming/page.tsx"
       provides: "Server-component page: auth + membership gate + fetchUpcomingFromAdmin call + render UpcomingClient"
@@ -48,7 +50,7 @@ must_haves:
       via: "server-side helper that signs+fetches admin endpoint"
       pattern: "fetchUpcomingFromAdmin"
     - from: "../portal/src/lib/admin-fetch-upcoming.ts"
-      to: "POST {admin}/api/portal/projects/{slug}/upcoming"
+      to: "POST {ADMIN_INTERNAL_DISPATCH_URL base}/api/portal/projects/{slug}/upcoming"
       via: "signRequest({intent:'read_upcoming'}) + fetch with X-HMAC-Signature header"
       pattern: "intent: 'read_upcoming'"
     - from: "../portal/src/app/projects/[slug]/layout.tsx"
@@ -58,7 +60,9 @@ must_haves:
 ---
 
 <objective>
-Land the customer-facing piece of INCL-08: portal page `/projects/[slug]/upcoming` that renders the "what's coming in the next build" view by fetching from the admin endpoint shipped in Plan 36-06. Portal must (1) bump pin to `@triarchsecurity/triarch-shared@^0.5.0`, (2) update existing `dispatchPromotion` to include `intent: 'dispatch_promotion'` (required after discriminated-union refactor), (3) ship a new `fetchUpcomingFromAdmin` helper that signs `intent: 'read_upcoming'` HMAC bodies and POSTs to admin, (4) build the page with membership gating (404 per PORTAL-03), and (5) add the Upcoming tab to the existing customer sub-nav.
+Land the customer-facing piece of INCL-08: portal page `/projects/[slug]/upcoming` that renders the "what's coming in the next build" view by fetching from the admin endpoint shipped in Plan 36-06. Portal must (1) bump pin to `@triarchsecurity/triarch-shared@^0.5.0`, (2) update existing `dispatchPromotion` to include `intent: 'dispatch_promotion'` (required after discriminated-union refactor), (3) ship a new `fetchUpcomingFromAdmin` helper that signs `intent: 'read_upcoming'` HMAC bodies and POSTs to admin via the existing `ADMIN_INTERNAL_DISPATCH_URL` env var base, (4) build the page with membership gating (404 per PORTAL-03), and (5) add the Upcoming tab to the existing customer sub-nav.
+
+**Mi-2 fix (revision pass):** Original plan introduced a new env var `ADMIN_PORTAL_API_URL` — that's unauthorized in CONTEXT.md and noted as an open question in RESEARCH. Per CL-1 hostname target state, both endpoints target the same admin host. Reuse `ADMIN_INTERNAL_DISPATCH_URL` (already bound in portal apphosting.yaml from Phase 22 WRITE-04). One less env var to introduce + bind.
 
 Purpose: INCL-08 — customers see "what's coming next" with transparency. Read-only (v2.4 hard constraint — no mutation). Closes Phase 36's customer-visible surface.
 Output: Portal pinned to 0.5.0, dispatchPromotion still works, new page renders membership-gated upcoming view, no staff-only field leaks, sub-nav updated.
@@ -82,6 +86,7 @@ Output: Portal pinned to 0.5.0, dispatchPromotion still works, new page renders 
 @../portal/src/app/projects/[slug]/releases/page.tsx
 @../portal/src/app/projects/[slug]/layout.tsx
 @../portal/package.json
+@packages/triarch-shared/src/schema.ts
 
 <interfaces>
 <!-- Portal's current dispatchPromotion. From ../portal/src/lib/internal-dispatch.ts:34-87. -->
@@ -106,7 +111,7 @@ if (!isMember) notFound();
 ```
 
 Admin endpoint contract (from Plan 36-06):
-- POST to `{ADMIN_PORTAL_API_URL}/api/portal/projects/{slug}/upcoming` (separate env var from ADMIN_INTERNAL_DISPATCH_URL — different endpoint)
+- POST to `{ADMIN_INTERNAL_DISPATCH_URL base}/api/portal/projects/{slug}/upcoming` (REUSED env var — per Mi-2 fix, NOT a new ADMIN_PORTAL_API_URL)
 - Body: signed `{intent: 'read_upcoming', projectKey: slug, actorEmail, timestamp, nonce}`
 - Headers: `X-HMAC-Signature: {signature}`
 - Response: `{items: Array<{id, type: 'bug'|'feature', title, severity: string|null, inclusionState: 'approved_for_build'|'built', updatedAt: Date}>}`
@@ -115,6 +120,10 @@ State pill mapping (CONTEXT D-Portal):
 - approved_for_build → "Approved" violet pill
 - built → "Built" teal pill
 - (deployed is NOT shown here — that's the /releases page surface)
+
+Shared package projects table (Mi-1 fix — verify export):
+- packages/triarch-shared/src/schema.ts exports the `projects` table that the upcoming page imports
+- Plan 36-07 Task 3 must verify this export exists BEFORE writing the page (read packages/triarch-shared/src/schema.ts to confirm `export const projects = pgTable('projects', ...)`)
 </interfaces>
 </context>
 
@@ -201,23 +210,25 @@ State pill mapping (CONTEXT D-Portal):
 </task>
 
 <task type="auto" tdd="true">
-  <name>Task 2: Create portal-side fetchUpcomingFromAdmin helper that signs read_upcoming HMAC and POSTs to admin</name>
+  <name>Task 2: Create portal-side fetchUpcomingFromAdmin helper that signs read_upcoming HMAC and POSTs to admin (reusing ADMIN_INTERNAL_DISPATCH_URL)</name>
   <files>../portal/src/lib/admin-fetch-upcoming.ts, ../portal/src/lib/admin-fetch-upcoming.test.ts</files>
   <read_first>
-    - ../portal/src/lib/internal-dispatch.ts (THE pattern to mirror — signRequest + canonicalize + fetch with X-HMAC-Signature; error model)
+    - ../portal/src/lib/internal-dispatch.ts (THE pattern to mirror — signRequest + canonicalize + fetch with X-HMAC-Signature; error model; ALSO note how it reads ADMIN_INTERNAL_DISPATCH_URL — we reuse the same env var per Mi-2 fix)
     - .planning/phases/36-inclusion-approval-state-machine/36-06-admin-upcoming-api-PLAN.md (admin endpoint contract — POST, body shape, response shape)
     - .planning/phases/36-inclusion-approval-state-machine/36-RESEARCH.md (Pattern 4 portal page + admin endpoint; signRequest canonical byte-for-byte matching is CRITICAL)
+    - .planning/phases/36-inclusion-approval-state-machine/36-CONTEXT.md (<amendments> block — Mi-2 fix: reuse ADMIN_INTERNAL_DISPATCH_URL, no new env var)
   </read_first>
   <behavior>
     - Test 1 (happy path): fetchUpcomingFromAdmin('tmi', 'mike@triarch.dev') returns parsed items[] array with the expected fields
     - Test 2 (network failure): admin returns 502 → helper returns {items: []} (graceful — page should still render with empty state, not crash)
     - Test 3 (HMAC reject): admin returns 401 → helper returns {items: []} + console.warn (no_secret/bad_signature shouldn't happen in practice, but graceful degradation)
-    - Test 4 (missing env var): ADMIN_PORTAL_API_URL not set → returns {items: []} + console.error
+    - Test 4 (missing env var): ADMIN_INTERNAL_DISPATCH_URL not set → returns {items: []} + console.error
     - Test 5 (canonical byte-stability): rawBody is `JSON.stringify(body, Object.keys(body).sort())` — exact same canonicalization as signRequest internal
-    - Test 6 (type-safety): helper has return type `Promise<{items: UpcomingItem[]}>` where UpcomingItem = `{id: string; type: 'bug'|'feature'; title: string; severity: string|null; inclusionState: 'approved_for_build'|'built'; updatedAt: Date}`
+    - Test 6 (type-safety): helper has return type `Promise<{items: UpcomingItem[]}>` where UpcomingItem = `{id: string; type: 'bug'|'feature'; title: string; severity: string|null; inclusionState: 'approved_for_build'|'built'; updatedAt: string}` (Date serialized as ISO string)
+    - Test 7 (env var reuse): the helper reads `ADMIN_INTERNAL_DISPATCH_URL` (NOT a hypothetical `ADMIN_PORTAL_API_URL` — Mi-2 enforcement)
   </behavior>
   <action>
-    1. WRITE TESTS FIRST. Create `../portal/src/lib/admin-fetch-upcoming.test.ts`. Use the Vitest pattern from `../portal/src/lib/release-mutations.test.ts` (or wherever portal mocks fetch). Mock `global.fetch`. Mock `@triarchsecurity/secrets.getSecret`. Tests 1-6 above.
+    1. WRITE TESTS FIRST. Create `../portal/src/lib/admin-fetch-upcoming.test.ts`. Use the Vitest pattern from `../portal/src/lib/release-mutations.test.ts` (or wherever portal mocks fetch). Mock `global.fetch`. Mock `@triarchsecurity/secrets.getSecret`. Tests 1-7 above.
 
     2. CREATE `../portal/src/lib/admin-fetch-upcoming.ts`:
     ```typescript
@@ -226,6 +237,11 @@ State pill mapping (CONTEXT D-Portal):
      * /api/portal/projects/{slug}/upcoming endpoint, returns the customer-safe items[].
      *
      * Mirrors the canonicalization / error-model of dispatchPromotion (Plan 22-04).
+     *
+     * Env var (Mi-2 fix in plan revision pass): reuses ADMIN_INTERNAL_DISPATCH_URL.
+     *   Both /api/internal/dispatch (Phase 22 WRITE-04) and /api/portal/projects/{slug}/upcoming
+     *   (Phase 36-06) target the same admin host per CL-1 hostname target state.
+     *   No new env var introduced; one less apphosting.yaml binding to maintain.
      */
     import {
       signRequest,
@@ -245,9 +261,10 @@ State pill mapping (CONTEXT D-Portal):
       projectKey: string,
       actorEmail: string,
     ): Promise<{ items: UpcomingItem[] }> {
-      const baseUrl = process.env.ADMIN_PORTAL_API_URL;
+      // Mi-2 fix: reuse the existing dispatch URL env var. Both endpoints share an admin host.
+      const baseUrl = process.env.ADMIN_INTERNAL_DISPATCH_URL;
       if (!baseUrl) {
-        console.error('[admin-fetch-upcoming] ADMIN_PORTAL_API_URL not set');
+        console.error('[admin-fetch-upcoming] ADMIN_INTERNAL_DISPATCH_URL not set');
         return { items: [] };
       }
 
@@ -268,7 +285,11 @@ State pill mapping (CONTEXT D-Portal):
       const rawBody = JSON.stringify(body, Object.keys(body).sort());
 
       try {
-        const url = `${baseUrl}/api/portal/projects/${encodeURIComponent(projectKey)}/upcoming`;
+        // Derive base — strip any trailing /api/internal/dispatch path if present in the env var.
+        // ADMIN_INTERNAL_DISPATCH_URL may be either the full dispatch URL or just the host base;
+        // handle both shapes defensively.
+        const baseHost = baseUrl.replace(/\/api\/internal\/dispatch\/?$/, '').replace(/\/$/, '');
+        const url = `${baseHost}/api/portal/projects/${encodeURIComponent(projectKey)}/upcoming`;
         const res = await fetch(url, {
           method: 'POST',
           headers: {
@@ -296,9 +317,7 @@ State pill mapping (CONTEXT D-Portal):
     }
     ```
 
-    3. ADD `ADMIN_PORTAL_API_URL` env var binding to portal:
-       - `apphosting.yaml` and `apphosting.dev.yaml`: add `ADMIN_PORTAL_API_URL` as plain value (RUNTIME-only). For prod: `https://admin.triarch.dev`. For dev: `https://admin-dev.triarch.dev` (or whatever the dev backend resolves to — check CL-1 hostname state).
-       - This is a NEW env var (not `ADMIN_INTERNAL_DISPATCH_URL`, which targets a different endpoint). Plan ahead so the human Task 4 step also binds this.
+    3. **NO new env var binding needed** (Mi-2 fix) — ADMIN_INTERNAL_DISPATCH_URL is already bound in portal's apphosting.yaml + apphosting.dev.yaml from Phase 22-04. Skip the env var addition step that was in the original plan.
 
     4. Run portal tests:
        ```bash
@@ -312,13 +331,14 @@ State pill mapping (CONTEXT D-Portal):
   <acceptance_criteria>
     - File `/Users/mikegeehan/claude/triarch/development/portal/src/lib/admin-fetch-upcoming.ts` exists
     - `grep -c "intent: 'read_upcoming'" /Users/mikegeehan/claude/triarch/development/portal/src/lib/admin-fetch-upcoming.ts` returns 1
-    - `grep -c "ADMIN_PORTAL_API_URL" /Users/mikegeehan/claude/triarch/development/portal/src/lib/admin-fetch-upcoming.ts` returns >= 1
+    - `grep -c "ADMIN_INTERNAL_DISPATCH_URL" /Users/mikegeehan/claude/triarch/development/portal/src/lib/admin-fetch-upcoming.ts` returns >= 1 (Mi-2 fix: reuse existing var)
+    - `grep -c "ADMIN_PORTAL_API_URL" /Users/mikegeehan/claude/triarch/development/portal/src/lib/admin-fetch-upcoming.ts` returns 0 (Mi-2 fix: NO new env var)
     - `grep -c "X-HMAC-Signature" /Users/mikegeehan/claude/triarch/development/portal/src/lib/admin-fetch-upcoming.ts` returns 1
     - `grep -c "Object.keys(body).sort()" /Users/mikegeehan/claude/triarch/development/portal/src/lib/admin-fetch-upcoming.ts` returns 1 (canonical-byte stability — matches Phase 22-04 pattern)
     - `grep -c "items: \[\]" /Users/mikegeehan/claude/triarch/development/portal/src/lib/admin-fetch-upcoming.ts` returns >= 3 (graceful fallback for env/secret/fetch failure)
-    - All 6 tests pass
+    - All 7 tests pass
   </acceptance_criteria>
-  <done>Portal has the signing+fetching helper; degrades gracefully on any failure mode; tests cover happy path + 4 failure modes + type-safety.</done>
+  <done>Portal has the signing+fetching helper; reuses ADMIN_INTERNAL_DISPATCH_URL per Mi-2 (no new env var); degrades gracefully on any failure mode; tests cover happy path + 4 failure modes + type-safety + env var reuse.</done>
 </task>
 
 <task type="auto" tdd="true">
@@ -329,6 +349,7 @@ State pill mapping (CONTEXT D-Portal):
     - ../portal/src/app/projects/[slug]/layout.tsx (current sub-nav structure — Phase 23.1-01 added tabs)
     - ../portal/src/app/projects/[slug]/bugs/page.tsx (customer-facing read pattern from Phase 23-02)
     - ../portal/src/lib/admin-fetch-upcoming.ts (the helper created in Task 2)
+    - packages/triarch-shared/src/schema.ts (Mi-1 fix: VERIFY that `projects` table is exported — page imports `import { projects } from '@triarchsecurity/triarch-shared/schema'`)
     - .planning/phases/36-inclusion-approval-state-machine/36-CONTEXT.md (D-Portal customer-visible fields — locked)
     - STATE.md Phase 23.1-01 entries (sub-nav active styling: text-teal-300 + border-b-2 border-teal-400)
   </read_first>
@@ -343,6 +364,12 @@ State pill mapping (CONTEXT D-Portal):
     - Test 8 (sub-nav Upcoming tab): pathname /projects/tmi/upcoming → Upcoming link has active styling; pathname /projects/tmi/releases → not active
   </behavior>
   <action>
+    0. **Mi-1 pre-flight check**: confirm `projects` is exported from the shared package schema:
+       ```bash
+       grep -n "export const projects = pgTable" /Users/mikegeehan/claude/triarch/development/admin/packages/triarch-shared/src/schema.ts
+       # Expected: one match. If 0 matches, the page's import will fail — escalate before proceeding.
+       ```
+
     1. WRITE TESTS FIRST for UpcomingClient — `../portal/src/app/projects/[slug]/upcoming/UpcomingClient.test.tsx`. Use @testing-library/react + the existing pattern from portal/src/app/projects/[slug]/releases/ReleasesClient.test.tsx. Tests 1-5 + 7 above. Also write a small layout test for Test 8 if you can isolate the nav rendering.
 
     2. CREATE `../portal/src/app/projects/[slug]/upcoming/page.tsx` (server component):
@@ -471,6 +498,7 @@ State pill mapping (CONTEXT D-Portal):
     <automated>cd /Users/mikegeehan/claude/triarch/development/portal &amp;&amp; npx vitest run "src/app/projects/[slug]/upcoming/" 2>&amp;1 | tail -10 &amp;&amp; npx next build 2>&amp;1 | tail -10</automated>
   </verify>
   <acceptance_criteria>
+    - Mi-1 pre-flight passed: `grep -c "export const projects = pgTable" /Users/mikegeehan/claude/triarch/development/admin/packages/triarch-shared/src/schema.ts` returns 1
     - File `/Users/mikegeehan/claude/triarch/development/portal/src/app/projects/[slug]/upcoming/page.tsx` exists
     - File `/Users/mikegeehan/claude/triarch/development/portal/src/app/projects/[slug]/upcoming/UpcomingClient.tsx` exists
     - `grep -c "notFound()" /Users/mikegeehan/claude/triarch/development/portal/src/app/projects/[slug]/upcoming/page.tsx` returns >= 2 (project + membership both 404)
@@ -485,15 +513,15 @@ State pill mapping (CONTEXT D-Portal):
     - All UpcomingClient tests pass
     - `npx next build` exits 0
   </acceptance_criteria>
-  <done>Portal /upcoming page renders membership-gated customer view; sub-nav extended; no staff-only field leak; tests cover render, pills, empty state, and Pitfall 7 grep assertion.</done>
+  <done>Portal /upcoming page renders membership-gated customer view; sub-nav extended; no staff-only field leak; tests cover render, pills, empty state, and Pitfall 7 grep assertion; Mi-1 schema export verified pre-flight.</done>
 </task>
 
 <task type="checkpoint:human-action" gate="blocking">
-  <name>Task 4: Portal commit + PR + apphosting env binding + visual UAT against TMI</name>
+  <name>Task 4: Portal commit + PR + visual UAT against TMI</name>
   <what-built>
     - Portal pinned to @triarchsecurity/triarch-shared@^0.5.0
     - dispatchPromotion shim updated for discriminated union
-    - New fetchUpcomingFromAdmin helper
+    - New fetchUpcomingFromAdmin helper (reuses ADMIN_INTERNAL_DISPATCH_URL per Mi-2)
     - New /projects/[slug]/upcoming page + UpcomingClient
     - Sub-nav extended with Upcoming tab
     - All portal tests pass
@@ -508,26 +536,18 @@ State pill mapping (CONTEXT D-Portal):
 
        - Pin @triarchsecurity/triarch-shared ^0.3.1 → ^0.5.0
        - Update dispatchPromotion to set intent: 'dispatch_promotion' (discriminated union)
-       - New fetchUpcomingFromAdmin helper (signs intent: 'read_upcoming' HMAC, POSTs to admin)
+       - New fetchUpcomingFromAdmin helper (signs intent: 'read_upcoming' HMAC, POSTs to admin via ADMIN_INTERNAL_DISPATCH_URL reuse — Mi-2 fix in plan revision pass)
        - New /projects/[slug]/upcoming page — membership-gated (PORTAL-03 404), customer-safe field set
        - Sub-nav: Upcoming tab added
        "
        git push origin feat/inclusion-upcoming-page
        ```
 
-    2. **Bind the new env var** `ADMIN_PORTAL_API_URL`:
-       - Edit `apphosting.yaml` (prod): add `- variable: ADMIN_PORTAL_API_URL\n  value: "https://admin.triarch.dev"\n  availability:\n    - RUNTIME`
-       - Edit `apphosting.dev.yaml` (dev): add same with `value: "https://admin-dev.triarch.dev"` (assuming CL-1 hostname is live; otherwise reuse current admin dev URL)
-       - Commit + push:
-       ```bash
-       git add apphosting.yaml apphosting.dev.yaml
-       git commit -m "v0.8.0: bind ADMIN_PORTAL_API_URL for INCL-08 /upcoming fetcher"
-       git push origin feat/inclusion-upcoming-page
-       ```
+    2. **No new env var binding needed (Mi-2 fix)** — ADMIN_INTERNAL_DISPATCH_URL is already bound in portal's apphosting.yaml + apphosting.dev.yaml from Phase 22-04. Skip the env var addition step entirely.
 
     3. **Open PR against portal's dev branch** (per workspace per-push checklist):
        ```bash
-       gh pr create --base dev --head feat/inclusion-upcoming-page --title "v0.8.0: customer /upcoming page (Phase 36-07 INCL-08)" --body "Phase 36 final Wave (Wave 4). Depends on admin shared@0.5.0 publish from Plan 36-06."
+       gh pr create --base dev --head feat/inclusion-upcoming-page --title "v0.8.0: customer /upcoming page (Phase 36-07 INCL-08)" --body "Phase 36 final Wave (Wave 4). Depends on admin shared@0.5.0 publish from Plan 36-06. Reuses ADMIN_INTERNAL_DISPATCH_URL env var per Mi-2 fix in plan revision pass."
        ```
 
     4. **CI verification**:
@@ -540,7 +560,7 @@ State pill mapping (CONTEXT D-Portal):
 
     6. **Visual UAT** at https://portal-dev.triarch.dev/projects/tmi/upcoming:
        - Log in as Mike (staff)
-       - Confirm: page renders, shows TMI items in approved_for_build + built states (whatever was set up during 36-05 dogfood)
+       - Confirm: page renders, shows TMI items in approved_for_build + built states (whatever was set up during 36-05a/b dogfood)
        - Confirm: type pills (red bug / amber feature) and state pills (violet Approved / teal Built) render correctly
        - Confirm: severity column shows for bugs, blank for features
        - Confirm: relative timestamps render ("just now" / "N min ago")
@@ -560,13 +580,11 @@ State pill mapping (CONTEXT D-Portal):
     - Non-members get 404
     - Sub-nav active styling works
     - CI green throughout
+    - No new env var binding required (Mi-2: ADMIN_INTERNAL_DISPATCH_URL reused)
   </how-to-verify>
-  <resume-signal>Type "approved" once visual UAT passes against portal-dev + all CI checks green on both PRs. If anything fails (HMAC reject from admin, missing ADMIN_PORTAL_API_URL binding, field leak, sub-nav broken), describe with logs/screenshots and stop.</resume-signal>
+  <resume-signal>Type "approved" once visual UAT passes against portal-dev + all CI checks green on both PRs. If anything fails (HMAC reject from admin, missing ADMIN_INTERNAL_DISPATCH_URL binding, field leak, sub-nav broken), describe with logs/screenshots and stop.</resume-signal>
   <files>none — human-only orchestration of CLI/git/npm/firebase commands</files>
-  <action>See &lt;how-to-verify&gt; block below for the full step-by-step sequence the human runs in their shell. This task gates downstream plans because publish/install/db:push are human-orchestrated.</action>
-  <verify>
-    <automated>MISSING — verification is human-only per &lt;how-to-verify&gt; block</automated>
-  </verify>
+  <action>See &lt;how-to-verify&gt; block above for the full step-by-step sequence.</action>
   <done>Human types "approved" per &lt;resume-signal&gt; after every step in &lt;how-to-verify&gt; passes.</done>
 
 </task>
@@ -577,28 +595,33 @@ State pill mapping (CONTEXT D-Portal):
 - Portal pinned to ^0.5.0 (verifiable: jq on portal/package.json)
 - dispatchPromotion still works after discriminated-union refactor (verifiable: existing portal vitest passes)
 - fetchUpcomingFromAdmin helper exists with HMAC sign + canonical bytes + graceful failure modes (verifiable: grep + tests)
+- Helper reuses ADMIN_INTERNAL_DISPATCH_URL (verifiable: `grep -c "ADMIN_PORTAL_API_URL"` returns 0; `grep -c "ADMIN_INTERNAL_DISPATCH_URL"` returns >= 1) — Mi-2 enforcement
 - /projects/[slug]/upcoming page exists with notFound() membership gate (verifiable: grep)
 - UpcomingClient renders correct pills (verifiable: grep for "Approved" + "Built" + violet/teal colors)
 - No staff-only field references in UpcomingClient (verifiable: grep returns 0 for triarchNotes/buildPlan)
 - Sub-nav extended (verifiable: grep "Upcoming" in layout.tsx)
+- Mi-1 pre-flight: projects table export verified in shared schema (verifiable via grep)
 - portal-dev visual UAT confirms end-to-end render + no field leak (human checkpoint)
 </verification>
 
 <success_criteria>
 - TMI customer (or Mike preview-as-customer per Phase 23.1-04) sees the /upcoming page rendering exactly what staff approved in admin /next-build-plan/tmi
-- Phase 36 fully closes: schema (01) → admin transitions (02) → commit-parser auto-flip (03) → prod-ingest auto-flip (04) → admin UI (05) → admin HMAC endpoint (06) → portal page (07)
+- Phase 36 fully closes: schema (01) → admin transitions (02) → commit-parser auto-flip (03) → prod-ingest auto-flip (04) → admin next-build-plan page (05a) → admin list/detail extensions (05b) → admin HMAC endpoint (06) → portal page (07)
 - Customer sees inclusion-state transparency: "approved" → "built" → (vanishes from /upcoming; appears on /releases as deployed)
 - 30-day-dogfooding window can begin: Mike uses /admin/modules/next-build-plan/tmi to approve, customers see /projects/tmi/upcoming, commit auto-flips work, prod-ingest auto-flips work
 - TMI dogfooding feedback informs the v3.0 hard-gate decision per CONTEXT
+- Operational hygiene: one fewer env var to maintain (Mi-2 fix)
 </success_criteria>
 
 <output>
 After completion, create `.planning/phases/36-inclusion-approval-state-machine/36-07-portal-upcoming-page-SUMMARY.md` documenting:
 - Portal version shipped (0.8.0)
-- ADMIN_PORTAL_API_URL bound values for prod + dev
+- Confirmation that ADMIN_INTERNAL_DISPATCH_URL was reused (Mi-2) and no new env var was bound
 - TMI visual UAT result (any surprises in the customer-facing pill copy or layout?)
 - Whether the sub-nav active styling matched the established v2.2 Phase 23.1-01 pattern
 - Confirmation that the staff-only field-leak devtools grep returned zero matches
 - Both PR URLs (portal feat/inclusion-upcoming-page → dev, and the dev → main promotion PR)
 - Phase 36 close: pending 30-day dogfooding signal-collection per CONTEXT — what to watch for, where Mike notes feedback (e.g., do orphan-link warnings clutter logs? Do customers find /upcoming?)
 </output>
+</content>
+</invoke>

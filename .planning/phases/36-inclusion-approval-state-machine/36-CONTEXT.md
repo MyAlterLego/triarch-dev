@@ -97,3 +97,17 @@ Add an explicit "decide what goes IN the next build" gate across the bug/feature
 - Hard inclusion gate (prod deploy refuses commits without `approved_for_build` ancestor) — v3.0 candidate per soft-vs-hard decision deferred to dogfooding review
 
 </deferred>
+
+<amendments>
+## Post-Planning Amendments
+
+**2026-05-18 (plan revision pass):**
+- INCL-08 admin endpoint changed from `GET` to `POST` to enable HMAC-over-body signature verification (matches v2.2 Phase 22 WRITE-04 dispatch pattern). Path unchanged: `/api/portal/projects/{slug}/upcoming`. Portal POSTs a signed body `{intent: 'read_upcoming', projectKey, actorEmail, timestamp, nonce}`.
+- Reason: HMAC integrity check requires a deterministic body to sign; GET-with-query-string signing was researched and rejected as more complex (signed-headers, timestamp, nonce as headers) for negligible spec benefit. The POST shape is also strictly aligned with the established v2.2 Phase 22 internal-call pattern.
+- Affects: Plan 36-06 Task 2 (server endpoint), Plan 36-07 Task 2 (portal client fetcher already POSTs — confirmed aligned).
+- INCL-08 spec line "GET /api/portal/projects/{slug}/upcoming" should be read as "the upcoming endpoint at that path"; method is POST per this amendment.
+
+- Plan 36-07 ADMIN_PORTAL_API_URL env var was deferred — reuse the existing `ADMIN_INTERNAL_DISPATCH_URL` env var since both target the same admin host per CL-1 hostname target state (admin.triarch.dev / admin-dev.triarch.dev). Portal helper reads `process.env.ADMIN_INTERNAL_DISPATCH_URL` and appends `/api/portal/projects/{slug}/upcoming`. One less env var to bind in apphosting.yaml.
+
+- Plan 36-05 "Reject" detail-page button DROPPED. No INCL requirement covers a manual `pending_inclusion → rejected` transition. The v2.4 customer surface is strictly read-only and no staff workflow requires a Reject action — that's a v3.0 candidate alongside the customer approval surface. Detail-page primary actions are now: Propose for next build (triaged→pending_inclusion), Approve for build (pending_inclusion→approved_for_build), Defer (pending_inclusion→deferred), Remove from build (approved_for_build→pending_inclusion). State-machine `MANUAL_TRANSITIONS.pending_inclusion` updated to `['approved_for_build', 'deferred']` (removed 'rejected') in Plan 36-01 to match.
+</amendments>

@@ -2,14 +2,16 @@
 phase: 36-inclusion-approval-state-machine
 plan: 06
 type: execute
-wave: 3
-depends_on: [36-01, 36-03, 36-04]
+wave: 2
+depends_on: [36-01]
 files_modified:
   - packages/triarch-shared/src/internal-hmac.ts
   - packages/triarch-shared/src/internal-hmac.test.ts
   - packages/triarch-shared/package.json
   - src/app/api/portal/projects/[slug]/upcoming/route.ts
   - src/app/api/portal/projects/[slug]/upcoming/route.test.ts
+  - src/app/api/internal/dispatch/route.ts
+  - src/app/api/internal/dispatch/route.test.ts
   - package.json
   - package-lock.json
 autonomous: false
@@ -18,8 +20,8 @@ must_haves:
   truths:
     - "InternalHmacBody type in @triarchsecurity/triarch-shared/internal-hmac is a discriminated union on intent: 'dispatch_promotion' (existing fields) | 'read_upcoming' (projectKey + actorEmail + timestamp + nonce only, no branch/version/releaseId)"
     - "signRequest and verifyRequest still produce/verify byte-exact canonical signatures across BOTH intents (canonicalize sorts keys; new intent-discriminated fields just shrink the payload)"
-    - "All existing Phase 22 InternalHmacBody consumers (admin /api/internal/dispatch, portal /lib/internal-dispatch) continue to type-check and pass tests — the existing fields are still required when intent='dispatch_promotion'"
-    - "New admin endpoint GET /api/portal/projects/{slug}/upcoming validates HMAC signature with intent='read_upcoming', looks up the project, and returns a JSON payload of items where inclusion_state IN ('approved_for_build', 'built') for that project"
+    - "All existing Phase 22 InternalHmacBody consumers (admin /api/internal/dispatch, admin dispatch route.test.ts BASE_INPUT, portal /lib/internal-dispatch) continue to type-check and pass tests — the existing fields are still required when intent='dispatch_promotion'"
+    - "New admin endpoint POST /api/portal/projects/{slug}/upcoming validates HMAC signature with intent='read_upcoming', looks up the project, and returns a JSON payload of items where inclusion_state IN ('approved_for_build', 'built') for that project. NOTE: This is a deliberate POST (not GET as INCL-08 spec line said) because HMAC verify requires a request body for signature recomputation — see CONTEXT.md amendment block. Same operational pattern as v2.2 Phase 22 WRITE-04 dispatch route."
     - "Endpoint EXPLICITLY projects only customer-safe fields per row: {id, type:'bug'|'feature', title, severity (bugs only, null for features), inclusionState, updatedAt}; NO triarchNotes, NO buildPlan, NO internal Slack thread refs (Pitfall 7)"
     - "Endpoint rejects requests with intent='dispatch_promotion' or any other intent — read_upcoming ONLY for this route"
     - "Endpoint returns 401 with structured error on bad HMAC; 404 on unknown project; 200 with payload on success"
@@ -32,8 +34,11 @@ must_haves:
       provides: "Tests for both intents — sign+verify round trip for read_upcoming AND dispatch_promotion; cross-intent rejection (signed as one, verified expecting the other)"
       contains: "read_upcoming"
     - path: "src/app/api/portal/projects/[slug]/upcoming/route.ts"
-      provides: "GET handler: HMAC verify (intent=read_upcoming) → project lookup → mixed bugs+features SELECT (inclusion_state in ['approved_for_build', 'built']) → customer-safe field projection → JSON response"
+      provides: "POST handler: HMAC verify (intent=read_upcoming) → project lookup → mixed bugs+features SELECT (inclusion_state in ['approved_for_build', 'built']) → customer-safe field projection → JSON response"
       contains: "read_upcoming"
+    - path: "src/app/api/internal/dispatch/route.test.ts"
+      provides: "Updated BASE_INPUT to include intent: 'dispatch_promotion' to satisfy the new discriminated-union signRequest type"
+      contains: "intent: 'dispatch_promotion'"
   key_links:
     - from: "src/app/api/portal/projects/[slug]/upcoming/route.ts"
       to: "verifyRequest from @triarchsecurity/triarch-shared/internal-hmac"
@@ -50,10 +55,12 @@ must_haves:
 ---
 
 <objective>
-Solve RESEARCH Pitfall 6 (HMAC body schema mismatch for non-dispatch intents) by extending `InternalHmacBody` to a discriminated union on `intent: 'dispatch_promotion' | 'read_upcoming'`, then ship the new admin endpoint `GET /api/portal/projects/{slug}/upcoming` that verifies HMAC with `intent='read_upcoming'` and returns customer-safe inclusion-state data for the project. Shared package bumps 0.4.0 → 0.5.0. The endpoint explicitly projects only customer-safe fields (Pitfall 7) and rejects cross-intent requests.
+Solve RESEARCH Pitfall 6 (HMAC body schema mismatch for non-dispatch intents) by extending `InternalHmacBody` to a discriminated union on `intent: 'dispatch_promotion' | 'read_upcoming'`, then ship the new admin endpoint `POST /api/portal/projects/{slug}/upcoming` that verifies HMAC with `intent='read_upcoming'` and returns customer-safe inclusion-state data for the project. Shared package bumps 0.4.0 → 0.5.0. The endpoint explicitly projects only customer-safe fields (Pitfall 7) and rejects cross-intent requests.
+
+**HTTP method note (B-2 fix):** INCL-08 success_criteria + CONTEXT both said "GET /api/portal/projects/{slug}/upcoming" but the implementation uses POST. This is a deliberate operational adjustment — HMAC integrity verification requires a deterministic body to sign, and GET-with-query-string signing is materially more complex (signed-headers, timestamp + nonce in headers) for negligible benefit. Path is unchanged. See `36-CONTEXT.md` `<amendments>` block. Portal POSTs a signed empty body `{intent:'read_upcoming', projectKey, actorEmail, timestamp, nonce}` and admin verifies-and-reads.
 
 Purpose: INCL-08 — admin is authoritative for inclusion-state data; portal must fetch via HMAC from admin (CONTEXT D-Portal). This plan ships the SERVER side; Plan 36-07 ships the portal page that calls this endpoint. The discriminated-union refactor pays for itself across all future internal HMAC intents (read_upcoming today, more to come in v2.5+).
-Output: Discriminated-union HMAC schema, sign/verify round-trip tested for both intents, new admin endpoint with customer-safe field projection, shared package 0.5.0 published, admin re-installed.
+Output: Discriminated-union HMAC schema, sign/verify round-trip tested for both intents, new admin endpoint with customer-safe field projection, shared package 0.5.0 published, admin re-installed, dispatch route + test updated for the new union.
 </objective>
 
 <execution_context>
@@ -72,6 +79,7 @@ Output: Discriminated-union HMAC schema, sign/verify round-trip tested for both 
 @packages/triarch-shared/src/internal-hmac.ts
 @packages/triarch-shared/src/internal-hmac.test.ts
 @src/app/api/internal/dispatch/route.ts
+@src/app/api/internal/dispatch/route.test.ts
 
 <interfaces>
 <!-- Current InternalHmacBody shape (Phase 22 — single-intent for dispatch_promotion). From packages/triarch-shared/src/internal-hmac.ts:7-17. -->
@@ -117,22 +125,24 @@ export type InternalHmacBody = DispatchPromotionBody | ReadUpcomingBody;
 ```
 
 CRITICAL back-compat note for Phase 22 consumers:
-- `signRequest` in portal/src/lib/internal-dispatch.ts passes the OLD shape (no `intent` field). After the union refactor, sign callers MUST add `intent: 'dispatch_promotion'`. portal will pick up this requirement automatically on `npm install` of 0.5.0 — TypeScript will refuse to compile if portal doesn't add `intent`. THIS PLAN updates portal-side dependents in the next plan (36-07). Within THIS plan, we ship the admin-side change + shared-package bump + the admin /api/internal/dispatch handler update (admin's own consumer).
+- `signRequest` in portal/src/lib/internal-dispatch.ts passes the OLD shape (no `intent` field). After the union refactor, sign callers MUST add `intent: 'dispatch_promotion'`. portal will pick up this requirement automatically on `npm install` of 0.5.0 — TypeScript will refuse to compile if portal doesn't add `intent`. THIS PLAN updates portal-side dependents in the next plan (36-07). Within THIS plan, we ship the admin-side change + shared-package bump + the admin /api/internal/dispatch handler update (admin's own consumer) + the admin /api/internal/dispatch/route.test.ts BASE_INPUT update.
 
-Existing admin consumer to update:
+Existing admin consumers to update:
 - src/app/api/internal/dispatch/route.ts (lines 34-50) — destructures fields directly from verified.body. After union, we narrow on intent before destructuring branch/version/releaseId.
+- src/app/api/internal/dispatch/route.test.ts (lines 49-57) — BASE_INPUT object lacks `intent` field. signRequest(BASE_INPUT, ...) will fail TypeScript compilation after the discriminated-union refactor lands. MUST add `intent: 'dispatch_promotion' as const`.
 </interfaces>
 </context>
 
 <tasks>
 
 <task type="auto" tdd="true">
-  <name>Task 1: Refactor InternalHmacBody to discriminated union on intent; update sign/verify/canonicalize; bump shared package to 0.5.0; update admin /api/internal/dispatch consumer</name>
-  <files>packages/triarch-shared/src/internal-hmac.ts, packages/triarch-shared/src/internal-hmac.test.ts, packages/triarch-shared/package.json, src/app/api/internal/dispatch/route.ts</files>
+  <name>Task 1: Refactor InternalHmacBody to discriminated union on intent; update sign/verify/canonicalize; bump shared package to 0.5.0; update admin /api/internal/dispatch consumer AND its test BASE_INPUT</name>
+  <files>packages/triarch-shared/src/internal-hmac.ts, packages/triarch-shared/src/internal-hmac.test.ts, packages/triarch-shared/package.json, src/app/api/internal/dispatch/route.ts, src/app/api/internal/dispatch/route.test.ts</files>
   <read_first>
     - packages/triarch-shared/src/internal-hmac.ts (entire file — 201 lines; understand canonicalize, signRequest, verifyRequest, isValidBody)
     - packages/triarch-shared/src/internal-hmac.test.ts (existing test pattern for sign + verify round trip)
     - src/app/api/internal/dispatch/route.ts (lines 33-58 — current destructure of verified.body; uses branch/version/releaseId/slackChannelId/slackMessageTs)
+    - src/app/api/internal/dispatch/route.test.ts (lines 49-57 — BASE_INPUT object that calls signRequest(BASE_INPUT, ...) WITHOUT an `intent` field; will break after discriminated-union refactor)
     - .planning/phases/36-inclusion-approval-state-machine/36-RESEARCH.md (Pattern 4 + Pitfall 6 + Open Question 3 — discriminated union is the recommended approach)
   </read_first>
   <behavior>
@@ -144,6 +154,7 @@ Existing admin consumer to update:
     - isValidBody narrows on intent field and validates ONLY the required fields for that intent
     - All existing Phase 22 tests in internal-hmac.test.ts still pass (with the addition of `intent: 'dispatch_promotion'` in test inputs)
     - admin's /api/internal/dispatch route updated to: (1) verify HMAC, (2) check `verified.body.intent === 'dispatch_promotion'` (reject 400 if not), (3) then destructure dispatch-specific fields
+    - admin's /api/internal/dispatch/route.test.ts BASE_INPUT updated to include `intent: 'dispatch_promotion' as const` so existing tests still compile after the union refactor
     - Shared package version: 0.4.0 → 0.5.0
   </behavior>
   <action>
@@ -209,24 +220,6 @@ Existing admin consumer to update:
            if (result.ok) expect(result.body.intent).toBe('read_upcoming');
          });
 
-         it('rejects read_upcoming body with extra dispatch fields when intent declared as read_upcoming', () => {
-           // This is enforced at the TS level for signRequest; verify enforcement on the wire too
-           // by feeding malformed raw body
-           const result = verifyRequest({
-             rawBody: JSON.stringify({
-               intent: 'read_upcoming',
-               actorEmail: 'mike@triarch.dev',
-               projectKey: 'tmi',
-               nonce: 'a'.repeat(32),
-               timestamp: Date.now(),
-               // Extra fields are tolerated by isValidBody (it only checks required fields)
-             }, ['actorEmail','intent','nonce','projectKey','timestamp']),
-             signature: 'bogus',
-             secret: 'test-secret',
-           });
-           expect(result.ok).toBe(false);  // bad_signature, not malformed
-         });
-
          it('rejects body with unknown intent value', () => {
            const result = verifyRequest({
              rawBody: JSON.stringify({
@@ -261,14 +254,67 @@ Existing admin consumer to update:
 
        b. The rest of the route file stays unchanged. TypeScript should now type-narrow correctly after the intent check.
 
-    5. Build and test shared package:
+    5. UPDATE `src/app/api/internal/dispatch/route.test.ts` BASE_INPUT to include the intent discriminator. Without this change, `signRequest(BASE_INPUT, ...)` will fail to compile because the new union requires `intent: 'dispatch_promotion'` on dispatch bodies:
+
+       a. Change the BASE_INPUT object (lines 49-57) from:
+       ```typescript
+       const BASE_INPUT = {
+         branch: 'release/1.0.0',
+         version: '1.0.0',
+         projectKey: 'darksouls-rpg',
+         releaseId: 'rel-uuid-1234',
+         actorEmail: 'customer@example.com',
+         slackChannelId: null as string | null,
+         slackMessageTs: null as string | null,
+       };
+       ```
+       TO:
+       ```typescript
+       const BASE_INPUT = {
+         intent: 'dispatch_promotion' as const,
+         branch: 'release/1.0.0',
+         version: '1.0.0',
+         projectKey: 'darksouls-rpg',
+         releaseId: 'rel-uuid-1234',
+         actorEmail: 'customer@example.com',
+         slackChannelId: null as string | null,
+         slackMessageTs: null as string | null,
+       };
+       ```
+
+       b. After this change, run `npx vitest run src/app/api/internal/dispatch/route.test.ts` — ALL existing dispatch route tests must still pass. They were testing Phase 22 behavior; the intent guard introduced in step 4 is satisfied because BASE_INPUT now declares `intent: 'dispatch_promotion'`.
+
+       c. Optionally ADD a new negative test asserting the wrong_intent guard:
+       ```typescript
+       it('rejects body with intent=read_upcoming (wrong intent for dispatch route)', async () => {
+         (getSecret as ReturnType<typeof vi.fn>).mockResolvedValue(TEST_SECRET);
+         const { body, signature } = signRequest(
+           { intent: 'read_upcoming' as const, projectKey: 'darksouls-rpg', actorEmail: 'customer@example.com' },
+           TEST_SECRET,
+         );
+         const req = new NextRequest('http://localhost/api/internal/dispatch', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json', 'X-HMAC-Signature': signature },
+           body: JSON.stringify(body, Object.keys(body).sort()),
+         });
+         const res = await POST(req);
+         expect(res.status).toBe(400);
+         const data = await res.json();
+         expect(data.error).toBe('wrong_intent');
+       });
+       ```
+
+    6. Build and test shared package:
        ```bash
        cd packages/triarch-shared && npx tsc --build && npx vitest run src/internal-hmac.test.ts
        ```
-       Then build admin: `npx next build` (verifies admin's /api/internal/dispatch consumer still compiles).
+       Then run admin tests for dispatch route AND build:
+       ```bash
+       cd ../.. && npx vitest run src/app/api/internal/dispatch/route.test.ts && npx next build
+       ```
   </action>
   <verify>
-    <automated>cd packages/triarch-shared &amp;&amp; npx tsc --build &amp;&amp; npx vitest run src/internal-hmac.test.ts &amp;&amp; cd ../.. &amp;&amp; grep -c "intent !== 'dispatch_promotion'" src/app/api/internal/dispatch/route.ts &amp;&amp; jq -r .version packages/triarch-shared/package.json</automated>
+    <automated>cd packages/triarch-shared &amp;&amp; npx tsc --build &amp;&amp; npx vitest run src/internal-hmac.test.ts &amp;&amp; cd ../.. &amp;&amp; npx vitest run src/app/api/internal/dispatch/route.test.ts &amp;&amp; grep -c "intent !== 'dispatch_promotion'" src/app/api/internal/dispatch/route.ts &amp;&amp; grep -c "intent: 'dispatch_promotion' as const" src/app/api/internal/dispatch/route.test.ts &amp;&amp; jq -r .version packages/triarch-shared/package.json</automated>
   </verify>
   <acceptance_criteria>
     - `grep -c "DispatchPromotionBody" packages/triarch-shared/src/internal-hmac.ts` returns >= 1
@@ -277,19 +323,21 @@ Existing admin consumer to update:
     - `grep -c "intent: 'read_upcoming'" packages/triarch-shared/src/internal-hmac.ts` returns >= 1
     - `grep -c "intent !== 'dispatch_promotion'" src/app/api/internal/dispatch/route.ts` returns 1
     - `grep -c "wrong_intent" src/app/api/internal/dispatch/route.ts` returns 1
+    - `grep -c "intent: 'dispatch_promotion' as const" src/app/api/internal/dispatch/route.test.ts` returns 1 (BASE_INPUT updated)
     - `jq -r .version packages/triarch-shared/package.json` returns `0.5.0`
     - `npx vitest run src/internal-hmac.test.ts` reports 0 failures (existing Phase 22 tests + new read_upcoming tests all pass)
+    - `npx vitest run src/app/api/internal/dispatch/route.test.ts` reports 0 failures (existing dispatch tests pass with updated BASE_INPUT)
     - Admin `npx next build` exits 0 (the intent guard satisfies TS narrowing)
   </acceptance_criteria>
-  <done>Shared package 0.5.0 ships discriminated-union HMAC body; admin /api/internal/dispatch enforces intent='dispatch_promotion' for the existing path; new ReadUpcomingBody shape is available for the new endpoint in Task 2.</done>
+  <done>Shared package 0.5.0 ships discriminated-union HMAC body; admin /api/internal/dispatch enforces intent='dispatch_promotion' for the existing path; dispatch route test BASE_INPUT updated to declare the intent so existing test suite still compiles + passes; new ReadUpcomingBody shape is available for the new endpoint in Task 2.</done>
 </task>
 
 <task type="auto" tdd="true">
-  <name>Task 2: Create admin endpoint GET /api/portal/projects/[slug]/upcoming with HMAC verify + customer-safe field projection</name>
+  <name>Task 2: Create admin endpoint POST /api/portal/projects/[slug]/upcoming with HMAC verify + customer-safe field projection</name>
   <files>src/app/api/portal/projects/[slug]/upcoming/route.ts, src/app/api/portal/projects/[slug]/upcoming/route.test.ts</files>
   <read_first>
     - src/app/api/internal/dispatch/route.ts (HMAC verify pattern — nonceStore, verifyRequest, error responses)
-    - .planning/phases/36-inclusion-approval-state-machine/36-CONTEXT.md (D-Portal: customer-visible fields = title + type-pill + severity (bugs only) + state pill + relative timestamp; NO triarchNotes, NO Slack refs)
+    - .planning/phases/36-inclusion-approval-state-machine/36-CONTEXT.md (D-Portal: customer-visible fields = title + type-pill + severity (bugs only) + state pill + relative timestamp; NO triarchNotes, NO Slack refs; AND see <amendments> block at bottom: INCL-08 method GET → POST adjustment recorded 2026-05-18)
     - .planning/phases/36-inclusion-approval-state-machine/36-RESEARCH.md (Pattern 4 portal page + admin endpoint; Pitfall 7 staff-only field leak)
     - src/app/api/platform/bug-reports/[id]/route.ts (existing PATCH for SELECT pattern reference)
     - packages/triarch-shared/src/internal-hmac.ts (the updated file from Task 1 — use ReadUpcomingBody)
@@ -316,8 +364,15 @@ Existing admin consumer to update:
      * INCL-08: admin authoritative read endpoint for portal /upcoming page.
      *
      * Portal cannot read bugReports/featureRequests directly (DML-only portal_runtime role
-     * + admin owns inclusion-state truth). Portal HMAC-signs a GET-shaped POST to this
-     * route (intent='read_upcoming'), admin returns customer-safe field projection.
+     * + admin owns inclusion-state truth). Portal HMAC-signs a POST to this
+     * route (intent='read_upcoming'), admin returns customer-safe items[].
+     *
+     * Method choice — POST not GET (see CONTEXT.md <amendments> block):
+     *   HMAC integrity verification requires a deterministic body to sign. GET-with-query-
+     *   string signing would require signed headers + timestamp + nonce as headers,
+     *   materially more complex than the v2.2 Phase 22 WRITE-04 POST-with-signed-body pattern
+     *   we already use. INCL-08 spec said GET — that was a spec-level naming choice; the
+     *   operational reality is POST. Path is unchanged.
      *
      * Pitfall 7: explicit field allowlist on the SELECT — NO SELECT * from bugReports.
      * Pitfall 6: relies on Plan 36-06 Task 1 discriminated-union InternalHmacBody.
@@ -333,9 +388,6 @@ Existing admin consumer to update:
     const nonceStore = createMemoryNonceStore();
 
     export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-      // Note: this is a POST despite being semantically a read — HMAC verify requires
-      // a request body for signature recomputation. Body carries the intent + auth fields.
-
       let secret: string;
       try {
         secret = await getSecret('INTERNAL_HMAC_SECRET');
@@ -444,6 +496,7 @@ Existing admin consumer to update:
     - InternalHmacBody refactored to discriminated union (shared package source ready)
     - New admin /api/portal/projects/[slug]/upcoming endpoint (source ready)
     - admin /api/internal/dispatch updated for intent narrowing
+    - admin /api/internal/dispatch/route.test.ts BASE_INPUT updated for new union
     - All tests pass locally; admin builds clean
   </what-built>
   <how-to-verify>
@@ -454,15 +507,16 @@ Existing admin consumer to update:
        # If subsequent plans live on different branches, decide branching strategy
        ```
 
-    2. **Commit the shared-package changes AND the admin-side consumer updates**:
+    2. **Commit the shared-package changes AND the admin-side consumer updates AND the test BASE_INPUT update**:
        ```bash
-       git add packages/triarch-shared/src/internal-hmac.ts packages/triarch-shared/src/internal-hmac.test.ts packages/triarch-shared/package.json src/app/api/internal/dispatch/route.ts "src/app/api/portal/projects/[slug]/upcoming/route.ts" "src/app/api/portal/projects/[slug]/upcoming/route.test.ts"
+       git add packages/triarch-shared/src/internal-hmac.ts packages/triarch-shared/src/internal-hmac.test.ts packages/triarch-shared/package.json src/app/api/internal/dispatch/route.ts src/app/api/internal/dispatch/route.test.ts "src/app/api/portal/projects/[slug]/upcoming/route.ts" "src/app/api/portal/projects/[slug]/upcoming/route.test.ts"
        git commit -m "feat(36-06): discriminated-union HMAC body + INCL-08 admin endpoint
 
        - Shared: InternalHmacBody → DispatchPromotionBody | ReadUpcomingBody (intent discriminator)
        - Shared: 0.4.0 → 0.5.0 (discriminated-union refactor; back-compat for dispatch_promotion callers via TS narrowing)
        - Admin: /api/internal/dispatch guards on intent='dispatch_promotion'; rejects others with 400
-       - Admin: NEW /api/portal/projects/[slug]/upcoming (POST, HMAC-verified, intent='read_upcoming') — INCL-08 source of truth
+       - Admin: dispatch route.test.ts BASE_INPUT updated with intent: 'dispatch_promotion' for the new union
+       - Admin: NEW /api/portal/projects/[slug]/upcoming (POST, HMAC-verified, intent='read_upcoming') — INCL-08 source of truth (POST not GET — see CONTEXT amendments)
        - Pitfall 7: explicit field allowlist; no triarchNotes/buildPlan/slackMessageTs leak
        "
        ```
@@ -510,10 +564,7 @@ Existing admin consumer to update:
   </how-to-verify>
   <resume-signal>Type "approved" once `npm view @triarchsecurity/triarch-shared@0.5.0` returns metadata AND admin builds + tests pass on ^0.5.0 pin. If publish-shared workflow fails (non-cosmetically), or if a Phase 22 test regresses, describe the error and stop.</resume-signal>
   <files>none — human-only orchestration of CLI/git/npm/firebase commands</files>
-  <action>See &lt;how-to-verify&gt; block below for the full step-by-step sequence the human runs in their shell. This task gates downstream plans because publish/install/db:push are human-orchestrated.</action>
-  <verify>
-    <automated>MISSING — verification is human-only per &lt;how-to-verify&gt; block</automated>
-  </verify>
+  <action>See &lt;how-to-verify&gt; block above for the full step-by-step sequence the human runs in their shell. This task gates downstream plans because publish/install are human-orchestrated.</action>
   <done>Human types "approved" per &lt;resume-signal&gt; after every step in &lt;how-to-verify&gt; passes.</done>
 
 </task>
@@ -524,6 +575,7 @@ Existing admin consumer to update:
 - Shared package 0.5.0 has discriminated-union HMAC body (verifiable: grep for DispatchPromotionBody + ReadUpcomingBody)
 - Both intents sign+verify correctly (verifiable: vitest run on internal-hmac.test.ts)
 - Admin /api/internal/dispatch enforces intent='dispatch_promotion' (verifiable: grep for `intent !== 'dispatch_promotion'`)
+- Admin /api/internal/dispatch/route.test.ts BASE_INPUT has the intent field (verifiable: grep for `intent: 'dispatch_promotion' as const`)
 - New admin endpoint /api/portal/projects/[slug]/upcoming exists with HMAC verify + intent guard + customer-safe field projection (verifiable via grep + tests)
 - Pitfall 7 guard: zero references to triarchNotes/buildPlan/slackMessageTs in the new endpoint source (verifiable via grep)
 - Pitfall 6 closed: discriminated union eliminates the placeholder-string ugliness
@@ -534,14 +586,18 @@ Existing admin consumer to update:
 - Portal can sign a request with `{intent: 'read_upcoming', projectKey: 'tmi', actorEmail}` and successfully fetch upcoming items from admin (will be wired in Plan 36-07)
 - Customer payload contains zero staff-only fields — `triarchNotes`, `buildPlan`, `slackMessageTs`, internal Slack thread refs are physically impossible to leak (allowlist on SELECT, not on response filter)
 - Future internal HMAC intents (e.g., v2.5 managed-agent webhook variants) can be added by extending the discriminated union without breaking existing callers
-- All Phase 22 dispatch flow tests + admin tests + new INCL-08 tests all GREEN
+- All Phase 22 dispatch flow tests (including dispatch route.test.ts) + admin tests + new INCL-08 tests all GREEN
 </success_criteria>
 
 <output>
 After completion, create `.planning/phases/36-inclusion-approval-state-machine/36-06-admin-upcoming-api-SUMMARY.md` documenting:
 - Whether the discriminated union required any unexpected TypeScript narrowing in admin/portal consumers (besides /api/internal/dispatch which we updated explicitly)
+- Whether the dispatch route.test.ts BASE_INPUT update required any additional test fixture adjustments
 - npm published version + npm-view output
 - Admin version bumped to 2.14.1
 - Confirmation that the Pitfall 7 grep assertion in Test 9 caught any accidental triarchNotes leak (it should return 0; if it didn't, that's a critical bug to surface in summary)
+- Confirmation that the GET→POST method change is documented in 36-CONTEXT.md <amendments> block per B-2 fix
 - Whether any portal-side test broke (it shouldn't because portal's pin is still on ^0.4.0 at this point — portal pickup happens in 36-07)
 </output>
+</content>
+</invoke>

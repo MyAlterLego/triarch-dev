@@ -179,6 +179,12 @@ await stampLinksFromCommit({
 
        d. Run `npx vitest run src/lib/link-stamper.test.ts` — Tests A-G MUST FAIL initially (RED) because the extension does not yet exist. Existing v2.1 tests should still pass IF the SELECT signature change (added `inclusionState`) is benign for them (it is — they just ignore the extra field).
 
+       e. **M-5 pre-flight back-compat assertion (plan revision pass fix):** Before landing the full auto-flip logic, do a TWO-STEP commit-style verification of the SELECT-shape change:
+          1. Apply ONLY the SELECT projection expansion in src/lib/link-stamper.ts (change `select({id: bugReports.id})` → `select({id: bugReports.id, inclusionState: bugReports.inclusionState})` and the parallel featureRequests change — NO other changes yet).
+          2. Run the FULL existing test suite: `npx vitest run src/lib/link-stamper.test.ts src/lib/commit-parser.test.ts` — 100% of pre-existing Phase 11 tests MUST pass.
+          3. This is a POSITIVE back-compat assertion: if any v2.1 test asserts on the SELECT projection shape (e.g., `expect(result.bugIds).toEqual([VALID_BUG_UUID])` where bugIds was the only property of the row), the assertion will catch it BEFORE the auto-flip extension piles on top and obscures the regression. Explicit acceptance: "All 100% of pre-existing link-stamper.test.ts AND commit-parser.test.ts pass with ONLY the expanded SELECT projection applied (no auto-flip logic yet) — proves no test asserts on projection shape."
+          4. THEN proceed to step 2 (rest of the auto-flip implementation).
+
     2. EDIT `src/lib/link-stamper.ts`:
 
        a. Add imports at top (line 19-20 area, alongside existing `releaseLogLinks, bugReports, featureRequests, projects`):
@@ -421,4 +427,6 @@ After completion, create `.planning/phases/36-inclusion-approval-state-machine/3
 - Any Vitest mock complexity discovered (e.g. did mockDbUpdateWhereReturning need a Promise.resolve wrapper?)
 - TMI smoke-test result (find a TMI bug, flip to approved_for_build via API, push a commit referencing BUG-{uuid}, verify auto-flip + audit row in workflow_transitions)
 - Confirmation that the existing forgiving try/catch envelope on the ingest route is preserved
+- **Mi-4 SUMMARY note (per plan revision pass):** console.warn(`[link-stamper] orphan links detected`, ...) is the v1 implementation of CONTEXT D-03 "stats surface". A proper structured-metrics dashboard surface is deferred to a follow-up phase per RESEARCH OQ-2 recommendation. Track in v2.5 roadmap candidates: "promote orphan-link console.warn to durable stats table or Datadog metric — pending dogfooding signal on whether the warning frequency justifies it."
+- Confirmation that the M-5 pre-flight (SELECT projection back-compat) PASSED before the full auto-flip extension landed — and whether any v2.1 Phase 11 test broke at that step (it should not, but record explicitly)
 </output>

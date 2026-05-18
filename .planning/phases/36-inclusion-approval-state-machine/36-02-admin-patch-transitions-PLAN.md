@@ -271,10 +271,12 @@ From src/db/schema.ts (re-exports shared package):
     - Identical behavior on `/api/platform/feature-requests`
   </behavior>
   <action>
-    1. WRITE A SMALL TEST FILE for each (or extend existing) — `src/app/api/platform/bug-reports/route.test.ts` and `src/app/api/platform/feature-requests/route.test.ts`. Test cases (per route):
+    1. WRITE TESTS FIRST (Mi-3 fix in plan revision pass — match Tasks 1-2 RED-first discipline). Create `src/app/api/platform/bug-reports/route.test.ts` and `src/app/api/platform/feature-requests/route.test.ts` (or extend existing). Test cases (per route):
        - `GET ?inclusion_state=approved_for_build` adds `eq(bugReports.inclusionState, 'approved_for_build')` to the where clause (assert on mock invocation)
        - `GET ?inclusion_state=garbage` returns 400 with `{error: 'invalid_inclusion_state'}`
        - `GET` (no param) does NOT add the inclusionState filter
+
+       **RED phase confirmation: run `npx vitest run src/app/api/platform/bug-reports/route.test.ts src/app/api/platform/feature-requests/route.test.ts` — tests MUST FAIL because the inclusion_state filter does not yet exist in the route handlers. Confirm RED before proceeding to step 2. This explicit RED step matches the Mi-3 fix per the plan revision pass.**
 
     2. EDIT `src/app/api/platform/bug-reports/route.ts` GET handler:
 
