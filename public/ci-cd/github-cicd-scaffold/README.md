@@ -22,6 +22,7 @@ github-cicd-scaffold/
 │   ├── rulesets/
 │   │   └── main-protection.json       ← applied via gh api
 │   └── workflows/
+│       ├── enforce-pr-source.yml      ← REQUIRED — fails PRs to main that aren't from dev/release-*/hotfix-*; status check name 'source-check' is required by main-protection rulesets
 │       ├── ci-lite.yml                ← DEFAULT — pick this first; 4 unconditional jobs (lint, semgrep, osv, gitleaks); works on ANY plan tier including Free org private (no GHAS / no IaC required)
 │       ├── ci-full.yml                ← OPT-IN — adds checkov+tfsec+threat-model-drift via a `detect` job; pick this only when repo has iac/ or Dockerfile or .threatmodel/ AND has GHAS (or is public). See deploy.md §5/R-2 decision tree.
 │       ├── build.yml                  ← reusable build+sign+provenance
