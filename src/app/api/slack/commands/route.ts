@@ -55,7 +55,13 @@ function parseSlackResponseUrl(url: string): URL | null {
   }
   if (parsed.protocol !== 'https:') return null;
   if (parsed.hostname !== 'hooks.slack.com') return null;
-  return parsed;
+  // Rebuild from a hard-coded scheme+host literal so CodeQL js/request-forgery
+  // sees the URL as fully sanitized at the fetch site. The validated path +
+  // search are the only user-derived bits that flow through. The legacy
+  // `lgtm[]` suppressor comments at the fetch callers no longer apply (LGTM.com
+  // was retired; CodeQL uses a different syntax) — reconstruction is the
+  // dataflow-clean fix.
+  return new URL(parsed.pathname + parsed.search, 'https://hooks.slack.com');
 }
 
 const HELP_TEXT = [
