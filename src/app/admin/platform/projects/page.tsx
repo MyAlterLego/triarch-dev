@@ -7,6 +7,7 @@ import {
   GitBranch, Server, ExternalLink, Trash2, X, Loader2, Users,
 } from 'lucide-react';
 import BuildTriggerSection from './BuildTriggerSection';
+import PromoteToProdButton from './PromoteToProdButton';
 
 interface Project {
   id: string;
@@ -232,6 +233,13 @@ export default function ProjectsPage() {
                 {/* Expanded details */}
                 {expanded && (
                   <div className="border-t border-zinc-800 p-4 space-y-3">
+                    <div className="flex justify-end">
+                      <PromoteToProdButton
+                        projectId={project.id}
+                        projectKey={project.key}
+                        githubRepo={project.githubRepo}
+                      />
+                    </div>
                     <BuildTriggerSection project={project} onSaved={fetchProjects} />
                     {/* Infrastructure grid */}
                     <div className="grid grid-cols-2 gap-3 text-xs">
