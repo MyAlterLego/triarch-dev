@@ -46,22 +46,23 @@ import {
  * sanitized, but does not recognize a string returned from a separate
  * validator helper. The caller passes the URL object directly to fetch().
  */
-function parseSlackResponseUrl(url: string): URL | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return null;
-  }
-  if (parsed.protocol !== 'https:') return null;
-  if (parsed.hostname !== 'hooks.slack.com') return null;
-  // Rebuild from a hard-coded scheme+host literal so CodeQL js/request-forgery
-  // sees the URL as fully sanitized at the fetch site. The validated path +
-  // search are the only user-derived bits that flow through. The legacy
-  // `lgtm[]` suppressor comments at the fetch callers no longer apply (LGTM.com
-  // was retired; CodeQL uses a different syntax) — reconstruction is the
-  // dataflow-clean fix.
-  return new URL(parsed.pathname + parsed.search, 'https://hooks.slack.com');
+/**
+ * POST to a Slack response_url. The hostname allowlist check is performed
+ * INLINE at the fetch site below — CodeQL's js/request-forgery dataflow
+ * tracker only treats a check as a sanitizer when it appears in the same
+ * basic block as the fetch (function-boundary breaks the trace). The
+ * `startsWith` literal-prefix form is the canonical sanitizer the analyzer
+ * recognizes.
+ */
+async function postToSlackResponseUrl(responseUrl: string | undefined | null, body: object): Promise<void> {
+  if (typeof responseUrl !== 'string') return;
+  // CodeQL js/request-forgery sanitizer: literal-string prefix check.
+  if (!responseUrl.startsWith('https://hooks.slack.com/')) return;
+  await fetch(responseUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 }
 
 const HELP_TEXT = [
@@ -421,11 +422,10 @@ export async function POST(req: NextRequest) {
     const [owner, repo] = projectStatus.project.githubRepo.split('/');
 
     // Fire-and-forget: merge + response_url follow-up per Slack 3-sec rule.
-    // response_url is HMAC-verified upstream; we additionally parse it as a
-    // URL object and verify it points at hooks.slack.com before fetch. Passing
-    // the parsed URL object (not the raw string) to fetch is the pattern
-    // CodeQL js/request-forgery recognizes as sanitized.
-    const safeUrl = responseUrl ? parseSlackResponseUrl(responseUrl) : null;
+    // response_url is HMAC-verified upstream; the postToSlackResponseUrl
+    // helper does an INLINE startsWith('https://hooks.slack.com/') check
+    // right before fetch — that's the form CodeQL js/request-forgery
+    // recognizes as a sanitizer.
     void (async () => {
       try {
         // 1. Ensure a PR exists. ensurePullRequest is idempotent — it reuses
@@ -442,17 +442,11 @@ export async function POST(req: NextRequest) {
         });
 
         if ('ok' in ensured && ensured.ok === false) {
-          if (!safeUrl) return;
           const text =
             ensured.reason === 'no_commits_ahead'
               ? `:information_source: Nothing to promote for \`${projectArg}\` — \`${headBranch}\` has no commits ahead of \`${baseBranch}\`.`
               : `:x: Couldn't open promotion PR for \`${projectArg}\` (HTTP ${ensured.statusCode}): ${ensured.message}`;
-          // lgtm[js/request-forgery]
-          await fetch(safeUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ response_type: 'ephemeral', replace_original: false, text }),
-          });
+          await postToSlackResponseUrl(responseUrl, { response_type: 'ephemeral', replace_original: false, text });
           return;
         }
 
@@ -462,7 +456,6 @@ export async function POST(req: NextRequest) {
 
         // 2. Merge it.
         const result = await mergeBranchToMain({ owner, repo, headBranch, baseBranch });
-        if (!safeUrl) return;
         let message: string;
         if (result.merged) {
           const prefix = wasCreated
@@ -481,26 +474,14 @@ export async function POST(req: NextRequest) {
             `:x: Merge failed for PR #${result.prNumber} (HTTP ${result.statusCode}): ` +
             `${result.message}`;
         }
-        // lgtm[js/request-forgery] safeUrl is parseSlackResponseUrl-validated (https + hooks.slack.com)
-        await fetch(safeUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ response_type: 'ephemeral', replace_original: false, text: message }),
-        });
+        await postToSlackResponseUrl(responseUrl, { response_type: 'ephemeral', replace_original: false, text: message });
       } catch (err) {
         console.error('[slack-commands] mergeBranchToMain failed', err);
-        if (safeUrl) {
-          // lgtm[js/request-forgery] safeUrl is parseSlackResponseUrl-validated (https + hooks.slack.com)
-          await fetch(safeUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              response_type: 'ephemeral',
-              replace_original: false,
-              text: ':x: Promote failed — check server logs.',
-            }),
-          }).catch(() => {});
-        }
+        await postToSlackResponseUrl(responseUrl, {
+          response_type: 'ephemeral',
+          replace_original: false,
+          text: ':x: Promote failed — check server logs.',
+        }).catch(() => {});
       }
     })();
 
