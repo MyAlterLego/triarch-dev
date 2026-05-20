@@ -23,13 +23,17 @@ import { db } from '@/lib/db';
 import { releaseLogs } from '@/db/schema';
 import { verifySlackSignature } from '@/lib/slack-crypto';
 import { resolveSlackUserEmail } from '@/lib/slack-identity';
-import { dispatchWorkflow, mergeBranchToMain } from '@/lib/github-app';
+import { dispatchWorkflow, ensurePullRequest, mergeBranchToMain } from '@/lib/github-app';
 import { recordSlackAudit } from '@/lib/slack-audit';
 import {
   fetchProjectStatus,
   buildStatusBlocks,
   listProjectKeys,
 } from '@/lib/slack-status';
+import {
+  fetchProjectStatusByAnyIdentifier,
+  listAllProjects,
+} from '@/lib/slack-project-resolver';
 
 /**
  * Parses + validates a Slack-issued response_url. Returns a URL object only
@@ -60,7 +64,9 @@ const HELP_TEXT = [
   '• `/triarch promote <project> [<head>] [<base>]` — Merge the open dev→main PR for `<project>` as a *merge commit* (preserves verify-dev-deployed ancestry). Defaults: head=dev, base=main. Staff only.',
   '• `/triarch deploy <project> <version>` — *Legacy* — dispatches `promote-branch.yml` (only works for projects with that workflow file). Use `promote` for PR-based dev→main projects. Staff only.',
   '• `/triarch status <project>` — Show current dev/prod release status for `<project>`.',
+  '• `/triarch projects` — List every known project with its identifiers.',
   '',
+  'Tip: `<project>` accepts any of: canonical key (`triarch-dev`), custom domain (`admin.triarch.dev`), subdomain (`admin`), or repo name (`platform`).',
   'Tip: also try `@OttoBot status <project>` in any channel.',
 ].join('\n');
 
@@ -134,7 +140,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const status = await fetchProjectStatus(projectArg);
+    const status = await fetchProjectStatusByAnyIdentifier(projectArg);
     if (!status) {
       // Unknown project — list up to 5 known keys (CONTEXT D-16)
       const knownKeys = await listProjectKeys(5);
@@ -175,6 +181,36 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // STEP 7b: projects — open discovery command. Lists every active project
+  // with its canonical key + alternate identifiers (custom domain, repo) so
+  // staff don't need to memorize project keys before running promote/status.
+  if (subcommand === 'projects') {
+    const rows = await listAllProjects();
+    void recordSlackAudit({
+      actionId: 'slash_projects',
+      actorEmail,
+      actorSlackId: userId || 'unknown',
+      rawBody,
+      responseStatus: 200,
+      latencyMs: Date.now() - requestReceivedAt,
+    });
+    if (rows.length === 0) {
+      return NextResponse.json({
+        response_type: 'ephemeral',
+        text: ':warning: No active projects found.',
+      });
+    }
+    const lines = rows.map((p) => {
+      const repo = p.githubRepo ? `\`${p.githubRepo}\`` : '_no repo_';
+      const domain = p.customDomain ? ` · <https://${p.customDomain}|${p.customDomain}>` : '';
+      return `• \`${p.key}\` — ${p.name} · ${repo}${domain}`;
+    });
+    return NextResponse.json({
+      response_type: 'ephemeral',
+      text: ['*Known projects* (any identifier below works in `/triarch promote|status|deploy <project>`)', '', ...lines].join('\n'),
+    });
+  }
+
   // STEP 8: deploy — staff-only (CONTEXT D-05)
   if (subcommand === 'deploy') {
     const isStaff = actorEmail?.endsWith('@triarchsecurity.com') ?? false;
@@ -210,7 +246,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Look up project to determine GitHub repo
-    const projectStatus = await fetchProjectStatus(projectArg);
+    const projectStatus = await fetchProjectStatusByAnyIdentifier(projectArg);
     if (!projectStatus) {
       void recordSlackAudit({
         actionId: 'slash_deploy',
@@ -346,7 +382,7 @@ export async function POST(req: NextRequest) {
     const headBranch = headBranchArg || 'dev';
     const baseBranch = baseBranchArg || 'main';
 
-    const projectStatus = await fetchProjectStatus(projectArg);
+    const projectStatus = await fetchProjectStatusByAnyIdentifier(projectArg);
     if (!projectStatus) {
       void recordSlackAudit({
         actionId: 'slash_promote',
@@ -386,17 +422,54 @@ export async function POST(req: NextRequest) {
     const safeUrl = responseUrl ? parseSlackResponseUrl(responseUrl) : null;
     void (async () => {
       try {
+        // 1. Ensure a PR exists. ensurePullRequest is idempotent — it reuses
+        //    an open PR if one is already there, otherwise opens a new one
+        //    (auto-create per Mike's spec: a targeted `<project>` arg is the
+        //    safety boundary, so /triarch promote does the full create+merge).
+        const ensured = await ensurePullRequest({
+          owner,
+          repo,
+          headBranch,
+          baseBranch,
+          title: `Promote ${headBranch} → ${baseBranch}`,
+          body: `Auto-opened by OttoBot in response to \`/triarch promote ${projectArg}\` from <@${userId}>.\n\nMerge will use \`merge_method: merge\` (NOT squash) so dev's commit hashes survive in ${baseBranch}'s ancestry — needed for the \`verify-dev-deployed\` gate on consumer repos.`,
+        });
+
+        if ('ok' in ensured && ensured.ok === false) {
+          if (!safeUrl) return;
+          const text =
+            ensured.reason === 'no_commits_ahead'
+              ? `:information_source: Nothing to promote for \`${projectArg}\` — \`${headBranch}\` has no commits ahead of \`${baseBranch}\`.`
+              : `:x: Couldn't open promotion PR for \`${projectArg}\` (HTTP ${ensured.statusCode}): ${ensured.message}`;
+          // lgtm[js/request-forgery]
+          await fetch(safeUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ response_type: 'ephemeral', replace_original: false, text }),
+          });
+          return;
+        }
+
+        const prNumber = 'prNumber' in ensured ? ensured.prNumber : null;
+        const prUrl = 'htmlUrl' in ensured ? ensured.htmlUrl : null;
+        const wasCreated = 'created' in ensured && ensured.created === true;
+
+        // 2. Merge it.
         const result = await mergeBranchToMain({ owner, repo, headBranch, baseBranch });
         if (!safeUrl) return;
         let message: string;
         if (result.merged) {
+          const prefix = wasCreated
+            ? `:rocket: Opened <${prUrl}|PR #${prNumber}> and merged`
+            : `:white_check_mark: Merged`;
           message =
-            `:white_check_mark: Merged \`${projectArg}\` ${headBranch} → ${baseBranch} as merge commit. ` +
+            `${prefix} \`${projectArg}\` ${headBranch} → ${baseBranch} as merge commit. ` +
             `<https://github.com/${owner}/${repo}/pull/${result.prNumber}|PR #${result.prNumber}> · sha \`${result.sha.slice(0, 7)}\``;
         } else if (result.reason === 'no_open_pr') {
+          // Should not happen — we just ensured one. Surface clearly if it does.
           message =
-            `:warning: No open PR from \`${result.headBranch}\` → \`${result.baseBranch}\` for \`${projectArg}\`. ` +
-            `Open one first (\`gh pr create --base ${result.baseBranch} --head ${result.headBranch}\` on the repo).`;
+            `:warning: Lost the PR between create and merge for \`${projectArg}\`. ` +
+            `Inspect <https://github.com/${owner}/${repo}/pulls?q=is%3Apr+head%3A${encodeURIComponent(headBranch)}+base%3A${encodeURIComponent(baseBranch)}|open PRs> directly.`;
         } else {
           message =
             `:x: Merge failed for PR #${result.prNumber} (HTTP ${result.statusCode}): ` +

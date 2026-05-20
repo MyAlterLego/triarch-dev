@@ -218,6 +218,91 @@ export async function mergeBranchToMain(input: MergeBranchInput): Promise<MergeB
   return { merged: true, prNumber: pr.number, sha: mergeData.sha, htmlUrl: pr.html_url };
 }
 
+// ---------------------------------------------------------------------------
+// Pull request creation — used when /triarch promote (or the UI button) needs
+// to open a fresh dev→main PR before merging. Returns the existing open PR
+// instead of erroring if one is already there, so callers can chain
+// create-then-merge safely.
+// ---------------------------------------------------------------------------
+
+export type EnsurePullRequestInput = {
+  owner: string;
+  repo: string;
+  headBranch: string;
+  baseBranch: string;
+  title?: string;
+  body?: string;
+};
+
+export type EnsurePullRequestResult =
+  | { existed: true; prNumber: number; htmlUrl: string }
+  | { created: true; prNumber: number; htmlUrl: string }
+  | { ok: false; reason: 'no_commits_ahead'; headBranch: string; baseBranch: string }
+  | { ok: false; reason: 'create_failed'; statusCode: number; message: string };
+
+export async function ensurePullRequest(input: EnsurePullRequestInput): Promise<EnsurePullRequestResult> {
+  const token = await getInstallationToken();
+  const { owner, repo, headBranch, baseBranch, title, body } = input;
+
+  // 1. Look for an existing open PR; reuse if present.
+  const listUrl =
+    `https://api.github.com/repos/${owner}/${repo}/pulls` +
+    `?state=open&base=${encodeURIComponent(baseBranch)}&head=${encodeURIComponent(owner + ':' + headBranch)}`;
+  const listRes = await fetch(listUrl, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+  });
+  if (!listRes.ok) {
+    const errBody = await listRes.text();
+    throw new Error(`[github-app] list PRs failed for ${owner}/${repo}: ${listRes.status} ${errBody}`);
+  }
+  const existing = (await listRes.json()) as Array<{ number: number; html_url: string }>;
+  if (existing.length > 0) {
+    return { existed: true, prNumber: existing[0].number, htmlUrl: existing[0].html_url };
+  }
+
+  // 2. Confirm there's something to promote. /compare returns 0-ahead when
+  //    branches are identical; opening a PR in that case errors with 422.
+  const compareUrl = `https://api.github.com/repos/${owner}/${repo}/compare/${encodeURIComponent(baseBranch)}...${encodeURIComponent(headBranch)}`;
+  const compareRes = await fetch(compareUrl, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+  });
+  if (compareRes.ok) {
+    const cmp = (await compareRes.json()) as { ahead_by?: number };
+    if ((cmp.ahead_by ?? 0) === 0) {
+      return { ok: false, reason: 'no_commits_ahead', headBranch, baseBranch };
+    }
+  }
+
+  // 3. Create the PR.
+  const createUrl = `https://api.github.com/repos/${owner}/${repo}/pulls`;
+  const createRes = await fetch(createUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      title: title ?? `Promote ${headBranch} → ${baseBranch}`,
+      head: headBranch,
+      base: baseBranch,
+      body: body ?? `Auto-opened by OttoBot to promote \`${headBranch}\` to \`${baseBranch}\`.`,
+    }),
+  });
+  if (!createRes.ok) {
+    const errBody = await createRes.text();
+    return {
+      ok: false,
+      reason: 'create_failed',
+      statusCode: createRes.status,
+      message: errBody.slice(0, 300),
+    };
+  }
+  const created = (await createRes.json()) as { number: number; html_url: string };
+  console.log(`[github-app] created PR #${created.number} for ${owner}/${repo} ${headBranch}→${baseBranch}`);
+  return { created: true, prNumber: created.number, htmlUrl: created.html_url };
+}
+
 /** Test-only helper. Resets module-level cache + in-flight latch between tests. */
 export function resetTokenCacheForTests(): void {
   cached = null;
