@@ -7,6 +7,7 @@ import { getCurrentUserContext } from '@/lib/auth-context';
 import { db } from '@/lib/db';
 import { projects, deployGateCheck } from '@/db/schema';
 import { getProjectPipelineSummaries, type PipelineSummary } from '@/lib/pipeline-summary';
+import PromoteToProdButton from '@/app/admin/platform/projects/PromoteToProdButton';
 
 // /admin/modules/ci-cd
 //
@@ -37,11 +38,14 @@ interface ComplianceCell {
 }
 
 // Extended project row — we need subdomain + deployedUrl for CL-1
+// and id + githubRepo for the inline Promote button (Phase 40).
 interface ProjectRow {
+  id: string;
   key: string;
   name: string;
   subdomain: string | null;
   deployedUrl: string | null;
+  githubRepo: string | null;
 }
 
 interface GateState {
@@ -272,10 +276,12 @@ async function loadStates(projectKeys: string[]): Promise<{ states: GateState[];
     }
     const projectRows = await db
       .select({
+        id: projects.id,
         key: projects.key,
         name: projects.name,
         subdomain: projects.subdomain,
         deployedUrl: projects.deployedUrl,
+        githubRepo: projects.githubRepo,
       })
       .from(projects);
 
@@ -293,10 +299,12 @@ async function loadStates(projectKeys: string[]): Promise<{ states: GateState[];
         verdict: v,
         reasons,
         projectRow: {
+          id: p.id,
           key: p.key,
           name: p.name,
           subdomain: p.subdomain ?? null,
           deployedUrl: p.deployedUrl ?? null,
+          githubRepo: p.githubRepo ?? null,
         },
       };
     });
@@ -489,6 +497,20 @@ export default async function CiCdGateOverview() {
                             <li key={r}>· {r}</li>
                           ))}
                         </ul>
+                      )}
+                      {/* Phase 40 — inline promote button when gate would pass. The button
+                          calls POST /api/platform/projects/[id]/promote (staff-gated, audited).
+                          Same flow as `/triarch promote` Slack command and the buried button on
+                          /admin/platform/projects — surfaced here next to the verdict so the
+                          decision + action live together. */}
+                      {(s.verdict === 'pass' || s.verdict === 'never_promoted_pass') && (
+                        <div className="mt-2">
+                          <PromoteToProdButton
+                            projectId={s.projectRow.id}
+                            projectKey={s.projectRow.key}
+                            githubRepo={s.projectRow.githubRepo}
+                          />
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3 align-top"><ComplianceBadge cell={cl1} /></td>

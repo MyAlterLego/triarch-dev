@@ -17,6 +17,7 @@
 
 import { handleBugAction, BUG_ACTION_IDS } from './bug';
 import { handleFeatureAction, FEATURE_ACTION_IDS } from './feature';
+import { handlePromoteAction, PROMOTE_ACTION_IDS } from './promote';
 import type { SlackHandlerContext, SlackActionResponse } from './types';
 
 export type SlackActionHandler = (ctx: SlackHandlerContext) => Promise<SlackActionResponse>;
@@ -24,6 +25,7 @@ export type SlackActionHandler = (ctx: SlackHandlerContext) => Promise<SlackActi
 export const ACTION_HANDLERS: Record<string, SlackActionHandler> = Object.fromEntries([
   ...BUG_ACTION_IDS.map((id) => [id, handleBugAction] as const),
   ...FEATURE_ACTION_IDS.map((id) => [id, handleFeatureAction] as const),
+  ...PROMOTE_ACTION_IDS.map((id) => [id, handlePromoteAction] as const),
 ]);
 
 export function getActionHandler(actionId: string): SlackActionHandler | null {
