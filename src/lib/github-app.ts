@@ -218,6 +218,88 @@ export async function mergeBranchToMain(input: MergeBranchInput): Promise<MergeB
   return { merged: true, prNumber: pr.number, sha: mergeData.sha, htmlUrl: pr.html_url };
 }
 
+// ---------------------------------------------------------------------------
+// createPullRequest — opens a PR if one isn't already open for the same
+// head→base pair. Used by v2.5 L1 admin action button "Promote dev → main".
+// Idempotent: if an open PR with the same head/base exists, returns that
+// PR's number + url instead of creating a duplicate. GitHub itself enforces
+// at-most-one-open-PR per head/base pair but we surface the existing PR
+// rather than letting the call 422.
+// ---------------------------------------------------------------------------
+
+export type CreatePullRequestInput = {
+  owner: string;
+  repo: string;
+  headBranch: string;
+  baseBranch: string;
+  title: string;
+  body?: string;
+};
+
+export type CreatePullRequestResult =
+  | { created: true;          prNumber: number; htmlUrl: string; sha: string }
+  | { created: false; reason: 'already_open'; prNumber: number; htmlUrl: string }
+  | { created: false; reason: 'no_diff'; headBranch: string; baseBranch: string }
+  | { created: false; reason: 'gh_error'; statusCode: number; message: string };
+
+export async function createPullRequest(input: CreatePullRequestInput): Promise<CreatePullRequestResult> {
+  const token = await getInstallationToken();
+  const { owner, repo, headBranch, baseBranch, title, body } = input;
+
+  // 1) Look up an existing open PR for this head→base. If found, return it.
+  const listUrl =
+    `https://api.github.com/repos/${owner}/${repo}/pulls` +
+    `?state=open&base=${encodeURIComponent(baseBranch)}&head=${encodeURIComponent(owner + ':' + headBranch)}`;
+  const listRes = await fetch(listUrl, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+  });
+  if (!listRes.ok) {
+    const msg = await listRes.text();
+    return { created: false, reason: 'gh_error', statusCode: listRes.status, message: msg.slice(0, 300) };
+  }
+  const existing = (await listRes.json()) as Array<{ number: number; html_url: string }>;
+  if (existing.length > 0) {
+    return { created: false, reason: 'already_open', prNumber: existing[0].number, htmlUrl: existing[0].html_url };
+  }
+
+  // 2) Compare the two refs to make sure there's a diff worth opening a PR over.
+  // GitHub returns 200 with `commits: []` when head is at/behind base — no PR to make.
+  const compareUrl =
+    `https://api.github.com/repos/${owner}/${repo}/compare/${encodeURIComponent(baseBranch)}...${encodeURIComponent(headBranch)}`;
+  const compareRes = await fetch(compareUrl, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+  });
+  if (!compareRes.ok) {
+    const msg = await compareRes.text();
+    return { created: false, reason: 'gh_error', statusCode: compareRes.status, message: msg.slice(0, 300) };
+  }
+  const cmp = (await compareRes.json()) as { ahead_by?: number; commits?: unknown[] };
+  if ((cmp.ahead_by ?? 0) === 0) {
+    return { created: false, reason: 'no_diff', headBranch, baseBranch };
+  }
+
+  // 3) Create the PR.
+  const createUrl = `https://api.github.com/repos/${owner}/${repo}/pulls`;
+  const createRes = await fetch(createUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ title, head: headBranch, base: baseBranch, body: body ?? '' }),
+  });
+  if (!createRes.ok) {
+    const msg = await createRes.text();
+    return { created: false, reason: 'gh_error', statusCode: createRes.status, message: msg.slice(0, 300) };
+  }
+  const pr = (await createRes.json()) as { number: number; html_url: string; head: { sha: string } };
+  console.log(
+    `[github-app] created PR #${pr.number} for ${owner}/${repo} ${headBranch}→${baseBranch} sha=${pr.head.sha}`
+  );
+  return { created: true, prNumber: pr.number, htmlUrl: pr.html_url, sha: pr.head.sha };
+}
+
 /** Test-only helper. Resets module-level cache + in-flight latch between tests. */
 export function resetTokenCacheForTests(): void {
   cached = null;

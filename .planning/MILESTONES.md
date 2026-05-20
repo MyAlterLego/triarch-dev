@@ -1,5 +1,75 @@
 # Milestones
 
+## v2.7 Bulk Triage Actions (L3) — BACKLOG
+
+**Goal:** Turn admin.triarch.dev into a multi-item action surface so Mike doesn't have to triage items one-by-one. Bulk-approve N pending deal-suggestions in one click; bulk-reassign contacts across projects; bulk-archive actions before a date (mirrors the manual `scripts/.archive-stale-actions.ts` Mike ran on 2026-05-20 for 37 March follow-ups).
+
+**Why now (after L2):** L2 surfaces what's failing or slow at a per-cron level. L3 surfaces what's piled up at a per-queue level. Together they cover the two daily-driver friction shapes: "something's broken, fix it" (L2) and "queue is big, drain it" (L3).
+
+**Target capabilities:**
+- Multi-select on each triage / actions / inbox list view
+- Bulk-approve / bulk-dismiss / bulk-reassign actions (driven by existing single-item endpoints, composed server-side for atomic write + audit per item)
+- Per-batch idempotency keys (clicking twice doesn't double-apply)
+- Audit JSON written per item (mirrors `docs/reports/actions-bulk-archive-apply-*.json` shape)
+- Confirmation modal showing exact row count + first 10 sample rows before commit
+- "Undo last bulk action" within 5 minutes (writes a reverse-action audit row)
+
+**Non-goals for v2.7:**
+- Free-form bulk SQL (too dangerous)
+- Bulk schema changes (out of scope — those go through migrations)
+- Cross-project bulk (each project's bulk action is per-project for blast radius containment)
+
+---
+
+## v2.6 Cron Control Panel (L2) — BACKLOG
+
+**Goal:** Make the cron layer (classifier, event-dispatcher, granola-synthesizer, briefing, intelligence-refresh, slack-ingest, slack-thread-attention, calendar-sync, etc.) visible and operable from `/admin/modules/cron`. Today the only way to know if a cron stopped firing is to grep FAH logs; the only way to manually re-fire one is `gcloud scheduler jobs run`. L2 makes both into UI.
+
+**Why now (after L1):** L1 proves the action-button pattern. L2 applies the pattern to a higher-value control surface — cron health is the single biggest blind spot in the morning briefing (see 2026-05-20 root cause analysis where a `channel_not_found` Slack error in the synthesizer + a missed `JOB_SECRET` hypothesis cost two hours of investigation).
+
+**Target capabilities:**
+- `/admin/modules/cron` page lists every Cloud Scheduler job per project: schedule, last_attempt, last_status, success_rate_24h, last_error (if any)
+- "Trigger now" button per cron (auth-gated, JIT-creds-gated for prod jobs, audit-logged)
+- "Pause" / "Resume" toggle per cron (writes to Cloud Scheduler API)
+- Heartbeat watchdog: if a cron hasn't fired within 2× its interval, the page row goes red and the morning briefing flags it
+- One-click "view logs for this cron" link to FAH log viewer with the right filter pre-applied
+- Per-cron config view (env vars bound, secret versions in use, last deploy)
+
+**Non-goals for v2.6:**
+- Editing cron schedules from UI (still done via apphosting.yaml + redeploy)
+- Cross-project cron view in v1 (per-project only)
+- Auto-remediation (L5 territory)
+
+---
+
+## v2.5 Admin Action Buttons (L1) — ACTIVE
+
+**Goal:** Take the read-only compliance dashboard at `/admin/modules/ci-cd` and add the two highest-friction action buttons next to every project row: **Promote dev → main** (creates PR) and **Merge PR** (merges open dev→main PR). Mirrors the `gh pr create --base main --head dev` + `gh pr merge` calls Mike was running by hand on 2026-05-20.
+
+**Why now:** L1 proves the action-button pattern on a low-risk surface. The data is already loaded on the CI/CD page; we're just adding action buttons next to read-only state. PR creation and merging are inherently reversible at the GitHub layer (close PR, revert merge commit) so blast radius is small. Once the pattern works, L2 (cron control) and L3 (bulk triage) reuse the same `/api/platform/actions/*` shape.
+
+**Target capabilities:**
+- New endpoint `POST /api/platform/actions/promote-dev-to-main` — creates PR base=main, head=dev, idempotent (returns existing PR if open), staff-only, audit-logged
+- New endpoint `POST /api/platform/actions/merge-pr` — finds open dev→main PR for the project, merges it, staff-only, audit-logged
+- New "Promote dev → main" button on each `/admin/modules/ci-cd` row where `verdict = 'pass'` or `'never_promoted_pass'`
+- New "Merge PR #N" button on each row where there's an open dev→main PR with checks green
+- Two-step confirm pattern (mirrors `PromoteButton.tsx` from v2.1 Phase 09)
+- Every click writes to `approval_events` with `subject_type` `'cicd_promote_dev_to_main'` or `'cicd_merge_pr'`
+- 60s idempotency window per (user, project, action) — clicking twice within 60s is a no-op
+
+**Phases (ordered):**
+- **Phase 39: Backend action endpoints** (this PR) — `createPullRequest` helper in `github-app.ts` + 2 route files + audit + tests
+- **Phase 40: UI buttons** — `PromoteDevToMainButton.tsx` + `MergePrButton.tsx` + wire into `/admin/modules/ci-cd/page.tsx`
+- **Phase 41: E2E verification + runbook** — manual UAT against a feature branch + audit-row verification
+
+**Non-goals for v2.5:**
+- Per-project permission tiers (admin-only for all actions in v1)
+- Bulk-promote across multiple projects (single-project per click)
+- Automatic gating on CL-1..CL-6 compliance (v1 button is enabled when `verdict=pass` only)
+- Slack-side trigger of these same actions (deferred — Slack already has OttoBot for prod promotion; admin is the web surface)
+
+---
+
 ## v2.1 Pipeline UI (Shipped: 2026-05-08)
 
 **Phases completed:** 7 phases, 23 plans, 43 tasks
